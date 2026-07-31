@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dokumentasi Fitur Baru — UMAR CRM (15 Juli 2026)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css">
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        code, pre { font-family: 'JetBrains Mono', monospace; }
+        .gradient-text { background: linear-gradient(135deg, #059669 0%, #0284c7 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        .sidebar-link.active { background-color: #ecfdf5; color: #059669; font-weight: 600; border-right: 3px solid #059669; }
+        pre { border-radius: 0.75rem; padding: 1rem 1.25rem; overflow-x: auto; font-size: 0.82rem; line-height: 1.6; margin: 0.75rem 0; }
+        pre code.hljs { background: transparent; padding: 0; }
+        .code-cap { font-size: 0.72rem; color: #64748b; margin-bottom: -0.25rem; display:block; font-weight:600; }
+        h2 { scroll-margin-top: 6rem; }
+        h3 { scroll-margin-top: 6rem; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th, td { border: 1px solid #e2e8f0; padding: 0.6rem 0.75rem; text-align: left; vertical-align: top; }
+        th { background: #f1f5f9; font-weight: 700; }
+        .badge { display:inline-block; padding: 0.1rem 0.5rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 700; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased">
+
+<nav class="fixed w-full z-50 border-b border-slate-200 top-0 bg-white/90 backdrop-blur">
+    <div class="max-w-screen-2xl mx-auto px-4 lg:px-8 flex justify-between h-16 items-center">
+        <div class="flex items-center gap-3">
+            <div class="bg-slate-900 p-2 rounded-lg"><i data-lucide="sparkles" class="w-5 h-5 text-emerald-400"></i></div>
+            <span class="font-bold text-lg tracking-tight">UMAR CRM <span class="gradient-text">— Dokumentasi Fitur Baru</span></span>
+        </div>
+        <span class="hidden md:inline text-xs text-slate-500">Sesi Pengembangan &middot; 15 Juli 2026 &middot; v2.1</span>
+    </div>
+</nav>
+
+<div class="max-w-screen-2xl mx-auto px-4 lg:px-8 pt-20 pb-12 flex gap-8">
+
+    <!-- Sidebar -->
+    <aside class="hidden lg:block w-72 shrink-0">
+        <div class="sticky top-20 bg-white border border-slate-200 rounded-xl p-4 shadow-sm max-h-[85vh] overflow-y-auto">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-3">Daftar Isi</h3>
+            <nav class="space-y-0.5 text-sm" id="sidebar-nav">
+                <a href="#ringkasan" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">Ringkasan Eksekutif</a>
+                <a href="#peta-fitur" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">Peta Fitur Baru</a>
+                <a href="#expense-report" class="sidebar-link block px-3 py-1.5 text-emerald-700 font-semibold rounded-lg hover:bg-slate-50">★ 1. Modul Expense Report</a>
+                <a href="#role-management" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">2. Peran Baru: Management</a>
+                <a href="#audit-trail" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">3. Audit Trail — Presisi &amp; Filter</a>
+                <a href="#keagenan" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">4. Keagenan — Agen Terbaik</a>
+                <a href="#keamanan" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">5. Perbaikan Keamanan &amp; Bug</a>
+                <a href="#pengaturan" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">6. Pengaturan — Kop Surat PDF</a>
+                <a href="#berkas" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">7. Ringkasan Berkas Diubah</a>
+                <a href="#lanjutan" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">8. Catatan &amp; Potensi Lanjutan</a>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- Content -->
+    <main class="flex-1 max-w-4xl space-y-14">
+
+        <!-- COVER -->
+        <header class="bg-slate-900 text-white rounded-2xl p-10 relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-72 h-72 bg-emerald-500/20 rounded-full blur-3xl"></div>
+            <div class="relative">
+                <span class="badge bg-emerald-500/20 text-emerald-300 mb-4">CATATAN RILIS &middot; DEVELOPMENT LOG</span>
+                <h1 class="text-3xl md:text-4xl font-extrabold mb-3 leading-tight">Fitur Baru UMAR CRM — <span class="gradient-text">Modul Expense Report, Peran Management, &amp; Penguatan Audit Trail</span></h1>
+                <p class="text-slate-300 text-sm leading-relaxed max-w-3xl">Dokumen ini merangkum seluruh fitur, perbaikan, dan perubahan skema basis data yang dibangun dalam satu sesi pengembangan pada <b>15 Juli 2026</b>. Ditulis dengan format &amp; gaya yang sama dengan <code>Dokumentasi-Teknis.html</code> agar menyatu sebagai bagian dari dokumentasi teknis sistem secara keseluruhan.</p>
+            </div>
+        </header>
+
+        <!-- RINGKASAN EKSEKUTIF -->
+        <section id="ringkasan">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="file-text" class="w-6 h-6 text-emerald-600"></i> Ringkasan Eksekutif</h2>
+            <div class="bg-white border border-slate-200 rounded-xl p-6 text-sm leading-relaxed text-slate-700 space-y-3">
+                <p>Sesi pengembangan ini berawal dari kebutuhan agar karyawan dapat mengajukan klaim penggantian biaya (reimburse) operasional, lalu berkembang menjadi sistem <b>Expense Report</b> penuh bergaya Odoo — dikelompokkan per <b>Project Label</b> (mis. "Expense Marketing 2026"), dengan alur persetujuan berjenjang, breakdown pajak per item, nomor referensi resmi, dan cetak PDF hardcopy sesuai format perusahaan.</p>
+                <p>Untuk mendukung alur persetujuan tersebut, ditambahkan <b>peran pengguna baru: <code>management</code></b> — beserta audit menyeluruh atas hak akses lintas-modul yang sudah ada (Keuangan, Logistik, Vendor, Karyawan, Master Paket, Tactical &amp; Audit), termasuk perbaikan sejumlah celah yang ditemukan selama proses (widget dashboard yang menyesatkan, log aktivitas yang tidak lengkap, serta bug pada mekanisme sesi login).</p>
+                <p>Seluruh fitur pada dokumen ini telah <b>diuji langsung di browser</b> (bukan hanya tinjauan kode) — meliputi alur penuh per role, perhitungan angka, serta pemeriksaan visual hasil PDF.</p>
+            </div>
+        </section>
+
+        <!-- PETA FITUR -->
+        <section id="peta-fitur">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><i data-lucide="map" class="w-6 h-6 text-emerald-600"></i> Peta Fitur Baru</h2>
+            <table>
+                <tr><th>Area</th><th>Perubahan</th><th>Status</th></tr>
+                <tr><td><b>Expense Report</b></td><td>Modul baru penuh: Project Label, header + line item, pajak per baris, alur approval, PDF hardcopy.</td><td><span class="badge bg-emerald-100 text-emerald-700">Baru</span></td></tr>
+                <tr><td><b>Peran Management</b></td><td>Role ke-5 (selain admin/sales/finance/ops); approver Expense Report; akses lihat ke 5 modul operasional.</td><td><span class="badge bg-emerald-100 text-emerald-700">Baru</span></td></tr>
+                <tr><td><b>Audit Trail</b></td><td>Kolom <code>user_id</code> &amp; <code>role</code> presisi; 8 endpoint yang belum tercatat kini di-log; fitur cari &amp; filter karyawan.</td><td><span class="badge bg-amber-100 text-amber-700">Ditingkatkan</span></td></tr>
+                <tr><td><b>Keagenan</b></td><td>Widget &amp; endpoint "Agen Terbaik" berbasis performa jamaah terkirim riil (bukan sekadar urutan pertama).</td><td><span class="badge bg-amber-100 text-amber-700">Ditingkatkan</span></td></tr>
+                <tr><td><b>Sesi Login (authFetch)</b></td><td>403 (akses ditolak) tidak lagi memaksa logout total — hanya 401 (sesi habis) yang logout.</td><td><span class="badge bg-rose-100 text-rose-700">Perbaikan Bug</span></td></tr>
+                <tr><td><b>Widget "Sales Terbaik"</b></td><td>Tidak lagi menampilkan nama sales dengan 0 konversi seolah "terbaik".</td><td><span class="badge bg-rose-100 text-rose-700">Perbaikan Bug</span></td></tr>
+                <tr><td><b>Pengaturan Perusahaan</b></td><td>Field badan hukum, alamat, email, website — dipakai sebagai kop surat PDF.</td><td><span class="badge bg-emerald-100 text-emerald-700">Baru</span></td></tr>
+            </table>
+        </section>
+
+        <!-- 1. EXPENSE REPORT -->
+        <section id="expense-report">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="receipt" class="w-6 h-6 text-emerald-600"></i> 1. Modul Expense Report</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-4">Modul ini menggantikan rancangan awal "Reimburse" (klaim tunggal per baris) dengan model <b>header + line items</b> yang lebih formal — meniru struktur dokumen akuntansi standar (mirip modul HR Expense pada Odoo), lengkap dengan nomor referensi &amp; kemampuan cetak hardcopy.</p>
+
+            <h3 class="font-bold text-lg mb-2">1.1 Mengapa Header + Line Items (bukan satu baris per klaim)?</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-3">Rancangan awal menyimpan satu klaim = satu baris (kategori + nominal + deskripsi). Ini cukup untuk reimburse sederhana, namun tidak mendukung kebutuhan nyata: satu laporan pengeluaran perjalanan/kloter biasanya berisi <i>banyak item</i> (bensin, konsumsi, parkir, dll.) yang diajukan &amp; disetujui <i>bersama-sama</i> sebagai satu dokumen dengan satu nomor referensi. Model header (<code>expense_reports</code>) + baris (<code>expense_lines</code>) memungkinkan hal ini sekaligus memberi ruang untuk breakdown pajak per item.</p>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">1.2 Model Data</h3>
+            <table class="mb-4">
+                <tr><th>Tabel</th><th>Fungsi &amp; kolom kunci</th></tr>
+                <tr><td><code>expense_projects</code></td><td>Label/kategori anggaran (mis. "Expense Marketing 2026"). Kolom: <code>name</code> (unik), <code>is_active</code> (nonaktif = soft-delete agar laporan lama tidak yatim), <code>created_by</code>.</td></tr>
+                <tr><td><code>expense_reports</code></td><td>Header laporan. Kolom kunci: <code>ref</code> (nomor referensi unik), <code>project_id</code>, <code>user_id</code>/<code>user_name</code> (pengaju), <code>period_from</code>/<code>period_to</code>, <code>approver_id</code>/<code>approver_name</code>, <code>note</code> + <code>note_visibility</code> (public/private), <code>status</code>, <code>validation_date</code>, <code>reviewed_by</code>, <code>review_note</code>, <code>paid_by</code>/<code>paid_at</code>, <code>transaction_id</code> (tautan ke Buku Kas).</td></tr>
+                <tr><td><code>expense_lines</code></td><td>Item pengeluaran per laporan. Kolom: <code>report_id</code>, <code>date</code>, <code>category</code> ("Type"), <code>description</code>, <code>unit_price_net</code> (harga sebelum pajak), <code>tax_percent</code> (default 11%), <code>qty</code>, <code>receipt_url</code> (opsional, foto struk).</td></tr>
+            </table>
+            <span class="code-cap">db.py — skema tabel inti</span>
+<pre class="bg-slate-900"><code class="language-sql">CREATE TABLE IF NOT EXISTS expense_reports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ref TEXT UNIQUE,
+    project_id INTEGER,
+    user_id INTEGER, user_name TEXT,
+    period_from TEXT, period_to TEXT,
+    approver_id INTEGER, approver_name TEXT,
+    note TEXT, note_visibility TEXT DEFAULT 'public',
+    status TEXT DEFAULT 'Draft',
+    validation_date DATETIME,
+    reviewed_by TEXT, review_note TEXT,
+    paid_by TEXT, paid_at DATETIME, transaction_id INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS expense_lines (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    report_id INTEGER,
+    date TEXT, category TEXT, description TEXT,
+    unit_price_net INTEGER, tax_percent REAL DEFAULT 11, qty INTEGER DEFAULT 1,
+    receipt_url TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);</code></pre>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">1.3 Alur Status (Maker-Checker)</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-3">Menerapkan pola <b>maker-checker</b>: pemohon (maker) membuat &amp; mengajukan, penyetuju (checker) memvalidasi, dan pencairan dana dilakukan pihak ketiga (finance) — tidak ada satu peran yang bisa mengajukan sekaligus mencairkan dana untuk dirinya sendiri.</p>
+            <div class="relative border-l-2 border-emerald-400 ml-4 pl-6 space-y-4">
+                <div class="relative">
+                    <span class="absolute -left-[31px] top-1 w-3.5 h-3.5 rounded-full bg-slate-400 ring-4 ring-white"></span>
+                    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                            <h4 class="font-bold text-slate-800 text-sm">Draft</h4>
+                            <span class="badge bg-slate-100 text-slate-700">Pemohon</span>
+                        </div>
+                        <p class="text-xs text-slate-600 mt-1">Header dibuat (pilih Project, periode, approver, note). Baris item ditambah/dihapus bebas. Bisa di-<b>Modify</b>, <b>Clone</b>, atau <b>Delete</b> selama masih Draft.</p>
+                    </div>
+                </div>
+                <div class="relative">
+                    <span class="absolute -left-[31px] top-1 w-3.5 h-3.5 rounded-full bg-amber-500 ring-4 ring-white"></span>
+                    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                            <h4 class="font-bold text-slate-800 text-sm">Submitted</h4>
+                            <span class="badge bg-amber-100 text-amber-700">Sistem</span>
+                        </div>
+                        <p class="text-xs text-slate-600 mt-1">Diajukan lewat tombol "Ajukan (Submit)" — mensyaratkan minimal 1 item &amp; approver sudah dipilih. Header &amp; baris terkunci (tidak bisa diedit lagi).</p>
+                    </div>
+                </div>
+                <div class="relative">
+                    <span class="absolute -left-[31px] top-1 w-3.5 h-3.5 rounded-full bg-blue-500 ring-4 ring-white"></span>
+                    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                            <h4 class="font-bold text-slate-800 text-sm">Approved / Rejected</h4>
+                            <span class="badge bg-blue-100 text-blue-700">admin, management</span>
+                        </div>
+                        <p class="text-xs text-slate-600 mt-1">Approver menyetujui (mengisi <code>validation_date</code> otomatis) atau menolak dengan <b>alasan wajib diisi</b> (divalidasi server, bukan hanya UI).</p>
+                    </div>
+                </div>
+                <div class="relative">
+                    <span class="absolute -left-[31px] top-1 w-3.5 h-3.5 rounded-full bg-emerald-500 ring-4 ring-white"></span>
+                    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                            <h4 class="font-bold text-slate-800 text-sm">Paid</h4>
+                            <span class="badge bg-emerald-100 text-emerald-700">admin, finance</span>
+                        </div>
+                        <p class="text-xs text-slate-600 mt-1">Hanya dapat dibayar dari status <b>Approved</b>. Saat dibayar, total (incl. pajak) otomatis dicatat sebagai transaksi <code>expense</code> kategori <code>expense_report</code> di Buku Kas.</p>
+                    </div>
+                </div>
+            </div>
+
+            <h3 class="font-bold text-lg mb-2 mt-6">1.4 Perhitungan Pajak per Baris</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Setiap baris menyimpan harga <b>sebelum pajak</b> (<code>unit_price_net</code>) &amp; persentase pajak sendiri (default 11%, dapat diubah per baris) — bukan satu tarif pajak global — karena tiap item pengeluaran bisa punya perlakuan pajak berbeda.</p>
+            <span class="code-cap">app.py — kalkulasi total per baris &amp; total laporan</span>
+<pre class="bg-slate-900"><code class="language-python">def _line_totals(line):
+    net = (line["unit_price_net"] or 0) * (line["qty"] or 0)
+    tax = round(net * (line["tax_percent"] or 0) / 100.0)
+    return net, tax, net + tax
+
+def _report_totals(lines):
+    net = tax = 0
+    for ln in lines:
+        n, t, _ = _line_totals(ln)
+        net += n; tax += t
+    return net, tax, net + tax</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed mt-2">Total laporan (<i>Amount excl. tax / tax / incl. tax</i>) selalu dihitung ulang dari baris-baris yang ada (bukan disimpan sebagai kolom terpisah yang bisa kadaluarsa) — menjamin angka selalu konsisten dengan data terbaru.</p>
+
+            <h3 class="font-bold text-lg mb-2 mt-6">1.5 Nomor Referensi</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Format <code>EXP/&lt;tahun&gt;/&lt;urutan 4-digit&gt;</code>, dihasilkan otomatis berdasarkan jumlah laporan yang sudah dibuat pada tahun berjalan.</p>
+            <span class="code-cap">app.py — generator nomor referensi</span>
+<pre class="bg-slate-900"><code class="language-python">def _generate_expense_ref():
+    year = datetime.datetime.now().year
+    row = db.query_one(
+        "SELECT COUNT(*) as c FROM expense_reports WHERE ref LIKE ?", (f"EXP/{year}/%",)
+    )
+    seq = (row["c"] if row else 0) + 1
+    return f"EXP/{year}/{seq:04d}"   # contoh: EXP/2026/0001</code></pre>
+
+            <h3 class="font-bold text-lg mb-2 mt-6">1.6 Cetak PDF (Hardcopy)</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">PDF dibangkitkan dengan pustaka <b>reportlab</b> (<code>expense_pdf.py</code>, modul terpisah mengikuti pola pemisahan tanggung jawab yang sama dengan <code>visa_checker.py</code>/<code>whatsapp.py</code>). Layout dirancang meniru dokumen resmi ala Odoo atas permintaan pengguna: kop surat (logo + identitas perusahaan), dua kotak info (perusahaan &amp; laporan), tabel item, kotak total, dan nomor halaman.</p>
+            <table class="mb-3">
+                <tr><th>Bagian PDF</th><th>Sumber data</th></tr>
+                <tr><td>Kop surat &amp; identitas perusahaan</td><td>Setting <code>company_legal_name</code>, <code>company_address</code>, <code>company_email</code>, <code>company_website</code>, <code>logo_url</code> — dapat diubah admin di halaman Pengaturan tanpa deploy ulang.</td></tr>
+                <tr><td>Recorded by / Approved by</td><td><code>user_name</code>, <code>reviewed_by</code> (atau <code>approver_name</code> bila belum direview).</td></tr>
+                <tr><td>Baris "info pencairan dana"</td><td><b>Isi field Note</b> pada header laporan — <i>bukan</i> data profil karyawan yang tetap (lihat §1.7).</td></tr>
+                <tr><td>Tabel item</td><td><code>expense_lines</code>: tanggal, Type, Project (dari header), deskripsi, pajak, harga satuan, qty, subtotal.</td></tr>
+                <tr><td>Total</td><td>Dihitung ulang dari <code>_report_totals()</code> — sama seperti yang ditampilkan di UI.</td></tr>
+            </table>
+            <span class="code-cap">app.py — endpoint unduh PDF (autentikasi via query token, seperti dokumen PII)</span>
+<pre class="bg-slate-900"><code class="language-python">@app.get("/api/expense-reports/{rid}/pdf")
+async def expense_reports_pdf(rid: int, user=Depends(authenticate_file_token)):
+    r = db.query_one("SELECT r.*, p.name as project_name FROM expense_reports r "
+                      "LEFT JOIN expense_projects p ON r.project_id = p.id WHERE r.id = ?", (rid,))
+    _assert_report_access(r, user)          # pemilik atau admin/management/finance
+    lines = db.query_all("SELECT * FROM expense_lines WHERE report_id = ? ORDER BY date ASC, id ASC", (rid,))
+    pdf_bytes = build_expense_pdf(r, lines, company=company, logo_path=logo_path)
+    return Response(content=pdf_bytes, media_type="application/pdf",
+                     headers={"Content-Disposition": f"inline; filename={r['ref'].replace('/', '-')}.pdf"})</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed mt-2"><b>Mengapa reportlab, bukan library lain (WeasyPrint, wkhtmltopdf)?</b> WeasyPrint &amp; wkhtmltopdf butuh dependensi sistem/biner eksternal (GTK, Qt WebKit) yang rawan gagal terpasang di Windows — sebagaimana sempat dialami saat memasang <code>neonize</code>/<code>greenlet</code> pada Python versi baru (lihat §15.2 &amp; §3 di <code>Dokumentasi-Teknis.html</code>). reportlab adalah <i>pure-Python</i>, terbukti terpasang mulus tanpa perlu Visual C++ Build Tools.</p>
+
+            <h3 class="font-bold text-lg mb-2 mt-6">1.7 Iterasi Desain: Rekening Karyawan → Field Note</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Versi pertama PDF menampilkan info rekening pencairan dari <b>profil karyawan</b> (kolom <code>phone</code>/<code>bank_account</code> baru di tabel <code>users</code>). Setelah diuji, ditemukan keterbatasan: <i>tidak semua expense report dicairkan ke rekening pemohon</i> — kadang dananya untuk vendor/mitra pihak ketiga.</p>
+            <p class="text-sm text-slate-700 leading-relaxed">Solusinya: field tersebut <b>dihapus</b> (bukan dibiarkan menggantung tak terpakai), dan baris info pencairan di PDF diganti mengambil dari <b>Note</b> pada header laporan — field bebas yang sudah ada, sehingga pemohon dapat menuliskan rekening tujuan apa pun yang relevan untuk laporan tersebut. Ini adalah contoh keputusan desain yang dikoreksi berdasarkan masukan pengguna setelah demo hasil awal.</p>
+        </section>
+
+        <!-- 2. ROLE MANAGEMENT -->
+        <section id="role-management">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="user-cog" class="w-6 h-6 text-emerald-600"></i> 2. Peran Baru: <code>management</code></h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-4">Sistem RBAC sebelumnya hanya mengenal empat peran (admin, sales, finance, ops — lihat §9 <code>Dokumentasi-Teknis.html</code>). Kebutuhan approval Expense Report memerlukan lapisan persetujuan independen dari admin (agar admin tidak merangkap sebagai satu-satunya penyetuju), sehingga ditambahkan peran <b>management</b>.</p>
+
+            <div class="bg-white border-l-4 border-teal-500 rounded-r-xl p-4 shadow-sm mb-4">
+                <h4 class="font-bold">Management <span class="badge bg-teal-100 text-teal-700">Approver &amp; Pengawas</span></h4>
+                <p class="text-sm text-slate-600 mt-1"><b>Tujuan:</b> menyetujui/menolak Expense Report secara independen dari admin; memantau kondisi kas &amp; audit trail; melihat (bukan mengelola) data operasional lintas-divisi untuk pengambilan keputusan.</p>
+            </div>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">2.1 Matriks Hak Akses</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Akses diberikan bertahap mengikuti permintaan eksplisit pengguna di sepanjang sesi ini — setiap penambahan diverifikasi langsung di browser sebelum dianggap selesai.</p>
+            <table class="mb-4">
+                <tr><th>Modul</th><th>Hak Management</th><th>Catatan</th></tr>
+                <tr><td>Expense Report</td><td>Lihat semua laporan &amp; <b>Setujui/Tolak</b></td><td>Approver utama alur maker-checker.</td></tr>
+                <tr><td>Dashboard (Saldo Kas &amp; Piutang)</td><td>Lihat</td><td>Sebelumnya "RESTRICTED" — whitelist ditambah management.</td></tr>
+                <tr><td>Tactical &amp; Audit</td><td>Lihat penuh (termasuk Audit Trail)</td><td>Sebelumnya admin-only.</td></tr>
+                <tr><td>Keuangan &amp; Ledger</td><td><b>Lihat saja</b></td><td>Form "Catat Pengeluaran" &amp; "Proses Payroll" disembunyikan.</td></tr>
+                <tr><td>Logistik &amp; Ops</td><td><b>Lihat saja</b></td><td>Tombol "Simpan Semua" disembunyikan.</td></tr>
+                <tr><td>Manajemen Vendor</td><td><b>Lihat saja</b></td><td>Tombol "Input Kontrak Baru" disembunyikan.</td></tr>
+                <tr><td>Karyawan (HR)</td><td><b>Lihat saja</b></td><td>Tombol "Tambah User" &amp; "Hapus" disembunyikan.</td></tr>
+                <tr><td>Master Paket</td><td><b>Lihat saja</b></td><td>Tombol "Tugaskan TL" &amp; "Hapus Paket" disembunyikan.</td></tr>
+            </table>
+            <p class="text-sm text-slate-700 leading-relaxed"><b>Prinsip yang diterapkan:</b> "lihat" secara eksplisit diartikan <i>read-only</i> — backend diberi izin GET, namun tombol tulis (create/update/delete) yang sebelumnya dirender tanpa pengecekan peran kini digerbangi eksplisit, mengikuti pola yang sudah ada pada tombol "Hapus" (contoh: <code>currentUser.role === 'admin' ? '&lt;button&gt;...' : ''</code>).</p>
+        </section>
+
+        <!-- 3. AUDIT TRAIL -->
+        <section id="audit-trail">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="history" class="w-6 h-6 text-emerald-600"></i> 3. Audit Trail — Presisi Data &amp; Fitur Pencarian</h2>
+
+            <h3 class="font-bold text-lg mb-2">3.1 Masalah yang Ditemukan</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-3">Tabel <code>audit_logs</code> semula hanya menyimpan <code>user_name</code> (teks bebas) — dua karyawan dengan nama sama akan ambigu di log. Selain itu, sejumlah endpoint tulis penting <b>tidak pernah mencatat log sama sekali</b>: pembuatan/penghapusan akun karyawan, pembuatan/penghapusan paket, penugasan staf, unggah dokumen PII, dan cek visa.</p>
+
+            <h3 class="font-bold text-lg mb-2 mt-4">3.2 Perbaikan</h3>
+            <span class="code-cap">db.py — kolom presisi baru</span>
+<pre class="bg-slate-900"><code class="language-sql">ALTER TABLE audit_logs ADD COLUMN user_id INTEGER;
+ALTER TABLE audit_logs ADD COLUMN role TEXT;</code></pre>
+            <span class="code-cap">app.py — log_action() menerima objek user utuh, bukan sekadar nama</span>
+<pre class="bg-slate-900"><code class="language-python">def log_action(user, action, details):
+    db.execute(
+        "INSERT INTO audit_logs (user_id, user_name, role, action, details) VALUES (?, ?, ?, ?, ?)",
+        (user["id"], user["name"], user["role"], action, details),
+    )
+    notify("data_updated", "audit")</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Delapan endpoint yang sebelumnya tidak ter-log kini mencatat aktivitas: <code>CREATE_USER</code>, <code>DELETE_USER</code>, <code>CREATE_PACKAGE</code>, <code>DELETE_PACKAGE</code>, <code>UPDATE_PACKAGE_STAFF</code>, <code>UPLOAD_DOCUMENT</code>, <code>CHECK_VISA</code>, <code>CREATE_AGENT</code> — ditambah rangkaian aksi baru untuk Expense Report (<code>CREATE_EXPENSE_REPORT</code>, <code>SUBMIT_EXPENSE_REPORT</code>, <code>APPROVE_/REJECT_EXPENSE_REPORT</code>, <code>PAY_EXPENSE_REPORT</code>, <code>CLONE_EXPENSE_REPORT</code>, <code>DELETE_EXPENSE_REPORT</code>) dan Project Label (<code>CREATE_/UPDATE_/DEACTIVATE_EXPENSE_PROJECT</code>).</p>
+
+            <h3 class="font-bold text-lg mb-2 mt-4">3.3 Pencarian &amp; Filter (Frontend)</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Ditambahkan kolom pencarian bebas teks &amp; dropdown filter per-karyawan di halaman Tactical &amp; Audit, memfilter data yang sudah ada di sisi klien (tanpa fetch ulang) agar responsif.</p>
+            <span class="code-cap">public/index.html — filter client-side</span>
+<pre class="bg-slate-900"><code class="language-javascript">function renderAuditTable() {
+    const q = (document.getElementById('audit-search')?.value || '').toLowerCase();
+    const selUser = document.getElementById('audit-filter-user')?.value || '';
+    const filtered = auditLogsCache.filter(a => {
+        if (selUser && a.user_name !== selUser) return false;
+        if (q && !`${a.user_name} ${a.action} ${a.details}`.toLowerCase().includes(q)) return false;
+        return true;
+    });
+    // ...render filtered ke tabel
+}</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed mt-2"><b>Catatan teknis:</b> input pencarian awalnya memakai event <code>onkeyup</code>, namun terbukti tidak konsisten terpicu oleh sebagian metode simulasi input (termasuk saat pengujian otomatis). Diganti ke <code>oninput</code>, yang menangkap seluruh perubahan nilai (ketik, tempel, maupun pengisian terprogram) secara lebih andal.</p>
+        </section>
+
+        <!-- 4. KEAGENAN -->
+        <section id="keagenan">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="award" class="w-6 h-6 text-emerald-600"></i> 4. Keagenan — Widget "Agen Terbaik"</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-3">Menyusul perbaikan serupa pada widget "Sales Terbaik" (§4.1), halaman Keagenan (Mitra) diberi kartu statistik &amp; kolom performa nyata, bukan sekadar daftar agen statis.</p>
+
+            <h3 class="font-bold text-lg mb-2">4.1 Masalah pada Widget "Sales Terbaik" (Perbaikan Terkait)</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Leaderboard sales di-<i>sort</i> menurun berdasarkan jumlah konversi, lalu frontend menampilkan elemen pertama sebagai "Sales Terbaik" — tanpa memeriksa apakah nilainya benar-benar &gt; 0. Saat hanya ada satu sales dan datanya masih kosong, sistem tetap menampilkan namanya sebagai "terbaik", padahal belum ada prestasi sama sekali.</p>
+            <span class="code-cap">public/index.html — perbaikan (before → after disingkat)</span>
+<pre class="bg-slate-900"><code class="language-javascript">// Sebelum: card('Sales Terbaik', lb[0] ? lb[0].name : '-', ...)
+// Sesudah:
+const bestSales = lb[0];
+card('Sales Terbaik', (bestSales && bestSales.converted > 0) ? bestSales.name : '-', 'award', 'amber');</code></pre>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">4.2 Endpoint Performa Agen</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Endpoint baru mengagregasi jumlah jamaah aktif (di luar status Lead &amp; Cancelled) per agen, memakai <code>LEFT JOIN</code> agar agen tanpa jamaah tetap tampil di tabel (dengan angka 0) namun otomatis tersingkir dari posisi "terbaik".</p>
+            <span class="code-cap">app.py</span>
+<pre class="bg-slate-900"><code class="language-python">@app.get("/api/agents/performance")
+async def agents_performance(user=Depends(authenticate_token)):
+    board = db.query_all(
+        "SELECT a.id, a.name, a.phone, a.commission_fee, "
+        "COUNT(CASE WHEN j.status NOT IN ('Cancelled', 'Lead - Follow Up') THEN j.id END) as total_jamaah "
+        "FROM agents a LEFT JOIN jamaah j ON a.id = j.agent_id "
+        "GROUP BY a.id ORDER BY total_jamaah DESC, a.name ASC", ()
+    )
+    return {"leaderboard": board}</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed mt-2">Halaman Keagenan kini menampilkan 3 kartu (Total Mitra/Agen, Jamaah dari Mitra, Agen Terbaik) serta kolom "Jamaah Terkirim" pada tabel — konsisten dengan widget "Top Mitra/Agen Aktif" yang sudah ada di Dashboard, namun dengan cakupan data lebih lengkap (bukan hanya top 5).</p>
+        </section>
+
+        <!-- 5. KEAMANAN & BUG -->
+        <section id="keamanan">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="shield-alert" class="w-6 h-6 text-emerald-600"></i> 5. Perbaikan Keamanan &amp; Bug</h2>
+
+            <h3 class="font-bold text-lg mb-2">5.1 <code>authFetch</code> Memaksa Logout pada 403 (Ditemukan Saat Uji Peran Management)</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Saat memperluas akses <i>view-only</i> role management ke berbagai halaman (§2), ditemukan bahwa helper <code>authFetch</code> di frontend memperlakukan <b>401 (sesi tidak valid) dan 403 (peran tidak berwenang) secara identik</b> — keduanya memicu logout paksa. Ini berbahaya: satu tombol tulis yang belum sempat disembunyikan untuk role tertentu dapat membuat pengguna terlempar keluar dari aplikasi hanya karena mengklik sesuatu yang tidak diizinkan untuknya.</p>
+            <span class="code-cap">public/index.html — sebelum vs sesudah</span>
+<pre class="bg-slate-900"><code class="language-javascript">// Sebelum:
+if (res.status === 401 || res.status === 403) { logout(); throw new Error('Akses ditolak atau sesi berakhir'); }
+
+// Sesudah — 403 tidak lagi logout, cukup lempar error (ditangkap &amp; ditampilkan sebagai toast):
+if (res.status === 401) { logout(); throw new Error('Sesi berakhir, silakan login kembali'); }
+if (!res.ok) {
+    let errData; try { errData = await res.json(); } catch(e) {}
+    throw new Error((errData && errData.error) ? errData.error : `Kesalahan Sistem (${res.status})`);
+}</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed mt-2">Perbaikan ini berlaku <b>untuk seluruh sistem</b> (bukan hanya modul baru) — memperbaiki kekokohan (<i>robustness</i>) aplikasi secara umum terhadap kombinasi peran &amp; endpoint di masa depan.</p>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">5.2 Visibilitas Note (Public/Private) pada Expense Report</h3>
+            <p class="text-sm text-slate-700 leading-relaxed">Field <code>note_visibility</code> pada laporan menentukan siapa yang boleh membaca <code>note</code> saat laporan tampil di daftar/list — bila "private", hanya pemilik, approver, atau admin/management/finance yang melihat isinya; pihak lain melihat field kosong. Pada endpoint unduh PDF, pemeriksaan ini <b>tidak diterapkan ulang</b> secara sengaja: siapa pun yang lolos <code>_assert_report_access()</code> (pemilik atau admin/management/finance) sudah tentu berwenang, sehingga PDF selalu menampilkan Note apa adanya.</p>
+        </section>
+
+        <!-- 6. PENGATURAN -->
+        <section id="pengaturan">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="settings" class="w-6 h-6 text-emerald-600"></i> 6. Pengaturan — Data Legal untuk Kop Surat PDF</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-3">Empat setting baru ditambahkan ke tabel <code>settings</code> (pola key-value yang sama dengan <code>company_name</code>/<code>logo_url</code> — lihat §5 &amp; §14 <code>Dokumentasi-Teknis.html</code>), agar identitas resmi perusahaan pada PDF dapat diubah admin tanpa menyentuh kode.</p>
+            <table class="mb-3">
+                <tr><th>Key</th><th>Contoh Nilai</th><th>Dipakai di</th></tr>
+                <tr><td><code>company_legal_name</code></td><td>PT. UMAR SINERGI BERSAMA</td><td>Kop surat PDF (kotak "Information company")</td></tr>
+                <tr><td><code>company_address</code></td><td>Jl. Raya Hankam no. 1/11, 17431 BEKASI</td><td>Kop surat PDF</td></tr>
+                <tr><td><code>company_email</code></td><td>info@u-mar.id</td><td>Kop surat PDF</td></tr>
+                <tr><td><code>company_website</code></td><td>u-mar.id</td><td>Kop surat PDF</td></tr>
+            </table>
+            <p class="text-sm text-slate-700 leading-relaxed">Form pengaturan baru ditambahkan di halaman Pengaturan (bagian "Data Legal — Kop Surat PDF"), memakai fungsi <code>loadSettings()</code>/<code>saveSettings()</code> yang sudah ada — hanya diperluas payload-nya, tanpa endpoint baru.</p>
+        </section>
+
+        <!-- 7. RINGKASAN BERKAS -->
+        <section id="berkas">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><i data-lucide="folder-git-2" class="w-6 h-6 text-emerald-600"></i> 7. Ringkasan Berkas yang Diubah</h2>
+            <table>
+                <tr><th>Berkas</th><th>Perubahan</th></tr>
+                <tr><td><code>expense_pdf.py</code></td><td><span class="badge bg-emerald-100 text-emerald-700">Baru</span> Modul generator PDF Expense Report (reportlab).</td></tr>
+                <tr><td><code>db.py</code></td><td>Tabel baru: <code>expense_projects</code>, <code>expense_reports</code>, <code>expense_lines</code>. Kolom baru: <code>audit_logs.user_id</code>, <code>audit_logs.role</code>. Setting baru: <code>company_legal_name</code>, <code>company_address</code>, <code>company_email</code>, <code>company_website</code>. Seed role <code>management</code>.</td></tr>
+                <tr><td><code>app.py</code></td><td>18 endpoint Expense Report/Project/Approver baru; endpoint <code>/api/agents/performance</code> baru; <code>log_action()</code> diubah menerima objek user; 8 titik <code>log_action</code> baru; perluasan <code>require_role</code> untuk <code>management</code> pada 5 endpoint view.</td></tr>
+                <tr><td><code>requirements.txt</code></td><td>Tambah <code>reportlab==4.2.5</code>.</td></tr>
+                <tr><td><code>public/index.html</code></td><td>Halaman "Expense Report" (Project Label + list + 3 modal); halaman Keagenan diperluas (stat card + kolom performa); filter Audit Trail; perbaikan <code>authFetch</code>; role-gate tombol tulis untuk 5 halaman; form Pengaturan diperluas; menu &amp; visibilitas sidebar untuk role <code>management</code>.</td></tr>
+            </table>
+        </section>
+
+        <!-- 8. CATATAN LANJUTAN -->
+        <section id="lanjutan" class="pb-16">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><i data-lucide="lightbulb" class="w-6 h-6 text-emerald-600"></i> 8. Catatan &amp; Potensi Pengembangan Lanjutan</h2>
+            <div class="bg-white border border-slate-200 rounded-xl p-6 text-sm leading-relaxed text-slate-700 space-y-3">
+                <ul class="list-disc pl-6 space-y-1.5">
+                    <li>Kolom <code>expense_lines.receipt_url</code> (foto struk per item) sudah ada di skema &amp; endpoint, namun belum ditautkan ke elemen upload file di form tambah item — dapat diaktifkan menyusul pola yang sama seperti Document Vault jamaah.</li>
+                    <li>Fitur reimburse versi pertama (klaim tunggal, tabel <code>reimbursements</code>) sudah sepenuhnya digantikan Expense Report; tabel lama dibiarkan ada di berkas basis data (tidak di-<i>drop</i>) sebagai jejak historis, namun tidak lagi direferensikan kode manapun.</li>
+                    <li>Halaman Manajemen Vendor untuk role <code>management</code> saat ini murni lihat-saja; bila di kemudian hari management perlu mengajukan kontrak vendor (bukan hanya menyetujuinya via Expense Report), endpoint <code>POST /api/procurement</code> perlu diperluas <code>require_role</code>-nya.</li>
+                    <li>Nomor referensi Expense Report (<code>EXP/tahun/urutan</code>) dihitung dari <code>COUNT(*)</code> per tahun — cukup untuk skala saat ini; bila laporan pernah dihapus di tengah urutan, nomor tidak akan pernah bentrok (unik di kolom <code>ref</code>) namun urutannya bisa terlihat tidak berurutan sempurna.</li>
+                </ul>
+            </div>
+        </section>
+
+    </main>
+</div>
+
+<footer class="bg-slate-900 text-slate-400 py-6 text-center text-xs">
+    &copy; 2026 UMAR CRM &mdash; Catatan Rilis Internal. Disusun otomatis berdasarkan sesi pengembangan 15 Juli 2026.
+</footer>
+
+<script>
+    hljs.highlightAll();
+    lucide.createIcons();
+    const sections = document.querySelectorAll('section, header');
+    const links = document.querySelectorAll('.sidebar-link');
+    window.addEventListener('scroll', () => {
+        let cur = '';
+        sections.forEach(s => { if (scrollY >= s.offsetTop - 120) cur = s.id; });
+        links.forEach(l => {
+            l.classList.toggle('active', l.getAttribute('href') === '#' + cur);
+        });
+    });
+</script>
+</body>
+</html>

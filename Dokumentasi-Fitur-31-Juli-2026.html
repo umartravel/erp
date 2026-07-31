@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dokumentasi Fitur Baru — UMAR CRM (31 Juli 2026)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css">
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        code, pre { font-family: 'JetBrains Mono', monospace; }
+        .gradient-text { background: linear-gradient(135deg, #059669 0%, #0284c7 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        .sidebar-link.active { background-color: #ecfdf5; color: #059669; font-weight: 600; border-right: 3px solid #059669; }
+        pre { border-radius: 0.75rem; padding: 1rem 1.25rem; overflow-x: auto; font-size: 0.82rem; line-height: 1.6; margin: 0.75rem 0; }
+        pre code.hljs { background: transparent; padding: 0; }
+        .code-cap { font-size: 0.72rem; color: #64748b; margin-bottom: -0.25rem; display:block; font-weight:600; }
+        h2 { scroll-margin-top: 6rem; }
+        h3 { scroll-margin-top: 6rem; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th, td { border: 1px solid #e2e8f0; padding: 0.6rem 0.75rem; text-align: left; vertical-align: top; }
+        th { background: #f1f5f9; font-weight: 700; }
+        .badge { display:inline-block; padding: 0.1rem 0.5rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 700; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased">
+
+<nav class="fixed w-full z-50 border-b border-slate-200 top-0 bg-white/90 backdrop-blur">
+    <div class="max-w-screen-2xl mx-auto px-4 lg:px-8 flex justify-between h-16 items-center">
+        <div class="flex items-center gap-3">
+            <div class="bg-slate-900 p-2 rounded-lg"><i data-lucide="sparkles" class="w-5 h-5 text-emerald-400"></i></div>
+            <span class="font-bold text-lg tracking-tight">UMAR CRM <span class="gradient-text">— Dokumentasi Fitur Baru</span></span>
+        </div>
+        <span class="hidden md:inline text-xs text-slate-500">Sesi Pengembangan &middot; 31 Juli 2026 &middot; v2.7</span>
+    </div>
+</nav>
+
+<div class="max-w-screen-2xl mx-auto px-4 lg:px-8 pt-20 pb-12 flex gap-8">
+
+    <!-- Sidebar -->
+    <aside class="hidden lg:block w-72 shrink-0">
+        <div class="sticky top-20 bg-white border border-slate-200 rounded-xl p-4 shadow-sm max-h-[85vh] overflow-y-auto">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-3">Daftar Isi</h3>
+            <nav class="space-y-0.5 text-sm" id="sidebar-nav">
+                <a href="#ringkasan" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">Ringkasan Eksekutif</a>
+                <a href="#peta-fitur" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">Peta Fitur Baru</a>
+                <a href="#rbac-audit" class="sidebar-link block px-3 py-1.5 text-emerald-700 font-semibold rounded-lg hover:bg-slate-50">★ 1. Audit RBAC Lintas Role &amp; Bug Tombol Edit Agen</a>
+                <a href="#procurement" class="sidebar-link block px-3 py-1.5 text-emerald-700 font-semibold rounded-lg hover:bg-slate-50">★ 2. Modul Manajemen Vendor — Alur Maker-Checker</a>
+                <a href="#ux-redesign" class="sidebar-link block px-3 py-1.5 text-emerald-700 font-semibold rounded-lg hover:bg-slate-50">★ 3. Redesign UI/UX Manajemen Vendor</a>
+                <a href="#bug-checkbox" class="sidebar-link block px-3 py-1.5 text-emerald-700 font-semibold rounded-lg hover:bg-slate-50">★ 4. Bug: Checkbox Bulk-Select Tidak Digating per Role</a>
+                <a href="#expense-matrix" class="sidebar-link block px-3 py-1.5 text-emerald-700 font-semibold rounded-lg hover:bg-slate-50">★ 5. Matrik Pengeluaran per Projek</a>
+                <a href="#chart" class="sidebar-link block px-3 py-1.5 text-emerald-700 font-semibold rounded-lg hover:bg-slate-50">★ 6. Grafik Stacked Bar (Chart.js + Palet Tervalidasi)</a>
+                <a href="#berkas" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">7. Ringkasan Berkas Diubah</a>
+                <a href="#lanjutan" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">8. Catatan &amp; Potensi Lanjutan</a>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- Content -->
+    <main class="flex-1 max-w-4xl space-y-14">
+
+        <!-- COVER -->
+        <header class="bg-slate-900 text-white rounded-2xl p-10 relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-72 h-72 bg-emerald-500/20 rounded-full blur-3xl"></div>
+            <div class="relative">
+                <span class="badge bg-emerald-500/20 text-emerald-300 mb-4">CATATAN RILIS &middot; DEVELOPMENT LOG</span>
+                <h1 class="text-3xl md:text-4xl font-extrabold mb-3 leading-tight">Fitur Baru UMAR CRM — <span class="gradient-text">Modul Manajemen Vendor, Redesign UX, &amp; Matrik Pengeluaran per Projek</span></h1>
+                <p class="text-slate-300 text-sm leading-relaxed max-w-3xl">Dokumen ini merangkum seluruh fitur, perbaikan bug, dan perubahan skema basis data yang dibangun dalam satu sesi pengembangan pada <b>31 Juli 2026</b>. Ditulis dengan format &amp; gaya yang sama dengan <code>Dokumentasi-Fitur-23-Juli-2026.html</code> agar menyatu sebagai bagian dari dokumentasi teknis sistem secara keseluruhan.</p>
+            </div>
+        </header>
+
+        <!-- RINGKASAN EKSEKUTIF -->
+        <section id="ringkasan">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="file-text" class="w-6 h-6 text-emerald-600"></i> Ringkasan Eksekutif</h2>
+            <div class="bg-white border border-slate-200 rounded-xl p-6 text-sm leading-relaxed text-slate-700 space-y-3">
+                <p>Sesi ini dimulai dari permintaan pengujian menyeluruh lintas role (Sales, Finance, Ops, Management) untuk memastikan RBAC (hak akses per peran) bekerja benar di seluruh aplikasi. Dari pengujian itu ditemukan satu inkonsistensi UX kecil: role Finance masih melihat ikon "Edit Agen" di halaman Keagenan padahal backend menolaknya dengan 403 — langsung diperbaiki dengan menyembunyikan tombol untuk role selain admin/sales.</p>
+                <p>Pengujian yang sama lalu diarahkan ke modul <b>Manajemen Vendor (Procurement)</b>, yang ternyata sangat minim: cuma bisa Tambah &amp; Lihat, deposit langsung memotong Kas begitu kontrak dibuat tanpa review apa pun, tidak ada Edit/Hapus, tidak ada status siklus hidup. Total <b>6 gap</b> ditemukan dan langsung diperbaiki sekaligus dengan alur <b>maker-checker</b> penuh (pola yang sama dengan Refund &amp; Klaim Komisi yang sudah ada) — diuji tuntas sebagai Admin, Finance, Ops, dan Management, termasuk verifikasi 403 di level API, bukan cuma UI.</p>
+                <p>Pengalaman menguji modul ini memunculkan diskusi UI/UX terpisah: terlalu banyak ikon berjejer per baris, tabel harus di-scroll horizontal, dan tidak ada cara approve banyak kontrak sekaligus. Sebuah mockup interaktif dibuat dulu untuk disetujui pengguna sebelum diterapkan ke kode asli — hasilnya toggle Tabel/Kartu, pola tombol utama + menu titik-tiga (kebab), dan bar aksi massal (bulk approve/reject). Proses ini menemukan &amp; memperbaiki dua bug nyata: id DOM ganda antara view Tabel &amp; Kartu yang membuat menu Kartu tidak merespons, dan checkbox bulk-select yang muncul untuk role yang sebenarnya tidak berwenang approve (Finance, Ops) — keduanya diverifikasi ulang lewat pengujian lintas role setelah diperbaiki.</p>
+                <p>Sesi ditutup dengan permintaan fitur baru: <b>matrik pengeluaran per projek</b>. Diskusi awal membongkar bahwa sistem punya <i>dua konsep "projek" yang terpisah</i> (Paket Keberangkatan Umroh vs Expense Project/label anggaran internal) yang sebelumnya tidak pernah digabung dalam satu laporan. Setelah disepakati digabung jadi satu matrik dengan filter, ditemukan satu bug prasyarat lagi: pembayaran vendor tidak pernah menyimpan nama paket ke transaksinya meski kontraknya sudah ditautkan — diperbaiki sebelum matrik dibangun. Ditutup dengan grafik <i>stacked bar</i> horizontal mengikuti metodologi <code>dataviz</code> skill (palet kategorikal tervalidasi tahan buta-warna), lalu seluruh matrik &amp; grafik diuji ulang di semua role.</p>
+            </div>
+        </section>
+
+        <!-- PETA FITUR -->
+        <section id="peta-fitur">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><i data-lucide="map" class="w-6 h-6 text-emerald-600"></i> Peta Fitur Baru</h2>
+            <table>
+                <tr><th>Area</th><th>Perubahan</th><th>Status</th></tr>
+                <tr><td><b>Sembunyikan Tombol Edit Agen untuk Finance</b></td><td>Backend selalu menolak (403), tapi ikon tetap tampil di UI untuk role Finance — kini disembunyikan.</td><td><span class="badge bg-amber-100 text-amber-700">Diperbaiki</span></td></tr>
+                <tr><td><b>Modul Manajemen Vendor — Alur Maker-Checker</b></td><td>Pending &rarr; Aktif (disetujui Admin/Management) &rarr; pembayaran dicatat terpisah (Admin/Finance) &rarr; Selesai/Dibatalkan.</td><td><span class="badge bg-emerald-100 text-emerald-700">Baru</span></td></tr>
+                <tr><td><b>Edit, Hapus &amp; Riwayat Pembayaran Kontrak Vendor</b></td><td>Sebelumnya tidak ada sama sekali — hanya Tambah &amp; Lihat.</td><td><span class="badge bg-emerald-100 text-emerald-700">Baru</span></td></tr>
+                <tr><td><b>Toggle Tabel / Kartu di Manajemen Vendor</b></td><td>Mengatasi tabel yang harus di-scroll horizontal di layar sempit.</td><td><span class="badge bg-emerald-100 text-emerald-700">Baru</span></td></tr>
+                <tr><td><b>Pola Aksi Utama + Menu Kebab (⋯)</b></td><td>Mengurangi jejeran ikon per baris jadi 1-2 tombol utama + menu sekunder.</td><td><span class="badge bg-emerald-100 text-emerald-700">Baru</span></td></tr>
+                <tr><td><b>Bar Aksi Massal (Bulk Approve/Reject)</b></td><td>Checkbox per kontrak Pending + tombol "Setujui Semua"/"Tolak Semua".</td><td><span class="badge bg-emerald-100 text-emerald-700">Baru</span></td></tr>
+                <tr><td><b>Bug: ID DOM Ganda Menu Kebab Tabel vs Kartu</b></td><td>Kedua view memakai template id yang sama, menu Kartu jadi tidak merespons klik.</td><td><span class="badge bg-amber-100 text-amber-700">Diperbaiki</span></td></tr>
+                <tr><td><b>Bug: Checkbox Bulk-Select Tidak Digating per Role</b></td><td>Finance &amp; Ops bisa centang &amp; klik "Setujui Semua" padahal backend menolak (403) — kini disembunyikan untuk role selain admin/management.</td><td><span class="badge bg-amber-100 text-amber-700">Diperbaiki</span></td></tr>
+                <tr><td><b>Matrik Pengeluaran per Projek</b></td><td>Menggabungkan Paket Keberangkatan &amp; Expense Project jadi satu tabel matriks (baris=projek, kolom=kategori biaya), dengan filter.</td><td><span class="badge bg-emerald-100 text-emerald-700">Baru</span></td></tr>
+                <tr><td><b>Bug: Pembayaran Vendor Tidak Tertaut ke Paket</b></td><td>Transaksi <code>procurement_payment</code> tidak pernah menyimpan <code>package_name</code> meski kontraknya sudah ditautkan ke paket.</td><td><span class="badge bg-amber-100 text-amber-700">Diperbaiki</span></td></tr>
+                <tr><td><b>Grafik Stacked Bar Horizontal</b></td><td>Visualisasi matrik pengeluaran, palet kategorikal tervalidasi tahan buta-warna, tooltip &amp; legend interaktif.</td><td><span class="badge bg-emerald-100 text-emerald-700">Baru</span></td></tr>
+            </table>
+        </section>
+
+        <!-- 1. RBAC AUDIT -->
+        <section id="rbac-audit">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="shield-check" class="w-6 h-6 text-emerald-600"></i> 1. Audit RBAC Lintas Role &amp; Bug Tombol Edit Agen</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-4">Permintaan awal sesi ini adalah pengujian sistematis: login sebagai Sales, Finance, Ops, dan Management satu per satu, memeriksa navigasi mana yang tampil, dan aksi mana yang benar-benar bisa dijalankan (bukan cuma tombolnya kelihatan).</p>
+
+            <h3 class="font-bold text-lg mb-2">1.1 Temuan: Tombol Edit Agen Tampil untuk Finance, Backend Menolak</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Di halaman Keagenan (Mitra), ikon pensil "Edit Agen" tetap tampil untuk role Finance meski endpoint <code>PUT /api/agents/{id}</code> membatasi hanya <code>admin</code> dan <code>sales</code>. Dikonfirmasi lewat percobaan klik sungguhan (403) sebelum diperbaiki, bukan cuma tinjauan kode.</p>
+            <span class="code-cap">public/index.html — gating tombol berdasarkan role</span>
+<pre class="bg-slate-900"><code class="language-javascript">// Sebelum: tombol selalu dirender untuk siapa pun yang bisa lihat baris
+// Sesudah: hanya dirender untuk role yang backend-nya benar-benar mengizinkan
+if (['admin', 'sales'].includes(currentUser.role)) {
+    html += `&lt;button onclick="openEditAgentModal(${a.id})"&gt;...&lt;/button&gt;`;
+}</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed">Diverifikasi ulang: Finance kehilangan tombol Edit, Sales tetap memilikinya. Pola ini — "tombol tampil, backend menolak" — jadi pelajaran yang dibawa ke pengujian modul Procurement di bagian berikutnya, dan berulang lagi saat menemukan bug checkbox bulk-select (lihat §4).</p>
+        </section>
+
+        <!-- 2. PROCUREMENT -->
+        <section id="procurement">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="building-2" class="w-6 h-6 text-emerald-600"></i> 2. Modul Manajemen Vendor — Alur Maker-Checker Penuh</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-4">Investigasi modul Procurement (kontrak vendor: tiket pesawat, hotel, visa) menemukan 6 gap sekaligus: hanya GET/POST, deposit langsung memotong Kas saat kontrak <i>dibuat</i> tanpa review, tidak ada Edit/Hapus, tidak ada status siklus hidup, dan tidak ada tampilan kosong yang jelas. Diperbaiki sekaligus dengan alur maker-checker yang meniru pola Refund &amp; Klaim Komisi yang sudah teruji di sistem.</p>
+
+            <h3 class="font-bold text-lg mb-2">2.1 Alur Status Baru</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2"><code>Pending</code> (belum potong Kas) &rarr; <code>Aktif</code> (disetujui Admin/Management) &rarr; pembayaran dicatat terpisah, termasuk deposit awal (Admin/Finance, baru memotong Kas di tahap ini) &rarr; <code>Selesai</code> atau <code>Dibatalkan</code> (Admin/Management).</p>
+            <span class="code-cap">db.py — kolom baru &amp; migrasi data lama</span>
+<pre class="bg-slate-900"><code class="language-sql">ALTER TABLE procurement ADD COLUMN package_name TEXT;
+ALTER TABLE procurement ADD COLUMN status TEXT DEFAULT 'Pending';
+ALTER TABLE procurement ADD COLUMN reviewed_by TEXT;
+ALTER TABLE procurement ADD COLUMN reviewed_at DATETIME;
+ALTER TABLE procurement ADD COLUMN reject_reason TEXT;
+ALTER TABLE procurement ADD COLUMN created_by TEXT;</code></pre>
+<pre class="bg-slate-900"><code class="language-python"># Backfill satu-kali: kontrak lama yang sudah punya deposit_paid > 0
+# otomatis dianggap "Aktif" (bukan Pending) supaya tidak butuh approval retroaktif
+def _backfill_procurement_status():
+    execute("UPDATE procurement SET status = 'Aktif' WHERE deposit_paid > 0 AND status = 'Pending'")</code></pre>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">2.2 Segregation of Duties (Pembagian Wewenang)</h3>
+            <table class="mb-2">
+                <tr><th>Aksi</th><th>Endpoint</th><th>Role diizinkan</th></tr>
+                <tr><td>Lihat daftar &amp; riwayat pembayaran</td><td><code>GET /procurement</code>, <code>GET /procurement/{id}/payments</code></td><td>admin, finance, management, <b>ops</b> (butuh lihat untuk koordinasi logistik)</td></tr>
+                <tr><td>Ajukan kontrak baru / Edit</td><td><code>POST</code> / <code>PUT /procurement/{id}</code></td><td>admin, finance</td></tr>
+                <tr><td>Setujui / Tolak</td><td><code>PUT /procurement/{id}/review</code></td><td>admin, <b>management</b></td></tr>
+                <tr><td>Catat pembayaran (potong Kas)</td><td><code>POST /procurement/{id}/payment</code></td><td>admin, <b>finance</b></td></tr>
+                <tr><td>Tandai Selesai / Batalkan</td><td><code>PUT /procurement/{id}/status</code></td><td>admin, management</td></tr>
+                <tr><td>Hapus (hanya jika belum ada pembayaran)</td><td><code>DELETE /procurement/{id}</code></td><td>admin saja</td></tr>
+            </table>
+            <p class="text-sm text-slate-700 leading-relaxed">Pola ini sengaja meniru Refund &amp; Klaim Komisi: yang menyetujui (Management) tidak bisa mencairkan uang, dan yang mencairkan uang (Finance) tidak bisa menyetujui sendiri — mencegah satu orang mengendalikan seluruh alur dari pengajuan sampai pencairan.</p>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">2.3 Pengujian Lintas Role</h3>
+            <p class="text-sm text-slate-700 leading-relaxed">Diuji tuntas sebagai <b>Admin</b> (alur penuh), <b>Finance</b> (bisa ajukan &amp; bayar, dikonfirmasi <b>tidak bisa</b> approve — baik lewat UI yang menyembunyikan tombol, maupun percobaan langsung ke API yang mengembalikan 403), dan <b>Management</b> (bisa approve/reject/selesai/batalkan, dikonfirmasi <b>tidak bisa</b> bayar dengan cara yang sama). Setiap aksi dicek atribusi audit log-nya benar mengarah ke aktor yang sebenarnya menjalankan.</p>
+        </section>
+
+        <!-- 3. UX REDESIGN -->
+        <section id="ux-redesign">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="layout-grid" class="w-6 h-6 text-emerald-600"></i> 3. Redesign UI/UX Manajemen Vendor</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-4">Selama menguji modul di atas, tiga masalah UX teramati: (1) terlalu banyak ikon berjejer per baris/kartu, (2) tabel harus discroll horizontal di layar sempit, (3) tidak ada cara approve banyak kontrak Pending sekaligus — semua harus dimodal satu-satu. Sebuah mockup interaktif dibangun lebih dulu (lewat <code>mcp__visualize__show_widget</code>) dan disetujui pengguna sebelum diterapkan ke kode produksi.</p>
+
+            <h3 class="font-bold text-lg mb-2">3.1 Toggle Tabel / Kartu</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Kartu jadi alternatif tampilan padat-vertikal yang tidak butuh scroll horizontal, terutama berguna di layar sempit — tabel tetap tersedia untuk perbandingan cepat lintas kolom.</p>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">3.2 Pola Aksi Utama + Menu Kebab (⋯)</h3>
+            <span class="code-cap">public/index.html — aksi ditentukan per status &amp; role, bukan daftar tetap</span>
+<pre class="bg-slate-900"><code class="language-javascript">function getProcurementActions(p) {
+    const canReview = ['admin', 'management'].includes(currentUser.role);
+    const canPay = ['admin', 'finance'].includes(currentUser.role);
+    // ...primary = tombol utama (mis. "Setujui" atau "Catat Bayar"),
+    // menu[] = aksi sekunder di balik ikon titik-tiga, keduanya beda per status kontrak</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed">Setiap baris/kartu kini hanya menampilkan 1-2 tombol utama + satu ikon "Aksi Lain", bukan 4-5 ikon berjejer.</p>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">3.3 Bug Ditemukan: ID DOM Ganda Antar-View</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Klik "Aksi Lain" di view Kartu tidak membuka menu apa pun, padahal tombolnya terklik. Penyebabnya: kedua container <code>#table-procurement</code> dan <code>#proc-view-card</code> sama-sama menyimpan HTML terakhirnya di DOM (hanya salah satu yang disembunyikan lewat CSS, bukan dihapus) — dan keduanya memakai template id <code>proc-menu-${id}</code> yang <b>sama persis</b>. <code>document.getElementById()</code> selalu mengambil kemunculan pertama di DOM, yang kebetulan adalah copy Tabel yang tersembunyi, bukan copy Kartu yang sedang terlihat.</p>
+            <span class="code-cap">public/index.html — id diberi awalan sesuai view</span>
+<pre class="bg-slate-900"><code class="language-javascript">// Sebelum: const menuId = `proc-menu-${p.id}`;               (bentrok antar view)
+// Sesudah:
+function procurementActionsHtml(p, viewPrefix) {
+    const menuId = `proc-menu-${viewPrefix}-${p.id}`;   // 'tbl' atau 'card'
+    ...
+}</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed">Diverifikasi lewat <code>javascript_tool</code>: sebelum perbaikan, elemen menu Kartu memang ada di DOM dengan <code>display:block</code> setelah diklik, tapi id-nya bentrok dengan copy Tabel yang <code>display:none</code>. Setelah perbaikan, kedua view diuji ulang bergantian (termasuk regresi ke Tabel) — keduanya merespons benar.</p>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">3.4 Bar Aksi Massal</h3>
+            <p class="text-sm text-slate-700 leading-relaxed">Checkbox muncul di kontrak berstatus Pending; mencentang satu atau lebih memunculkan bar biru dengan tombol "Setujui Semua"/"Tolak Semua" yang memanggil endpoint review yang sama secara berurutan per id, lalu melaporkan berapa dari yang dipilih berhasil (satu kegagalan tidak menghentikan sisanya).</p>
+        </section>
+
+        <!-- 4. BUG CHECKBOX -->
+        <section id="bug-checkbox">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="bug" class="w-6 h-6 text-emerald-600"></i> 4. Bug: Checkbox Bulk-Select Tidak Digating per Role</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-4">Saat pengujian ulang lintas role untuk redesign di atas, ditemukan pengulangan pola bug §1: checkbox seleksi massal dirender untuk <b>siapa pun</b> yang bisa lihat kontrak Pending, padahal cuma <code>admin</code>/<code>management</code> yang berwenang approve/reject (§2.2). Dibuktikan langsung: login sebagai <b>Finance</b>, centang kontrak Pending, klik "Setujui Semua" — backend menolak dengan <b>403</b> (data tidak berubah, aman), tapi dari sisi pengguna tombolnya terlihat aktif dan gagal diam-diam tanpa penjelasan.</p>
+            <span class="code-cap">public/index.html — checkbox digating sama seperti tombol Setujui/Tolak</span>
+<pre class="bg-slate-900"><code class="language-javascript">function renderProcurementTable(proc) {
+    const canReview = ['admin', 'management'].includes(currentUser.role);
+    ...
+    const checkbox = (canReview && p.status === 'Pending')
+        ? `&lt;input type="checkbox" ...&gt;`
+        : '';
+    // renderProcurementCards() diperbaiki dengan pola identik
+}</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed">Diverifikasi ulang di keempat role: Finance &amp; Ops kini tidak melihat checkbox sama sekali (dites di Tabel &amp; Kartu), sementara Admin &amp; Management tetap bisa mencentang &amp; menjalankan bulk approve/reject dengan normal — dibuktikan dengan benar-benar menjalankan "Tolak Semua" sebagai Management dan mengonfirmasi statusnya berubah.</p>
+        </section>
+
+        <!-- 5. EXPENSE MATRIX -->
+        <section id="expense-matrix">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="table-2" class="w-6 h-6 text-emerald-600"></i> 5. Matrik Pengeluaran per Projek</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-4">Permintaan pengguna: matrik yang memperlihatkan pengeluaran per proyek. Diskusi awal membongkar bahwa sistem punya <b>dua konsep "projek" yang terpisah</b> dan tidak pernah digabung sebelumnya.</p>
+
+            <h3 class="font-bold text-lg mb-2">5.1 Dua Dunia "Projek" yang Digabung</h3>
+            <table class="mb-2">
+                <tr><th>Dunia</th><th>Tabel</th><th>Sumber transaksi yang tertaut</th></tr>
+                <tr><td><b>Paket Keberangkatan Umroh</b></td><td><code>packages</code></td><td>Procurement/Vendor, Refund, Komisi Agen (lewat <code>package_name</code>)</td></tr>
+                <tr><td><b>Expense Project (label anggaran)</b></td><td><code>expense_projects</code></td><td>Hanya Expense Report/reimbursement karyawan (lewat <code>expense_reports.project_id</code>) — field wajib diisi setiap submit laporan</td></tr>
+            </table>
+            <p class="text-sm text-slate-700 leading-relaxed">Disepakati digabung jadi satu matrik dengan filter, plus satu baris <b>"Umum / Tidak Terkait Projek"</b> sebagai penampung transaksi yang belum ditandai ke keduanya — supaya tidak ada pengeluaran yang "hilang" dari laporan.</p>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">5.2 Bug Prasyarat: Pembayaran Vendor Tidak Tertaut ke Paket</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Sebelum matrik dibangun, ditemukan bahwa transaksi <code>procurement_payment</code> (dibuat di §2) tidak pernah menyimpan <code>package_name</code> ke baris transaksinya — meski kontraknya sendiri sudah bisa ditautkan ke paket. Akibatnya pembayaran vendor tidak akan pernah muncul di laporan per-paket manapun.</p>
+            <span class="code-cap">app.py — procurement_payment() ikut menyimpan package_name kontraknya</span>
+<pre class="bg-slate-900"><code class="language-python"># Sebelum:
+# "INSERT INTO transactions (type, category, amount, description, reference_id) ..."
+# Sesudah:
+db.execute(
+    "INSERT INTO transactions (type, category, amount, description, reference_id, package_name) "
+    "VALUES (?, ?, ?, ?, ?, ?)",
+    ("expense", "procurement_payment", amount, ..., pid, row["package_name"]),
+)</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed">Diverifikasi end-to-end: menautkan satu kontrak Aktif ke sebuah paket, mencatat pembayaran Rp3.000.000 &rarr; langsung muncul benar di kolom Vendor/Procurement pada baris paket tersebut (bukan di "Umum"), konsisten juga dengan Laporan P&amp;L per Paket yang sudah ada sebelumnya. Pembayaran vendor <i>lama</i> yang tercatat sebelum perbaikan ini tetap masuk ke "Umum" karena datanya historis tidak punya <code>package_name</code> — bukan bug, hanya batasan wajar tanpa migrasi data lama (lihat §8).</p>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">5.3 Endpoint &amp; Struktur Matrik</h3>
+            <span class="code-cap">app.py — GET /api/reports/expense-matrix</span>
+<pre class="bg-slate-900"><code class="language-python">EXPENSE_MATRIX_COLUMNS = [
+    ("procurement_payment", "Vendor/Procurement"),
+    ("refund", "Refund"),
+    ("commission", "Komisi Agen"),
+    ("expense_report", "Reimbursement Karyawan"),
+    ("lainnya", "Operasional Lainnya"),   # kategori manual bebas-teks di luar 4 di atas
+]
+# Baris: setiap Paket + setiap Expense Project + 1 baris "Umum" penampung.
+# Kategori expense_report ditelusuri lewat reference_id -> expense_reports.project_id
+# (transaksinya sendiri tidak punya package_name).
+# payroll SENGAJA dikecualikan -- overhead perusahaan, bukan biaya proyek.</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed">Frontend: satu tabel baru di halaman Keuangan &amp; Ledger dengan toggle filter <b>Semua / Paket Keberangkatan / Expense Project</b>, dibatasi <code>admin</code>/<code>finance</code>/<code>management</code> (sama dengan endpoint <code>/transactions</code> yang sudah ada). Diuji lintas role: Admin, Finance, Management melihat data identik &amp; benar; Sales dan Ops <b>tidak</b> punya link "Keuangan &amp; Ledger" di navigasi sama sekali, dan percobaan panggil endpoint langsung dari kedua role itu dikonfirmasi menghasilkan 403.</p>
+        </section>
+
+        <!-- 6. CHART -->
+        <section id="chart">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="bar-chart-horizontal" class="w-6 h-6 text-emerald-600"></i> 6. Grafik Stacked Bar Horizontal (Chart.js + Palet Tervalidasi)</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-4">Permintaan lanjutan: visualisasi grafik untuk matrik di atas. Dipilih lewat metodologi <code>dataviz</code> skill: data matriknya adalah <i>part-to-whole</i> (tiap projek dipecah jadi beberapa kategori biaya) dengan nama projek yang panjang — kombinasi itu sesuai tabel keputusan skill untuk <b>stacked bar horizontal</b>, bukan bar biasa atau pie chart.</p>
+
+            <h3 class="font-bold text-lg mb-2">6.1 Palet Kategorikal Tervalidasi</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Lima kategori biaya memakai 5 slot pertama dari palet kategorikal referensi skill <code>dataviz</code> — urutan tetap (bukan digenerate), sudah divalidasi lolos ambang batas keterbacaan untuk buta warna pada pasangan segmen yang bersebelahan di stacked bar.</p>
+            <span class="code-cap">public/index.html — urutan warna tetap = urutan kolom, bukan urutan baris</span>
+<pre class="bg-slate-900"><code class="language-javascript">const EXPENSE_MATRIX_PALETTE = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4'];
+// biru=Vendor, oranye=Refund, hijau=Komisi, kuning=Reimbursement, magenta=Operasional Lainnya
+// -- warnanya konsisten sekalipun filter Paket/Anggaran diganti (identitas kategori, bukan rank baris)</code></pre>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">6.2 Interaksi &amp; Aturan Tampilan</h3>
+            <ul class="list-disc pl-6 space-y-1.5 text-sm text-slate-700 leading-relaxed">
+                <li>Legend selalu tampil (wajib untuk &ge;2 seri, identitas warna tidak boleh cuma diandalkan dari mata).</li>
+                <li>Tooltip per-segmen saat hover, nilai diformat Rupiah, segmen bernilai Rp0 disaring dari tooltip.</li>
+                <li>Baris dengan total Rp0 disaring dari grafik (bar kosong tidak berguna secara visual) — tetap ada di tabel di bawahnya.</li>
+                <li>Tinggi grafik menyesuaikan otomatis jumlah baris yang tampil.</li>
+                <li>Toggle filter Semua/Paket/Anggaran yang sama mengontrol grafik <i>dan</i> tabel sekaligus, sehingga angkanya selalu selaras (tidak pernah beda antara grafik &amp; tabel).</li>
+            </ul>
+            <p class="text-sm text-slate-700 leading-relaxed mt-3">Dibangun dengan Chart.js yang sudah dipakai di halaman Dashboard (doughnut chart Pemasukan/Pengeluaran) — tidak menambah dependency baru. Diuji lintas role sama seperti §5.3: Admin, Finance, Management melihat grafik identik; hover tooltip dikonfirmasi menampilkan nilai benar; toggle filter dikonfirmasi me-render ulang grafik sesuai kategori yang relevan.</p>
+        </section>
+
+        <!-- 7. RINGKASAN BERKAS -->
+        <section id="berkas">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><i data-lucide="folder-git-2" class="w-6 h-6 text-emerald-600"></i> 7. Ringkasan Berkas yang Diubah</h2>
+            <table>
+                <tr><th>Berkas</th><th>Perubahan</th></tr>
+                <tr><td><code>db.py</code></td><td>6 kolom baru di <code>procurement</code> (<code>package_name</code>, <code>status</code>, <code>reviewed_by</code>, <code>reviewed_at</code>, <code>reject_reason</code>, <code>created_by</code>); fungsi backfill satu-kali <code>_backfill_procurement_status()</code>.</td></tr>
+                <tr><td><code>app.py</code></td><td>7 endpoint Procurement ditulis ulang penuh (list, create, update, delete, review, payment, status, riwayat pembayaran) dengan <code>require_role()</code> per aksi; <code>procurement_payment()</code> diperbaiki agar menyimpan <code>package_name</code>; endpoint baru <code>GET /api/reports/expense-matrix</code>.</td></tr>
+                <tr><td><code>public/index.html</code></td><td>Halaman Manajemen Vendor dirombak (toggle Tabel/Kartu, aksi utama+kebab, bar bulk-action, modal Edit &amp; Riwayat Pembayaran); dua bug RBAC/DOM diperbaiki (§3.3, §4); tombol Edit Agen digating per role (§1); section baru "Matrik Pengeluaran per Projek" + grafik Chart.js di halaman Keuangan &amp; Ledger.</td></tr>
+            </table>
+        </section>
+
+        <!-- 8. CATATAN LANJUTAN -->
+        <section id="lanjutan" class="pb-16">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><i data-lucide="lightbulb" class="w-6 h-6 text-emerald-600"></i> 8. Catatan &amp; Potensi Pengembangan Lanjutan</h2>
+            <div class="bg-white border border-slate-200 rounded-xl p-6 text-sm leading-relaxed text-slate-700 space-y-3">
+                <ul class="list-disc pl-6 space-y-1.5">
+                    <li><b>Payroll belum masuk Matrik Pengeluaran per Projek</b> — sengaja dikecualikan sesuai kesepakatan eksplisit pengguna ("payroll nanti kita bahas"), karena sifatnya overhead perusahaan, bukan biaya proyek. Perlu didiskusikan terpisah kalau mau dimasukkan (mis. sebagai kolom "Overhead" tersendiri, di luar total per-proyek).</li>
+                    <li><b>Pembayaran vendor lama tidak ter-backfill</b> — transaksi <code>procurement_payment</code> yang tercatat sebelum perbaikan §5.2 tetap masuk ke baris "Umum" meski kontraknya kebetulan sudah ditautkan ke paket, karena datanya historis tidak punya <code>package_name</code>. Bisa dibuatkan skrip backfill satu-kali kalau datanya masih bisa ditelusuri lewat <code>procurement.id</code> &rarr; <code>transactions.reference_id</code>.</li>
+                    <li><b>Kategori pengeluaran manual bebas-teks</b> — field kategori di form "Catat Pengeluaran (Cost)" masih teks bebas, bukan pilihan tetap. Saat ini semua yang bukan salah satu dari 4 kategori baku dikelompokkan ke kolom "Operasional Lainnya" supaya kolom matrik tidak membengkak; kalau kategori manual makin beragam, mungkin perlu dipecah jadi sub-kategori sendiri.</li>
+                    <li><b>Delete kontrak vendor hanya tersedia untuk status Pending</b> — <code>getProcurementActions()</code> di frontend sengaja tidak menampilkan opsi Hapus untuk kontrak Aktif/Selesai/Dibatalkan meski backend secara teknis mengizinkannya asal <code>deposit_paid = 0</code>; jalur yang disediakan untuk kontrak pasca-Pending adalah Batalkan (status), bukan Hapus (baris terhapus permanen).</li>
+                </ul>
+            </div>
+        </section>
+
+    </main>
+</div>
+
+<footer class="bg-slate-900 text-slate-400 py-6 text-center text-xs">
+    &copy; 2026 UMAR CRM &mdash; Catatan Rilis Internal. Disusun otomatis berdasarkan sesi pengembangan 31 Juli 2026.
+</footer>
+
+<script>
+    hljs.highlightAll();
+    lucide.createIcons();
+    const sections = document.querySelectorAll('section, header');
+    const links = document.querySelectorAll('.sidebar-link');
+    window.addEventListener('scroll', () => {
+        let cur = '';
+        sections.forEach(s => { if (scrollY >= s.offsetTop - 120) cur = s.id; });
+        links.forEach(l => {
+            l.classList.toggle('active', l.getAttribute('href') === '#' + cur);
+        });
+    });
+</script>
+</body>
+</html>

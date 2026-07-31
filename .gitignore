@@ -1,0 +1,21 @@
+# ===== Lingkungan & cache (JANGAN dikirim — dibuat ulang di tiap laptop) =====
+.venv/
+__pycache__/
+*.pyc
+
+# ===== Basis data & sesi runtime (data lokal, dibuat otomatis saat dijalankan) =====
+umar_crm.db
+umar_crm.db-shm
+umar_crm.db-wal
+neonize_auth.sqlite3
+baileys_auth_info/
+
+# ===== File unggahan (berisi PII jamaah — jangan disebar) =====
+uploads_private/
+public/branding/
+
+# ===== Arsip/cadangan lama =====
+*.zip
+
+# ===== Variabel rahasia =====
+.env

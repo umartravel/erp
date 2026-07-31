@@ -1,0 +1,26 @@
+# ===== Umar CRM - Python Backend Dependencies =====
+# Web framework + ASGI server
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+
+# Real-time (Socket.IO) - kompatibel dengan socket.io client v4 di frontend
+python-socketio==5.12.1
+
+# Auth
+PyJWT==2.10.1
+bcrypt==4.2.1
+
+# Pembuatan QR code data-URL untuk login WhatsApp via UI
+qrcode[pil]==8.0
+
+# Automasi cek visa (pengganti Playwright Node)
+playwright==1.49.1
+
+# Generate PDF Expense Report (hardcopy)
+reportlab==4.2.5
+
+# WhatsApp (pengganti Baileys). Opsional: jika tidak terpasang,
+# whatsapp.py otomatis memakai backend stub agar aplikasi tetap berjalan.
+# neonize berbasis whatsmeow (Go) - mendukung multi-device, QR, media.
+neonize==0.3.5

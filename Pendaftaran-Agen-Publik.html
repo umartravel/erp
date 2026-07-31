@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulir Pendaftaran Mitra/Agen — Umar Travel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #065f46 0%, #059669 60%, #0284c7 100%); }
+        .field-label { display:block; font-size:.75rem; font-weight:600; color:#475569; text-transform:uppercase; letter-spacing:.03em; margin-bottom:.25rem; }
+        .field-input { width:100%; padding:.6rem .75rem; border:1px solid #d1d5db; border-radius:.5rem; font-size:.9rem; background:#fff; }
+        .field-input:focus { outline:none; border-color:#059669; box-shadow:0 0 0 3px rgba(5,150,105,.15); }
+        .honeypot { position:absolute; left:-9999px; top:-9999px; width:1px; height:1px; overflow:hidden; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased">
+
+    <div class="gradient-bg py-10 px-4 text-center text-white">
+        <img id="brand-logo" src="/umar-Logo.png" alt="Logo" class="h-14 mx-auto mb-3 bg-white rounded-lg p-1.5 object-contain" onerror="this.style.display='none'">
+        <h1 id="brand-name" class="text-2xl font-extrabold tracking-tight">Umar Travel</h1>
+        <p class="text-emerald-50 text-sm mt-1">Formulir Pendaftaran Mitra / Agen (Konsultan)</p>
+    </div>
+
+    <div class="max-w-xl mx-auto px-4 -mt-6 pb-16">
+        <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
+
+            <div id="intro" class="mb-6 text-sm text-slate-600 leading-relaxed">
+                <p>Tertarik menjadi mitra/agen konsultan umroh kami? Silakan isi data diri Anda dengan lengkap &amp; benar. Data ini <b>akan diverifikasi tim kami</b> sebelum resmi terdaftar sebagai mitra &mdash; tim kami akan menghubungi Anda via WhatsApp untuk proses selanjutnya.</p>
+            </div>
+
+            <div id="error-banner" class="hidden mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3"></div>
+
+            <form id="form-daftar-agen" class="space-y-5">
+
+                <div class="honeypot" aria-hidden="true">
+                    <label for="website">Website</label>
+                    <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
+                </div>
+
+                <div>
+                    <h3 class="text-xs font-bold text-emerald-700 uppercase tracking-wider border-b border-emerald-100 pb-2 mb-3">1. Data Diri</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="field-label">Nama Lengkap <span class="text-red-500">*</span></label>
+                            <input type="text" id="f-name" class="field-input" required>
+                        </div>
+                        <div>
+                            <label class="field-label">No. WhatsApp Aktif <span class="text-red-500">*</span></label>
+                            <input type="text" id="f-phone" class="field-input" placeholder="08xx-xxxx-xxxx" required>
+                        </div>
+                        <div>
+                            <label class="field-label">Email</label>
+                            <input type="email" id="f-email" class="field-input" placeholder="Opsional">
+                        </div>
+                        <div>
+                            <label class="field-label">Akun Instagram</label>
+                            <input type="text" id="f-instagram" class="field-input" placeholder="@namaakun (opsional)">
+                        </div>
+                        <div>
+                            <label class="field-label">Pilih CS (Opsional)</label>
+                            <select id="f-preferred-cs" class="field-input">
+                                <option value="">Tidak ada preferensi</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-xs font-bold text-emerald-700 uppercase tracking-wider border-b border-emerald-100 pb-2 mb-3">2. Alamat Domisili</h3>
+                    <div class="space-y-3">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="field-label">Provinsi <span class="text-red-500">*</span></label>
+                                <select id="f-province" class="field-input" required><option value="" selected disabled>Pilih Provinsi</option></select>
+                            </div>
+                            <div>
+                                <label class="field-label">Kota/Kab <span class="text-red-500">*</span></label>
+                                <select id="f-city" class="field-input" required><option value="" selected disabled>Pilih Kota</option></select>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="field-label">Kecamatan</label>
+                                <select id="f-subdistrict" class="field-input"><option value="" selected disabled>Pilih Kecamatan</option></select>
+                            </div>
+                            <div>
+                                <label class="field-label">Kelurahan</label>
+                                <select id="f-village" class="field-input"><option value="" selected disabled>Pilih Kelurahan</option></select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="field-label">Alamat Lengkap <span class="text-red-500">*</span></label>
+                            <textarea id="f-address" rows="2" class="field-input" required></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" id="btn-submit" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-sm transition flex items-center justify-center gap-2">
+                    <i data-lucide="send" class="w-4 h-4"></i> Kirim Pendaftaran
+                </button>
+                <p class="text-[11px] text-slate-400 text-center leading-relaxed">Dengan mengirim formulir ini, Anda menyetujui data digunakan tim kami untuk keperluan verifikasi mitra/agen.</p>
+            </form>
+
+            <div id="success-panel" class="hidden text-center py-8">
+                <div class="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i data-lucide="check-circle-2" class="w-9 h-9 text-emerald-600"></i>
+                </div>
+                <h2 class="text-lg font-bold text-slate-800 mb-2">Pendaftaran Terkirim!</h2>
+                <p id="success-message" class="text-sm text-slate-600 max-w-sm mx-auto"></p>
+            </div>
+        </div>
+
+        <p class="text-center text-xs text-slate-400 mt-6">&copy; 2026 Umar Travel — Sistem Manajemen Terpadu</p>
+    </div>
+
+<script>
+    const API_URL = window.location.origin + '/api';
+    const API_WILAYAH = 'https://www.emsifa.com/api-wilayah-indonesia/api';
+
+    async function loadBranding() {
+        try {
+            const res = await fetch(`${API_URL}/settings`);
+            const s = await res.json();
+            if (s.logo_url) document.getElementById('brand-logo').src = s.logo_url;
+            if (s.company_name) {
+                document.getElementById('brand-name').textContent = s.company_name;
+                document.title = `Formulir Pendaftaran Mitra/Agen — ${s.company_name}`;
+            }
+        } catch (e) { /* biarkan default kalau gagal */ }
+    }
+    loadBranding();
+
+    async function loadProvinces() {
+        try {
+            const res = await fetch(`${API_WILAYAH}/provinces.json`);
+            const data = await res.json();
+            const sel = document.getElementById('f-province');
+            sel.innerHTML = '<option value="" selected disabled>Pilih Provinsi</option>' +
+                data.map(p => `<option value="${p.name}" data-id="${p.id}">${p.name}</option>`).join('');
+        } catch (e) { console.error('Gagal memuat provinsi', e); }
+    }
+    loadProvinces();
+
+    async function loadCsList() {
+        try {
+            const res = await fetch(`${API_URL}/public/cs-list`);
+            const data = await res.json();
+            const sel = document.getElementById('f-preferred-cs');
+            sel.innerHTML = '<option value="">Tidak ada preferensi</option>' +
+                data.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        } catch (e) { console.error('Gagal memuat daftar CS', e); }
+    }
+    loadCsList();
+
+    document.getElementById('f-province').addEventListener('change', async function () {
+        const id = this.selectedOptions[0].dataset.id;
+        const citySel = document.getElementById('f-city');
+        const subSel = document.getElementById('f-subdistrict');
+        const vilSel = document.getElementById('f-village');
+        citySel.innerHTML = '<option value="" selected disabled>Memuat...</option>';
+        subSel.innerHTML = '<option value="" selected disabled>Pilih Kecamatan</option>';
+        vilSel.innerHTML = '<option value="" selected disabled>Pilih Kelurahan</option>';
+        try {
+            const res = await fetch(`${API_WILAYAH}/regencies/${id}.json`);
+            const data = await res.json();
+            citySel.innerHTML = '<option value="" selected disabled>Pilih Kota</option>' +
+                data.map(c => `<option value="${c.name}" data-id="${c.id}">${c.name}</option>`).join('');
+        } catch (e) { citySel.innerHTML = '<option value="" selected disabled>Gagal memuat</option>'; }
+    });
+
+    document.getElementById('f-city').addEventListener('change', async function () {
+        const id = this.selectedOptions[0].dataset.id;
+        const subSel = document.getElementById('f-subdistrict');
+        const vilSel = document.getElementById('f-village');
+        subSel.innerHTML = '<option value="" selected disabled>Memuat...</option>';
+        vilSel.innerHTML = '<option value="" selected disabled>Pilih Kelurahan</option>';
+        try {
+            const res = await fetch(`${API_WILAYAH}/districts/${id}.json`);
+            const data = await res.json();
+            subSel.innerHTML = '<option value="" selected disabled>Pilih Kecamatan</option>' +
+                data.map(d => `<option value="${d.name}" data-id="${d.id}">${d.name}</option>`).join('');
+        } catch (e) { subSel.innerHTML = '<option value="" selected disabled>Gagal memuat</option>'; }
+    });
+
+    document.getElementById('f-subdistrict').addEventListener('change', async function () {
+        const id = this.selectedOptions[0].dataset.id;
+        const vilSel = document.getElementById('f-village');
+        vilSel.innerHTML = '<option value="" selected disabled>Memuat...</option>';
+        try {
+            const res = await fetch(`${API_WILAYAH}/villages/${id}.json`);
+            const data = await res.json();
+            vilSel.innerHTML = '<option value="" selected disabled>Pilih Kelurahan</option>' +
+                data.map(v => `<option value="${v.name}">${v.name}</option>`).join('');
+        } catch (e) { vilSel.innerHTML = '<option value="" selected disabled>Gagal memuat</option>'; }
+    });
+
+    document.getElementById('form-daftar-agen').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const btn = document.getElementById('btn-submit');
+        const errBanner = document.getElementById('error-banner');
+        errBanner.classList.add('hidden');
+        btn.disabled = true;
+        btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Mengirim...';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+
+        const payload = {
+            website: document.getElementById('website').value,
+            name: document.getElementById('f-name').value,
+            phone: document.getElementById('f-phone').value,
+            email: document.getElementById('f-email').value,
+            instagram: document.getElementById('f-instagram').value,
+            preferred_cs_id: document.getElementById('f-preferred-cs').value,
+            province: document.getElementById('f-province').value,
+            city: document.getElementById('f-city').value,
+            subdistrict: document.getElementById('f-subdistrict').value,
+            village: document.getElementById('f-village').value,
+            address: document.getElementById('f-address').value,
+        };
+
+        try {
+            const res = await fetch(`${API_URL}/public/agent-registration`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Terjadi kesalahan, silakan coba lagi.');
+
+            document.getElementById('form-daftar-agen').classList.add('hidden');
+            document.getElementById('intro').classList.add('hidden');
+            document.getElementById('success-message').textContent = data.message;
+            document.getElementById('success-panel').classList.remove('hidden');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        } catch (err) {
+            errBanner.textContent = err.message;
+            errBanner.classList.remove('hidden');
+            errBanner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            btn.disabled = false;
+            btn.innerHTML = '<i data-lucide="send" class="w-4 h-4"></i> Kirim Pendaftaran';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+    });
+
+    lucide.createIcons();
+</script>
+</body>
+</html>

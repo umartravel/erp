@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dokumentasi Fitur Baru — UMAR CRM (20 Juli 2026)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css">
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        code, pre { font-family: 'JetBrains Mono', monospace; }
+        .gradient-text { background: linear-gradient(135deg, #059669 0%, #0284c7 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        .sidebar-link.active { background-color: #ecfdf5; color: #059669; font-weight: 600; border-right: 3px solid #059669; }
+        pre { border-radius: 0.75rem; padding: 1rem 1.25rem; overflow-x: auto; font-size: 0.82rem; line-height: 1.6; margin: 0.75rem 0; }
+        pre code.hljs { background: transparent; padding: 0; }
+        .code-cap { font-size: 0.72rem; color: #64748b; margin-bottom: -0.25rem; display:block; font-weight:600; }
+        h2 { scroll-margin-top: 6rem; }
+        h3 { scroll-margin-top: 6rem; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th, td { border: 1px solid #e2e8f0; padding: 0.6rem 0.75rem; text-align: left; vertical-align: top; }
+        th { background: #f1f5f9; font-weight: 700; }
+        .badge { display:inline-block; padding: 0.1rem 0.5rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 700; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased">
+
+<nav class="fixed w-full z-50 border-b border-slate-200 top-0 bg-white/90 backdrop-blur">
+    <div class="max-w-screen-2xl mx-auto px-4 lg:px-8 flex justify-between h-16 items-center">
+        <div class="flex items-center gap-3">
+            <div class="bg-slate-900 p-2 rounded-lg"><i data-lucide="sparkles" class="w-5 h-5 text-emerald-400"></i></div>
+            <span class="font-bold text-lg tracking-tight">UMAR CRM <span class="gradient-text">— Dokumentasi Fitur Baru</span></span>
+        </div>
+        <span class="hidden md:inline text-xs text-slate-500">Sesi Pengembangan &middot; 20 Juli 2026 &middot; v2.3</span>
+    </div>
+</nav>
+
+<div class="max-w-screen-2xl mx-auto px-4 lg:px-8 pt-20 pb-12 flex gap-8">
+
+    <!-- Sidebar -->
+    <aside class="hidden lg:block w-72 shrink-0">
+        <div class="sticky top-20 bg-white border border-slate-200 rounded-xl p-4 shadow-sm max-h-[85vh] overflow-y-auto">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-3">Daftar Isi</h3>
+            <nav class="space-y-0.5 text-sm" id="sidebar-nav">
+                <a href="#ringkasan" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">Ringkasan Eksekutif</a>
+                <a href="#peta-fitur" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">Peta Fitur Baru</a>
+                <a href="#detail-jamaah" class="sidebar-link block px-3 py-1.5 text-emerald-700 font-semibold rounded-lg hover:bg-slate-50">★ 1. Detail Lengkap &amp; Riwayat Pembayaran</a>
+                <a href="#refund" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">2. Refund (Maker-Checker-Approver)</a>
+                <a href="#audit-edit" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">3. Audit Trail — Edit Data Jamaah</a>
+                <a href="#ops-docs" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">4. Dokumen Operasional (Manifest/Roomlist/Absensi)</a>
+                <a href="#berkas" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">5. Ringkasan Berkas Diubah</a>
+                <a href="#lanjutan" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">6. Catatan &amp; Potensi Lanjutan</a>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- Content -->
+    <main class="flex-1 max-w-4xl space-y-14">
+
+        <!-- COVER -->
+        <header class="bg-slate-900 text-white rounded-2xl p-10 relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-72 h-72 bg-emerald-500/20 rounded-full blur-3xl"></div>
+            <div class="relative">
+                <span class="badge bg-emerald-500/20 text-emerald-300 mb-4">CATATAN RILIS &middot; DEVELOPMENT LOG</span>
+                <h1 class="text-3xl md:text-4xl font-extrabold mb-3 leading-tight">Fitur Baru UMAR CRM — <span class="gradient-text">Detail Jamaah, Refund, &amp; Dokumen Operasional Kafilah</span></h1>
+                <p class="text-slate-300 text-sm leading-relaxed max-w-3xl">Dokumen ini merangkum seluruh fitur, perbaikan, dan perubahan skema basis data yang dibangun dalam satu sesi pengembangan pada <b>20 Juli 2026</b>. Ditulis dengan format &amp; gaya yang sama dengan <code>Dokumentasi-Fitur-17-Juli-2026.html</code> agar menyatu sebagai bagian dari dokumentasi teknis sistem secara keseluruhan.</p>
+            </div>
+        </header>
+
+        <!-- RINGKASAN EKSEKUTIF -->
+        <section id="ringkasan">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="file-text" class="w-6 h-6 text-emerald-600"></i> Ringkasan Eksekutif</h2>
+            <div class="bg-white border border-slate-200 rounded-xl p-6 text-sm leading-relaxed text-slate-700 space-y-3">
+                <p>Sesi ini melanjutkan pengerjaan "Penyempurnaan Database Jamaah" dari rencana pengembangan: dimulai dari <b>modal Detail Lengkap Jamaah</b> (ringkasan read-only + riwayat pembayaran), berkembang menjadi <b>alur Refund penuh</b> bergaya maker-checker-approver (CS ajukan → Manajemen setujui → Finance cairkan), <b>perbaikan audit trail</b> pada Edit Data Jamaah, dan berpuncak pada <b>tiga dokumen PDF operasional</b> (Manifest, Roomlist, Absensi) untuk tim Ops — dirancang langsung berdasarkan contoh dokumen hardcopy yang sudah dipakai perusahaan.</p>
+                <p>Beberapa keputusan desain penting diambil bersama pengguna sebelum coding: refund dipisah dari alur Batalkan Booking namun bisa memicu pembatalan otomatis <i>hanya saat dana benar-benar dicairkan</i> (bukan saat diajukan/disetujui); pengelompokan kamar Roomlist dibuat otomatis (kasar) lalu bisa diedit manual staff sebelum dicetak; dan field tanggal lahir dipecah permanen menjadi <code>birth_place</code> + <code>birth_date</code> agar usia jamaah bisa dihitung akurat di Manifest.</p>
+                <p>Seluruh fitur telah <b>diuji langsung di browser &amp; via PDF yang diunduh</b> — termasuk skenario pengujian bertahap (DP → cicilan → lunas → refund sebagian → pembatalan otomatis) dan perbandingan visual PDF hasil generate terhadap 3 dokumen referensi asli yang diberikan pengguna.</p>
+            </div>
+        </section>
+
+        <!-- PETA FITUR -->
+        <section id="peta-fitur">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><i data-lucide="map" class="w-6 h-6 text-emerald-600"></i> Peta Fitur Baru</h2>
+            <table>
+                <tr><th>Area</th><th>Perubahan</th><th>Status</th></tr>
+                <tr><td><b>Modal Detail Lengkap Jamaah</b></td><td>Ringkasan read-only satu tempat: identitas, paket, status dokumen, perlengkapan, pembayaran — dengan tombol pintasan ke modal aksi yang sudah ada.</td><td><span class="badge bg-emerald-100 text-emerald-700">Baru</span></td></tr>
+                <tr><td><b>Riwayat Pembayaran</b></td><td>Daftar kronologis tiap setoran (DP/cicilan/lunas) dengan label otomatis &amp; badge LUNAS.</td><td><span class="badge bg-emerald-100 text-emerald-700">Baru</span></td></tr>
+                <tr><td><b>Refund</b></td><td>Alur 3 tahap: CS ajukan → Manajemen setujui/tolak → Finance cairkan; opsi sekaligus batalkan booking.</td><td><span class="badge bg-emerald-100 text-emerald-700">Baru</span></td></tr>
+                <tr><td><b>Audit Trail Edit Jamaah</b></td><td>Log kini mendeskripsikan field yang berubah (bukan pesan generik); keterangan wajib saat ubah Total Harga.</td><td><span class="badge bg-amber-100 text-amber-700">Ditingkatkan</span></td></tr>
+                <tr><td><b>Pemisahan Tanggal Lahir</b></td><td><code>birth_place_date</code> (gabungan) dipecah jadi <code>birth_place</code> + <code>birth_date</code> di seluruh sistem.</td><td><span class="badge bg-amber-100 text-amber-700">Ditingkatkan</span></td></tr>
+                <tr><td><b>Manifest / Roomlist / Absensi PDF</b></td><td>Tiga dokumen operasional per paket, dibangkitkan server-side (reportlab), mengikuti format dokumen referensi perusahaan.</td><td><span class="badge bg-emerald-100 text-emerald-700">Baru</span></td></tr>
+                <tr><td><b>Atur Kelompok Kamar</b></td><td>Pengelompokan otomatis (gender + tipe kamar) dengan opsi edit manual sebelum cetak Roomlist.</td><td><span class="badge bg-emerald-100 text-emerald-700">Baru</span></td></tr>
+            </table>
+        </section>
+
+        <!-- 1. DETAIL JAMAAH -->
+        <section id="detail-jamaah">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="user-search" class="w-6 h-6 text-emerald-600"></i> 1. Modal Detail Lengkap Jamaah &amp; Riwayat Pembayaran</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-4">Sebelumnya, melihat "gambaran utuh" satu jamaah berarti membuka 5 modal terpisah (Aktivitas, Komentar, Document Vault, Kelengkapan Dokumen, Edit) satu per satu. Modal baru ini menjadi <b>ringkasan read-only terpusat</b>, dengan tombol pintasan ke modal-modal tersebut agar aksi tulis tetap lewat jalur yang sudah teruji — tidak menduplikasi logika.</p>
+
+            <h3 class="font-bold text-lg mb-2">1.1 Struktur Modal</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Dipicu tombol mata (👁️) di kolom Aksi &amp; Kolaborasi, halaman Database Jamaah. Seluruh data (kecuali riwayat pembayaran) diambil langsung dari <code>allJamaah</code> yang sudah dimuat di client — <b>tidak perlu endpoint baru</b> untuk kontennya sendiri.</p>
+            <table class="mb-4">
+                <tr><th>Section</th><th>Isi</th></tr>
+                <tr><td>Data Diri &amp; Kontak</td><td>Kewarganegaraan, jenis identitas, gender, tempat/tgl lahir, kontak, alamat lengkap.</td></tr>
+                <tr><td>Paket &amp; Perjalanan</td><td>Nama paket, tipe kamar, no. kamar, rombongan bus, status visa, agen referral.</td></tr>
+                <tr><td>Status Dokumen</td><td>Badge scan KTP/KK/Paspor/Vaksin + checklist dokumen fisik + no. &amp; masa berlaku paspor.</td></tr>
+                <tr><td>Perlengkapan Diserahkan</td><td>Daftar barang dari riwayat serah terima (<code>jamaah_inventory</code>).</td></tr>
+                <tr><td>Status Administrasi &amp; Pembayaran</td><td>Total Harga, Total Terbayar, Sisa Tagihan.</td></tr>
+                <tr><td>Riwayat Pembayaran</td><td>Lihat §1.2 di bawah.</td></tr>
+            </table>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">1.2 Riwayat Pembayaran — Label Bertahap Otomatis</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Endpoint baru <code>GET /api/jamaah/{id}/payments</code> mengambil transaksi kategori <code>payment</code> dari Buku Kas, urut kronologis. Frontend menghitung label tiap entri berdasarkan akumulasi terhadap <code>total_price</code>:</p>
+            <span class="code-cap">public/index.html — logika label di openJamaahDetail()</span>
+<pre class="bg-slate-900"><code class="language-javascript">const label = paymentSeq === 1
+    ? (isFinal ? 'Pembayaran Lunas (Sekaligus)' : 'DP (Pembayaran ke-1)')
+    : `Pembayaran ke-${paymentSeq}`;
+// isFinal = cumulative >= total_price -> tampil badge LUNAS</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed">Diuji dengan skenario 3 tahap (DP Rp 5jt → cicilan Rp 3jt → pelunasan Rp 17,9jt) — label tampil tepat "DP (Pembayaran ke-1)" → "Pembayaran ke-2" → "Pembayaran ke-3 [LUNAS]", dan status jamaah otomatis ikut berubah jadi "Lunas".</p>
+        </section>
+
+        <!-- 2. REFUND -->
+        <section id="refund">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="undo-2" class="w-6 h-6 text-emerald-600"></i> 2. Refund — Maker-Checker-Approver</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-4">Sebelum fitur ini, "Batalkan Booking" sama sekali tidak menyentuh uang — <code>paid_amount</code> tetap tercatat penuh meski jamaah batal, membuat Saldo Kas Aktif berpotensi salah. Refund dirancang <b>terpisah dari pembatalan</b> (karena tidak semua refund berarti batal — kadang cuma penyesuaian harga), dengan opsi eksplisit untuk menyatukan keduanya bila memang diperlukan.</p>
+
+            <h3 class="font-bold text-lg mb-2">2.1 Tabel &amp; Alur Status</h3>
+            <span class="code-cap">db.py — skema refund_requests</span>
+<pre class="bg-slate-900"><code class="language-sql">CREATE TABLE IF NOT EXISTS refund_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    jamaah_id INTEGER, amount INTEGER, reason TEXT,
+    status TEXT DEFAULT 'Pending',
+    requested_by TEXT, requested_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    approved_by TEXT, approved_at DATETIME, reject_reason TEXT,
+    disbursed_by TEXT, disbursed_at DATETIME, transaction_id INTEGER,
+    cancel_booking INTEGER DEFAULT 0
+);</code></pre>
+            <div class="relative border-l-2 border-emerald-400 ml-4 pl-6 space-y-4 my-4">
+                <div class="relative">
+                    <span class="absolute -left-[31px] top-1 w-3.5 h-3.5 rounded-full bg-slate-400 ring-4 ring-white"></span>
+                    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                        <div class="flex items-center justify-between flex-wrap gap-2"><h4 class="font-bold text-slate-800 text-sm">Pending</h4><span class="badge bg-slate-100 text-slate-700">CS / Sales</span></div>
+                        <p class="text-xs text-gray-600 mt-1">Ajukan nominal (bisa sebagian) + alasan wajib, dari tombol "Ajukan Refund" di modal Detail Jamaah.</p>
+                    </div>
+                </div>
+                <div class="relative">
+                    <span class="absolute -left-[31px] top-1 w-3.5 h-3.5 rounded-full bg-blue-500 ring-4 ring-white"></span>
+                    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                        <div class="flex items-center justify-between flex-wrap gap-2"><h4 class="font-bold text-slate-800 text-sm">Disetujui</h4><span class="badge bg-blue-100 text-blue-700">admin, management</span></div>
+                        <p class="text-xs text-gray-600 mt-1">Keputusan bisnis: refund ini legitimate. Belum ada uang bergerak di titik ini.</p>
+                    </div>
+                </div>
+                <div class="relative">
+                    <span class="absolute -left-[31px] top-1 w-3.5 h-3.5 rounded-full bg-emerald-500 ring-4 ring-white"></span>
+                    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                        <div class="flex items-center justify-between flex-wrap gap-2"><h4 class="font-bold text-slate-800 text-sm">Dicairkan</h4><span class="badge bg-emerald-100 text-emerald-700">admin, finance</span></div>
+                        <p class="text-xs text-gray-600 mt-1">Hanya bisa dari status Disetujui. Mencatat transaksi expense, mengurangi <code>paid_amount</code>, dan (bila dicentang) baru di titik ini membatalkan booking.</p>
+                    </div>
+                </div>
+            </div>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">2.2 Kenapa Pembatalan Menunggu Pencairan (Bukan Persetujuan)?</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Checkbox "Sekaligus batalkan booking ini" tersedia saat CS mengajukan. Tapi <code>pipeline_stage</code> baru benar-benar diubah jadi <code>Cancelled</code> saat Finance mencairkan dana — bukan saat diajukan atau disetujui — supaya status booking selalu mencerminkan kondisi uang yang <i>sungguhan</i>, bukan rencana yang masih bisa gagal di tengah jalan.</p>
+            <span class="code-cap">app.py — refund_request_disburse()</span>
+<pre class="bg-slate-900"><code class="language-python">if r["cancel_booking"] and jamaah["pipeline_stage"] != "Cancelled":
+    db.execute(
+        "UPDATE jamaah SET pipeline_stage = 'Cancelled', cancel_reason = ? WHERE id = ?",
+        (r["reason"], jamaah["id"]),
+    )</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed">Diuji end-to-end: refund Rp 5jt dengan checkbox aktif → status jamaah <b>tetap "DP Masuk"</b> setelah diajukan maupun disetujui Manajemen → baru berubah jadi <b>"Cancelled"</b> tepat saat Finance klik "Cairkan Dana", dengan <code>cancel_reason</code> otomatis terisi dari alasan refund.</p>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">2.3 Tampilan</h3>
+            <table>
+                <tr><th>Lokasi</th><th>Fungsi</th></tr>
+                <tr><td>Modal Detail Jamaah</td><td>Tombol "Ajukan Refund" (admin/sales, hanya muncul bila <code>paid_amount &gt; 0</code>); Riwayat Pembayaran menampilkan refund sebagai entri merah berdampingan kronologis dengan pembayaran, lengkap badge status.</td></tr>
+                <tr><td>Keuangan &amp; Ledger</td><td>Section baru "Permintaan Refund" — tombol Setujui/Tolak (manajemen) atau Cairkan Dana (finance) muncul kondisional sesuai status &amp; role.</td></tr>
+            </table>
+        </section>
+
+        <!-- 3. AUDIT EDIT JAMAAH -->
+        <section id="audit-edit">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="history" class="w-6 h-6 text-emerald-600"></i> 3. Audit Trail — Edit Data Jamaah</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-3">Sebelumnya <code>PUT /api/jamaah/{id}</code> mencatat log generik ("Update profil jamaah NIK: ...") tanpa menyebut apa yang sebenarnya berubah — dan jalur "profil terkunci" (edit non-admin saat sudah ada DP) <b>tidak tercatat audit sama sekali</b>.</p>
+            <span class="code-cap">app.py — deteksi perubahan field per field</span>
+<pre class="bg-slate-900"><code class="language-python">def _field_change(label, old_val, new_val):
+    old_val, new_val = old_val or "-", new_val or "-"
+    return f"{label} ({old_val} → {new_val})" if old_val != new_val else None</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Hasil log kini hanya menyebut field yang benar-benar berubah, contoh nyata dari pengujian:</p>
+            <pre class="bg-slate-900"><code class="language-text">Update data jamaah Budi Santoso: No. WA (089999888777 → 089876543210);
+Total Harga (Rp 25.900.000 → Rp 20.000.000) [Keterangan: Uji: nego harga khusus, diskon Rp 5.9jt dari harga normal]</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed">Perubahan <b>Total Harga kini wajib disertai keterangan</b> — divalidasi server (bukan hanya UI): <code>if new_price != old_price and not price_change_note: raise HTTPException(400, ...)</code>. Field "Keterangan Perubahan Harga" di form Edit Jamaah otomatis muncul hanya saat nominal harga diubah.</p>
+        </section>
+
+        <!-- 4. OPS DOCS -->
+        <section id="ops-docs">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="file-text" class="w-6 h-6 text-emerald-600"></i> 4. Dokumen Operasional: Manifest, Roomlist, Absensi</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-4">Dirancang berdasarkan 3 dokumen hardcopy nyata yang sudah dipakai perusahaan (diberikan pengguna sebagai referensi), lalu dipetakan ke data yang ada di sistem. Dibangkitkan server-side dengan <b>reportlab</b> (modul baru <code>jamaah_docs_pdf.py</code>) — bukan trik <code>window.print()</code> — supaya hasil konsisten &amp; layak diarsipkan.</p>
+
+            <h3 class="font-bold text-lg mb-2">4.1 Pemisahan Tanggal Lahir (Prasyarat Manifest)</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Manifest referensi butuh kolom POB, DOB, dan AGE terpisah — sementara sistem sebelumnya menyimpan <code>birth_place_date</code> sebagai satu string bebas ketik ("Depok, 12 Januari 1985"). Dipecah permanen jadi <code>birth_place</code> + <code>birth_date</code> (tanggal asli) di tabel <code>jamaah</code> &amp; <code>pendaftaran_publik</code>, menyentuh form Pendaftaran Baru, Pendaftaran Publik, Edit Jamaah, dan modal Detail Jamaah. <b>Data lama tidak dimigrasikan otomatis</b> (format bebas ketik terlalu tidak konsisten untuk diparsing aman) — kolom baru kosong sampai diisi ulang.</p>
+            <span class="code-cap">jamaah_docs_pdf.py — usia dihitung relatif terhadap tanggal keberangkatan paket</span>
+<pre class="bg-slate-900"><code class="language-python">def _calc_age(birth_date, as_of=None):
+    bd = datetime.datetime.strptime(str(birth_date)[:10], "%Y-%m-%d").date()
+    ref = as_of or datetime.date.today()
+    return ref.year - bd.year - ((ref.month, ref.day) < (bd.month, bd.day))</code></pre>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">4.2 Manifest Jamaah</h3>
+            <p class="text-sm text-slate-700 leading-relaxed">Tabel identitas &amp; paspor lengkap per paket (<code>GET /api/packages/{id}/manifest-pdf</code>) — Nama, Gender, Hubungan, Tempat/Tgl Lahir, Usia, No. Paspor, Tgl Terbit/Habis, Kantor Penerbit. Diverifikasi: usia terhitung tepat relatif terhadap tanggal keberangkatan (mis. lahir 15 Nov 1975, per 24 Mar 2026 → 50 tahun, karena ulang tahun belum lewat di tahun berjalan).</p>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">4.3 Roomlist &amp; Pengelompokan Kamar Otomatis</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Alih-alih mengandalkan field <code>room_number</code> bebas ketik yang tidak konsisten, sistem <b>mengelompokkan otomatis</b> jamaah per gender + tipe kamar (kapasitas: QUAD=4, TRIPLE=3, DOUBLE=2, QUINT=5), diberi label urut ("QUAD 1 (LAKI-LAKI)", dst).</p>
+            <span class="code-cap">jamaah_docs_pdf.py — auto_group_rooms()</span>
+<pre class="bg-slate-900"><code class="language-python">for (key, gender), members in buckets.items():
+    capacity = ROOM_CAPACITY[key]
+    for idx, chunk_start in enumerate(range(0, len(members), capacity), start=1):
+        chunk = members[chunk_start:chunk_start + capacity]
+        label = f"{key} {idx} ({gender_label})"</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Karena pengelompokan kasar tidak bisa menebak kasus keluarga campur gender atau penyisipan Tour Leader/Muthawif, disediakan modal <b>"Atur Kelompok Kamar"</b> (halaman Logistik &amp; Ops) — staff bisa mengedit label kelompok tiap jamaah secara manual sebelum menyimpan &amp; mencetak. Tour Leader/Muthawif (dari <code>packages.tour_leader</code>/<code>mutawwif</code>) ditampilkan sebagai baris info terpisah di bawah tabel Roomlist, bukan disisipkan interaktif ke kelompok tertentu — simplifikasi yang disengaja karena keduanya bukan data jamaah (tanpa NIK/gender tersimpan).</p>
+            <p class="text-sm text-slate-700 leading-relaxed">Diuji: 4 jamaah laki-laki otomatis masuk "QUAD 1 (LAKI-LAKI)", 2 jamaah perempuan masuk "QUAD 1 (PEREMPUAN)"; edit manual satu jamaah ke label kelompok custom berhasil tersimpan tanpa mengubah jamaah lain. PDF hasil generate dibandingkan visual terhadap dokumen referensi — sel kamar tergabung (merged) persis seperti aslinya.</p>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">4.4 Absensi Jamaah &amp; Ceklist</h3>
+            <p class="text-sm text-slate-700 leading-relaxed">Daftar nama + kolom checklist (Keberangkatan/Tiba Madinah/Tiba Mekkah/Kepulangan) + beberapa kolom kosong tambahan untuk Tour Leader menulis checkpoint lain secara manual saat perjalanan — mengikuti struktur dokumen referensi asli.</p>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">4.5 Titik Akses</h3>
+            <p class="text-sm text-slate-700 leading-relaxed">Tiga tombol baru di halaman Logistik &amp; Ops ("Manifest PDF", "Atur Kelompok Kamar", "Absensi PDF"), berdampingan dengan tombol cetak lama yang tidak diubah — semua memakai selector paket yang sama.</p>
+        </section>
+
+        <!-- 5. RINGKASAN BERKAS -->
+        <section id="berkas">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><i data-lucide="folder-git-2" class="w-6 h-6 text-emerald-600"></i> 5. Ringkasan Berkas yang Diubah</h2>
+            <table>
+                <tr><th>Berkas</th><th>Perubahan</th></tr>
+                <tr><td><code>jamaah_docs_pdf.py</code></td><td><span class="badge bg-emerald-100 text-emerald-700">Baru</span> Modul generator PDF Manifest/Roomlist/Absensi + logika <code>auto_group_rooms()</code> &amp; kalkulasi usia.</td></tr>
+                <tr><td><code>db.py</code></td><td>Tabel baru <code>refund_requests</code>. Kolom baru: <code>jamaah.birth_place</code>, <code>jamaah.birth_date</code>, <code>pendaftaran_publik.birth_place/birth_date</code>, <code>refund_requests.cancel_booking</code>.</td></tr>
+                <tr><td><code>app.py</code></td><td>9 endpoint baru (payments history, refund request/review/disburse ×2, room-groups get/save, manifest/roomlist/absensi PDF); <code>jamaah_update()</code> diperluas dengan deteksi perubahan field &amp; validasi keterangan harga; semua INSERT/UPDATE jamaah disesuaikan ke <code>birth_place</code>/<code>birth_date</code>.</td></tr>
+                <tr><td><code>public/index.html</code></td><td>Modal Detail Lengkap Jamaah + Riwayat Pembayaran; modal Ajukan Refund; section Permintaan Refund (Keuangan &amp; Ledger); modal Atur Kelompok Kamar; 3 tombol cetak PDF baru; field Tempat/Tanggal Lahir dipecah di form Pendaftaran Baru.</td></tr>
+                <tr><td><code>Pendaftaran-Publik.html</code></td><td>Field Tempat/Tanggal Lahir dipecah menjadi 2 input.</td></tr>
+            </table>
+        </section>
+
+        <!-- 6. CATATAN LANJUTAN -->
+        <section id="lanjutan" class="pb-16">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><i data-lucide="lightbulb" class="w-6 h-6 text-emerald-600"></i> 6. Catatan &amp; Potensi Pengembangan Lanjutan</h2>
+            <div class="bg-white border border-slate-200 rounded-xl p-6 text-sm leading-relaxed text-slate-700 space-y-3">
+                <ul class="list-disc pl-6 space-y-1.5">
+                    <li>Tour Leader/Muthawif belum bisa disisipkan interaktif ke kelompok kamar tertentu di modal "Atur Kelompok Kamar" — saat ini hanya tampil sebagai baris info terpisah di PDF Roomlist. Bila perlu digabung ke kelompok tertentu, butuh penyimpanan tambahan (mis. kolom gender staf) yang saat ini tidak tersimpan.</li>
+                    <li>Data tanggal lahir lama (kolom <code>birth_place_date</code> gabungan) tidak dimigrasikan otomatis ke <code>birth_place</code>/<code>birth_date</code> — jamaah lama akan tampil "-" pada Manifest sampai datanya diisi ulang manual.</li>
+                    <li>Sempat dicoba mengubah field "Tempat Lahir" jadi dropdown Provinsi+Kota Lahir (cascading, mengikuti API wilayah) atas permintaan pengguna, namun <b>dikembalikan ke teks bebas</b> setelah diuji — dianggap kurang perlu untuk saat ini.</li>
+                    <li>Rate limit &amp; validasi refund saat ini hanya mengecek total pengajuan <code>Pending</code>+<code>Disetujui</code> terhadap <code>paid_amount</code> — belum menangani kasus jamaah mengubah <code>total_price</code> di tengah proses refund berjalan.</li>
+                </ul>
+            </div>
+        </section>
+
+    </main>
+</div>
+
+<footer class="bg-slate-900 text-slate-400 py-6 text-center text-xs">
+    &copy; 2026 UMAR CRM &mdash; Catatan Rilis Internal. Disusun otomatis berdasarkan sesi pengembangan 20 Juli 2026.
+</footer>
+
+<script>
+    hljs.highlightAll();
+    lucide.createIcons();
+    const sections = document.querySelectorAll('section, header');
+    const links = document.querySelectorAll('.sidebar-link');
+    window.addEventListener('scroll', () => {
+        let cur = '';
+        sections.forEach(s => { if (scrollY >= s.offsetTop - 120) cur = s.id; });
+        links.forEach(l => {
+            l.classList.toggle('active', l.getAttribute('href') === '#' + cur);
+        });
+    });
+</script>
+</body>
+</html>

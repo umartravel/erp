@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dokumentasi Fitur Baru — UMAR CRM (23 Juli 2026)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css">
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        code, pre { font-family: 'JetBrains Mono', monospace; }
+        .gradient-text { background: linear-gradient(135deg, #059669 0%, #0284c7 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        .sidebar-link.active { background-color: #ecfdf5; color: #059669; font-weight: 600; border-right: 3px solid #059669; }
+        pre { border-radius: 0.75rem; padding: 1rem 1.25rem; overflow-x: auto; font-size: 0.82rem; line-height: 1.6; margin: 0.75rem 0; }
+        pre code.hljs { background: transparent; padding: 0; }
+        .code-cap { font-size: 0.72rem; color: #64748b; margin-bottom: -0.25rem; display:block; font-weight:600; }
+        h2 { scroll-margin-top: 6rem; }
+        h3 { scroll-margin-top: 6rem; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th, td { border: 1px solid #e2e8f0; padding: 0.6rem 0.75rem; text-align: left; vertical-align: top; }
+        th { background: #f1f5f9; font-weight: 700; }
+        .badge { display:inline-block; padding: 0.1rem 0.5rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 700; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased">
+
+<nav class="fixed w-full z-50 border-b border-slate-200 top-0 bg-white/90 backdrop-blur">
+    <div class="max-w-screen-2xl mx-auto px-4 lg:px-8 flex justify-between h-16 items-center">
+        <div class="flex items-center gap-3">
+            <div class="bg-slate-900 p-2 rounded-lg"><i data-lucide="sparkles" class="w-5 h-5 text-emerald-400"></i></div>
+            <span class="font-bold text-lg tracking-tight">UMAR CRM <span class="gradient-text">— Dokumentasi Fitur Baru</span></span>
+        </div>
+        <span class="hidden md:inline text-xs text-slate-500">Sesi Pengembangan &middot; 23 Juli 2026 &middot; v2.6</span>
+    </div>
+</nav>
+
+<div class="max-w-screen-2xl mx-auto px-4 lg:px-8 pt-20 pb-12 flex gap-8">
+
+    <!-- Sidebar -->
+    <aside class="hidden lg:block w-72 shrink-0">
+        <div class="sticky top-20 bg-white border border-slate-200 rounded-xl p-4 shadow-sm max-h-[85vh] overflow-y-auto">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-3">Daftar Isi</h3>
+            <nav class="space-y-0.5 text-sm" id="sidebar-nav">
+                <a href="#ringkasan" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">Ringkasan Eksekutif</a>
+                <a href="#peta-fitur" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">Peta Fitur Baru</a>
+                <a href="#cs-jamaah" class="sidebar-link block px-3 py-1.5 text-emerald-700 font-semibold rounded-lg hover:bg-slate-50">★ 1. Atribusi CS untuk Jamaah</a>
+                <a href="#cs-agen" class="sidebar-link block px-3 py-1.5 text-emerald-700 font-semibold rounded-lg hover:bg-slate-50">★ 2. Atribusi CS untuk Keagenan</a>
+                <a href="#akun" class="sidebar-link block px-3 py-1.5 text-emerald-700 font-semibold rounded-lg hover:bg-slate-50">★ 3. Manajemen Akun (Profil, Password, Edit)</a>
+                <a href="#foto-profil" class="sidebar-link block px-3 py-1.5 text-emerald-700 font-semibold rounded-lg hover:bg-slate-50">★ 4. Foto Profil &amp; Penyebarannya</a>
+                <a href="#berkas" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">5. Ringkasan Berkas Diubah</a>
+                <a href="#lanjutan" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">6. Catatan &amp; Potensi Lanjutan</a>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- Content -->
+    <main class="flex-1 max-w-4xl space-y-14">
+
+        <!-- COVER -->
+        <header class="bg-slate-900 text-white rounded-2xl p-10 relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-72 h-72 bg-emerald-500/20 rounded-full blur-3xl"></div>
+            <div class="relative">
+                <span class="badge bg-emerald-500/20 text-emerald-300 mb-4">CATATAN RILIS &middot; DEVELOPMENT LOG</span>
+                <h1 class="text-3xl md:text-4xl font-extrabold mb-3 leading-tight">Fitur Baru UMAR CRM — <span class="gradient-text">Atribusi CS, Manajemen Akun, &amp; Foto Profil</span></h1>
+                <p class="text-slate-300 text-sm leading-relaxed max-w-3xl">Dokumen ini merangkum seluruh fitur, perbaikan, dan perubahan skema basis data yang dibangun dalam satu sesi pengembangan pada <b>23 Juli 2026</b>. Ditulis dengan format &amp; gaya yang sama dengan <code>Dokumentasi-Fitur-22-Juli-2026.html</code> agar menyatu sebagai bagian dari dokumentasi teknis sistem secara keseluruhan.</p>
+            </div>
+        </header>
+
+        <!-- RINGKASAN EKSEKUTIF -->
+        <section id="ringkasan">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="file-text" class="w-6 h-6 text-emerald-600"></i> Ringkasan Eksekutif</h2>
+            <div class="bg-white border border-slate-200 rounded-xl p-6 text-sm leading-relaxed text-slate-700 space-y-3">
+                <p>Sesi ini dimulai dari diskusi seputar <b>form pendaftaran publik</b>: pengguna ingin setiap jamaah punya CS (Customer Service) tujuan yang jelas — sebelumnya <code>sales_id</code> selalu otomatis diisi siapa pun karyawan yang klik "Terima", tidak peduli preferensi calon jamaah. Solusinya: dropdown "Pilih CS" opsional di form publik, yang diteruskan sampai ke atribusi <code>sales_id</code> final. Fitur yang sama kemudian di-mirror penuh untuk modul <b>Keagenan</b> (mitra/agen) atas permintaan eksplisit pengguna, termasuk metrik baru "Agen Direkrut" di leaderboard performa Sales.</p>
+                <p>Pengguna lalu bertanya sederhana — <i>"kenapa tidak bisa edit juga?"</i> — yang membongkar gap nyata: halaman Kelola Pengguna cuma bisa Tambah &amp; Hapus karyawan, tidak pernah punya endpoint Edit sejak awal. Ini berkembang jadi paket fitur <b>Manajemen Akun</b> penuh: Profil Saya (self-service data diri), Ganti Password (karyawan bisa ganti sendiri, Admin bisa reset siapa saja), dan Edit Karyawan oleh Admin (data akun + data profil).</p>
+                <p>Permintaan "tambahkan juga foto profil buat testing" membuka bug nyata: foto yang diupload tidak tampil sama sekali di mana pun karena disimpan di folder privat yang butuh token otentikasi, sedangkan kode menampilkannya lewat <code>background-image</code> biasa tanpa token — langsung diperbaiki. Sesi ditutup dengan permintaan berturut-turut untuk menyebarkan foto profil ke semua tempat yang menampilkan nama karyawan/CS — total menjangkau 9 area berbeda di seluruh aplikasi, dari sidebar sampai Audit Trail.</p>
+            </div>
+        </section>
+
+        <!-- PETA FITUR -->
+        <section id="peta-fitur">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><i data-lucide="map" class="w-6 h-6 text-emerald-600"></i> Peta Fitur Baru</h2>
+            <table>
+                <tr><th>Area</th><th>Perubahan</th><th>Status</th></tr>
+                <tr><td><b>Pilih CS di Form Pendaftaran Jamaah</b></td><td>Dropdown opsional; jika dipilih, <code>sales_id</code> ikut preferensi calon jamaah, bukan otomatis ke yang klik Terima.</td><td><span class="badge bg-emerald-100 text-emerald-700">Baru</span></td></tr>
+                <tr><td><b>Kolom &amp; Filter CS di Database Jamaah</b></td><td>Tabel Master Jamaah kini punya kolom CS + dropdown filter per-CS.</td><td><span class="badge bg-emerald-100 text-emerald-700">Baru</span></td></tr>
+                <tr><td><b>Pilih CS di Form Pendaftaran Agen</b></td><td>Pola identik dengan jamaah — <code>handler_cs_id</code> ikut preferensi calon agen.</td><td><span class="badge bg-emerald-100 text-emerald-700">Baru</span></td></tr>
+                <tr><td><b>Kolom, Filter CS &amp; Metrik "Agen Direkrut"</b></td><td>Tabel Keagenan dapat kolom+filter CS; leaderboard performa Sales dapat metrik jumlah agen yang direkrut.</td><td><span class="badge bg-emerald-100 text-emerald-700">Baru</span></td></tr>
+                <tr><td><b>Profil Saya (self-service)</b></td><td>Semua karyawan bisa isi data diri sendiri: kontak, alamat, NIK, tanggal lahir, foto, pendidikan terakhir.</td><td><span class="badge bg-emerald-100 text-emerald-700">Baru</span></td></tr>
+                <tr><td><b>Ganti Password</b></td><td>Karyawan ganti password sendiri (wajib password lama); Admin reset password siapa saja tanpa password lama.</td><td><span class="badge bg-emerald-100 text-emerald-700">Baru</span></td></tr>
+                <tr><td><b>Edit Karyawan (Admin)</b></td><td>Gap lama: Kelola Pengguna cuma bisa Tambah/Hapus. Kini Admin bisa edit data akun + data profil karyawan mana pun.</td><td><span class="badge bg-emerald-100 text-emerald-700">Baru</span></td></tr>
+                <tr><td><b>Bug: Foto Profil Tidak Tampil</b></td><td>URL foto (folder privat) butuh token otentikasi yang tidak disertakan saat dipakai sebagai <code>background-image</code>.</td><td><span class="badge bg-emerald-100 text-emerald-700">Diperbaiki</span></td></tr>
+                <tr><td><b>Foto Profil di 9 Area Aplikasi</b></td><td>Sidebar, Kelola Pengguna, Live Chat (PIC), Database Jamaah &amp; Keagenan (CS), Audit Trail, Ajukan Izin, Expense Report, Catatan Internal, Riwayat Aset.</td><td><span class="badge bg-emerald-100 text-emerald-700">Baru</span></td></tr>
+            </table>
+        </section>
+
+        <!-- 1. CS JAMAAH -->
+        <section id="cs-jamaah">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="user-check" class="w-6 h-6 text-emerald-600"></i> 1. Atribusi CS untuk Jamaah</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-4">Kolom <code>jamaah.sales_id</code> sudah ada sejak lama untuk RBAC (Sales hanya lihat jamaah miliknya) dan statistik performa — tapi nilainya selalu otomatis diisi <code>user["id"]</code> milik siapa pun yang klik "Terima" di Kotak Masuk Pendaftaran, tidak pernah mencerminkan preferensi calon jamaah sendiri.</p>
+
+            <h3 class="font-bold text-lg mb-2">1.1 Dropdown "Pilih CS" di Form Publik</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Endpoint publik baru (tanpa auth, karena diakses calon jamaah sebelum login) mengembalikan daftar karyawan dengan <code>role = 'sales'</code>:</p>
+            <span class="code-cap">app.py — endpoint publik daftar CS</span>
+<pre class="bg-slate-900"><code class="language-python">@app.get("/api/public/cs-list")
+async def public_cs_list():
+    return db.query_all("SELECT id, name FROM users WHERE role = 'sales' ORDER BY name ASC", ())</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed">Field ini <b>opsional</b> — kalau calon jamaah tidak memilih, perilaku lama tetap berlaku (CS yang menerima). <code>preferred_cs_id</code> disimpan di <code>pendaftaran_publik</code>, lalu saat "Terima" diproses, <code>jamaah_create</code> membaca ulang preferensi itu untuk menentukan <code>sales_id</code> final — bukan langsung memakai id karyawan yang sedang login.</p>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">1.2 Kolom &amp; Filter CS di Database Jamaah</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Gap yang ditemukan lewat pertanyaan pengguna: tidak ada tempat untuk melihat CS mana yang menangani jamaah tertentu, apalagi memfilternya. Opsi filter sengaja diturunkan dari data jamaah yang sudah dimuat di klien (bukan panggil <code>/api/users</code>), karena endpoint itu dibatasi admin/management sementara Sales — pengguna utama halaman ini — perlu tetap bisa memakai filter.</p>
+            <span class="code-cap">public/index.html — turunan opsi filter dari data yang sudah ada</span>
+<pre class="bg-slate-900"><code class="language-javascript">const csMap = new Map();
+allJamaah.forEach(j => { if (j.sales_id && j.sales_name) csMap.set(j.sales_id, j.sales_name); });</code></pre>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">1.3 Pengujian End-to-End</h3>
+            <p class="text-sm text-slate-700 leading-relaxed">Disimulasikan penuh: submit form publik memilih "Tim Sales" sebagai CS &rarr; login sebagai <b>Administrator</b> &rarr; klik "Terima &amp; Lengkapi Data" &rarr; dicek lewat API, hasil <code>jamaah.sales_id</code> mengarah ke Tim Sales (id 2), <b>bukan</b> Administrator (id 1) yang memproses. Filter CS di Database Jamaah dikonfirmasi menyaring tabel dengan benar dan reset ke "Semua CS" mengembalikan semua baris.</p>
+        </section>
+
+        <!-- 2. CS AGEN -->
+        <section id="cs-agen">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="network" class="w-6 h-6 text-emerald-600"></i> 2. Atribusi CS untuk Keagenan (Mirror Pola Jamaah)</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-4">Pengguna secara eksplisit meminta pola yang <b>persis sama</b> diterapkan ke modul Keagenan, untuk atribusi kinerja rekrut mitra/agen — bukan sekadar informasi kontak.</p>
+
+            <h3 class="font-bold text-lg mb-2">2.1 Skema &amp; Alur</h3>
+            <span class="code-cap">db.py — kolom baru</span>
+<pre class="bg-slate-900"><code class="language-sql">ALTER TABLE agents ADD COLUMN handler_cs_id INTEGER;
+ALTER TABLE pendaftaran_agen_publik ADD COLUMN preferred_cs_id INTEGER;</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Form pendaftaran agen publik (<code>/daftar-agen</code>) dapat dropdown "Pilih CS" yang me-reuse endpoint <code>/api/public/cs-list</code> yang sama dengan form jamaah. Saat "Terima" diproses lewat <code>agents_create</code>, <code>handler_cs_id</code> default ke karyawan yang klik Terima, kecuali submission publik punya <code>preferred_cs_id</code>.</p>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">2.2 Metrik Baru: "Agen Direkrut"</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Karena tujuannya atribusi kinerja (bukan sekadar tampilan), fungsi <code>_sales_stats()</code> — yang sebelumnya murni berbasis tabel <code>jamaah</code> untuk leaderboard performa Sales — diperluas dengan hitungan agen yang direkrut per CS:</p>
+            <span class="code-cap">app.py — _sales_stats()</span>
+<pre class="bg-slate-900"><code class="language-python">agents_recruited = db.query_one(
+    "SELECT COUNT(*) c FROM agents WHERE handler_cs_id = ?", (sales_id,)
+)["c"]</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed">Kartu "Agen Direkrut" muncul di halaman Follow-up Lead, baik untuk statistik diri sendiri (role Sales) maupun leaderboard gabungan (role Admin). Diuji: submit form agen publik memilih "Tim Sales" &rarr; Administrator klik Terima &rarr; dicek lewat API, <code>handler_cs_id</code> agen baru mengarah ke Tim Sales; login sebagai Tim Sales, kartu "Agen Direkrut" menunjukkan angka <b>1</b> yang sesuai.</p>
+        </section>
+
+        <!-- 3. AKUN -->
+        <section id="akun">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="user-cog" class="w-6 h-6 text-emerald-600"></i> 3. Manajemen Akun: Profil Saya, Ganti Password, Edit Karyawan</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-4">Dipicu diskusi soal setiap karyawan mendata dirinya sendiri, lalu ganti password, lalu satu pertanyaan singkat pengguna — <i>"kenapa tidak bisa edit juga?"</i> — yang membongkar gap: halaman Kelola Pengguna sejak awal cuma bisa Tambah &amp; Hapus, tidak pernah ada endpoint Edit.</p>
+
+            <h3 class="font-bold text-lg mb-2">3.1 Kolom Profil Baru di <code>users</code></h3>
+            <span class="code-cap">db.py — kolom profil diri</span>
+<pre class="bg-slate-900"><code class="language-sql">ALTER TABLE users ADD COLUMN phone TEXT;
+ALTER TABLE users ADD COLUMN personal_email TEXT;
+ALTER TABLE users ADD COLUMN address TEXT;
+ALTER TABLE users ADD COLUMN nik TEXT;
+ALTER TABLE users ADD COLUMN birth_date TEXT;
+ALTER TABLE users ADD COLUMN photo_url TEXT;
+ALTER TABLE users ADD COLUMN last_education TEXT;
+ALTER TABLE users ADD COLUMN education_major TEXT;
+ALTER TABLE users ADD COLUMN education_institution TEXT;</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed">Field pendidikan sengaja dibuat ringkas (jenjang/jurusan/institusi, bukan riwayat multi-entri) sesuai konfirmasi pengguna — cukup untuk kebutuhan Management melihat profil karyawan, tanpa kompleksitas CV lengkap.</p>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">3.2 Ganti Password: Self-Service vs Admin Reset</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Dua jalur berbeda dikonfirmasi lewat diskusi: karyawan bisa ganti password sendiri (perlu verifikasi password lama), sedangkan Admin bisa reset password siapa saja tanpa perlu tahu password lama.</p>
+            <span class="code-cap">app.py — dua endpoint terpisah</span>
+<pre class="bg-slate-900"><code class="language-python">@app.put("/api/users/me/password")   # self-service, verifikasi password lama
+@app.put("/api/users/{uid}/reset-password")   # admin-only, tanpa password lama</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed">Diuji: ganti password dengan password lama yang salah &rarr; ditolak (400); dengan password lama benar &rarr; berhasil, dikonfirmasi lewat percobaan login ulang dengan password baru (berhasil). Admin reset password dipakai sekaligus untuk mengembalikan password test ke semula, dan login ulang dikonfirmasi tetap berhasil.</p>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">3.3 Gap Ditemukan: Tidak Ada Endpoint Edit Karyawan</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Konfirmasi lewat pengecekan kode langsung: <code>GET/POST/DELETE /api/users</code> sudah ada sejak awal, tapi <b>tidak pernah ada <code>PUT /api/users/{id}</code></b>. Satu-satunya cara memperbaiki data karyawan yang salah adalah hapus lalu buat ulang. Pengguna memilih cakupan edit "data akun + data profil (semua field)".</p>
+            <span class="code-cap">app.py — endpoint baru</span>
+<pre class="bg-slate-900"><code class="language-python">@app.put("/api/users/{uid}")
+async def users_update(uid: int, body: dict = Depends(json_body), user=Depends(authenticate_token)):
+    require_role(user, "admin")
+    # update username, name, role, base_salary + seluruh field profil -- TIDAK menyentuh password</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed">Modal "Tambah User" diperluas jadi dual-mode (Tambah/Edit): field password disembunyikan &amp; tidak wajib saat mode Edit, karena ganti password sudah ditangani jalur terpisah. Diuji: edit No. HP milik "Tim Sales" sebagai Admin &rarr; tersimpan benar, tabel refresh otomatis; login ulang sebagai <code>sales1</code> dengan password lama tetap berhasil, membuktikan endpoint edit tidak menyentuh/merusak password.</p>
+        </section>
+
+        <!-- 4. FOTO PROFIL -->
+        <section id="foto-profil">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="image" class="w-6 h-6 text-emerald-600"></i> 4. Foto Profil: Upload, Bug Token, &amp; Penyebaran ke 9 Area</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-4">Permintaan "coba tambahkan foto profil buat testing juga" langsung membongkar bug nyata sebelum fitur ini bisa dianggap selesai.</p>
+
+            <h3 class="font-bold text-lg mb-2">4.1 Bug Ditemukan: Foto Tidak Tampil Sama Sekali</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Setelah upload berhasil (API mengembalikan <code>200 OK</code> dengan <code>photo_url</code> benar), foto tetap tidak muncul di UI — hanya warna latar default. Penyebabnya: foto disimpan di folder privat (<code>UPLOAD_DIR</code>, sama seperti dokumen KTP/paspor) yang butuh token otentikasi untuk diakses, tapi kode menampilkannya lewat <code>background-image: url(...)</code> polos — <b>browser tidak mengirim header Authorization untuk permintaan gambar semacam itu</b>.</p>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Solusinya sudah ada di kodebase (dipakai untuk dokumen KTP/paspor jamaah): helper <code>fileUrl()</code> yang menyisipkan token lewat query string.</p>
+            <span class="code-cap">public/index.html — helper avatar terpusat</span>
+<pre class="bg-slate-900"><code class="language-javascript">const setAvatarEl = (el, name, photoUrl) => {
+    if (photoUrl) { el.style.backgroundImage = `url('${fileUrl(photoUrl)}')`; el.innerText = ''; }
+    else { el.innerText = (name || '?').charAt(0).toUpperCase(); }  // fallback huruf inisial
+};</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed">Diverifikasi dengan mengupload 2 foto berwarna berbeda secara berurutan (hijau lalu biru) — sebelum perbaikan, keduanya tampil sebagai warna default; sesudah perbaikan, warna terakhir (biru) tampil benar di semua tempat tanpa perlu reload halaman.</p>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">4.2 Endpoint Direktori Lintas-Role</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Untuk menampilkan foto CS di Live Chat (dipakai role Sales, bukan cuma Admin/Management), dibutuhkan endpoint ringan yang bisa diakses semua role tanpa membocorkan data HR sensitif:</p>
+            <span class="code-cap">app.py — direktori nama+foto saja</span>
+<pre class="bg-slate-900"><code class="language-python">@app.get("/api/users/directory")
+async def users_directory(user=Depends(authenticate_token)):
+    return db.query_all("SELECT name, photo_url FROM users", ())</code></pre>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">4.3 Penyebaran ke 9 Area Aplikasi</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Atas permintaan berturut-turut ("tambahkan juga di halaman lain yang relevan"), avatar foto (dengan fallback huruf inisial) disebar ke setiap tempat yang menampilkan nama karyawan/CS, memakai helper <code>picAvatarHtml()</code> yang sama:</p>
+            <table class="mb-2">
+                <tr><th>Area</th><th>Detail</th></tr>
+                <tr><td>Sidebar</td><td>Avatar akun sendiri, update langsung setelah login maupun setelah ganti foto (tanpa perlu login ulang).</td></tr>
+                <tr><td>Kelola Pengguna (HR)</td><td>Thumbnail avatar per baris karyawan.</td></tr>
+                <tr><td>Live Chat WhatsApp</td><td>Avatar PIC di daftar percakapan &amp; header chat aktif.</td></tr>
+                <tr><td>Database Jamaah &amp; Keagenan</td><td>Avatar di kolom CS.</td></tr>
+                <tr><td>Tactical &amp; Audit</td><td>Audit Trail (upgrade dari lingkaran huruf statis) &amp; pelapor Insiden Operasional.</td></tr>
+                <tr><td>Ajukan Izin</td><td>Avatar di tabel Review Pengajuan Izin Karyawan.</td></tr>
+                <tr><td>Expense Report</td><td>Avatar di kolom Karyawan &amp; Approver.</td></tr>
+                <tr><td>Catatan Internal Jamaah</td><td>Avatar komentator di setiap catatan.</td></tr>
+                <tr><td>Riwayat Perpindahan Aset</td><td>Avatar "oleh [nama]" di setiap entri riwayat transfer.</td></tr>
+            </table>
+            <p class="text-sm text-slate-700 leading-relaxed">Sekaligus mengupload foto uji-coba (warna berbeda per akun) untuk seluruh akun seed — Administrator, Tim Sales, Tim Keuangan, Tim Operasional, Tim Management — supaya semua area di atas punya data nyata untuk diverifikasi visual. Setiap area diuji dengan klik sungguhan di browser (bukan cuma tinjauan kode); seluruhnya mengembalikan avatar yang benar tanpa error konsol maupun server.</p>
+        </section>
+
+        <!-- 5. RINGKASAN BERKAS -->
+        <section id="berkas">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><i data-lucide="folder-git-2" class="w-6 h-6 text-emerald-600"></i> 5. Ringkasan Berkas yang Diubah</h2>
+            <table>
+                <tr><th>Berkas</th><th>Perubahan</th></tr>
+                <tr><td><code>db.py</code></td><td>Kolom baru <code>pendaftaran_publik.preferred_cs_id</code>, <code>agents.handler_cs_id</code>, <code>pendaftaran_agen_publik.preferred_cs_id</code>; 9 kolom profil diri baru di <code>users</code> (kontak, foto, pendidikan).</td></tr>
+                <tr><td><code>app.py</code></td><td>Endpoint <code>/api/public/cs-list</code>; atribusi CS di <code>jamaah_create</code>/<code>agents_create</code>; <code>_sales_stats()</code> dapat metrik <code>agents_recruited</code>; endpoint <code>/api/users/me</code>, <code>/me/profile</code>, <code>/me/photo</code>, <code>/me/password</code>, <code>/{uid}/reset-password</code>, <code>/{uid}</code> (PUT, baru); endpoint <code>/api/users/directory</code>.</td></tr>
+                <tr><td><code>Pendaftaran-Publik.html</code></td><td>Dropdown "Pilih CS (Opsional)" + integrasi <code>/api/public/cs-list</code>.</td></tr>
+                <tr><td><code>Pendaftaran-Agen-Publik.html</code></td><td>Dropdown "Pilih CS (Opsional)" — pola identik dengan form jamaah.</td></tr>
+                <tr><td><code>public/index.html</code></td><td>Filter CS di Database Jamaah &amp; Keagenan; modal "Profil Saya" &amp; "Reset Password"; modal "Tambah User" diperluas dual-mode (Tambah/Edit); helper <code>setAvatarEl()</code>/<code>picAvatarHtml()</code>/<code>loadUsersDirectory()</code>; avatar foto disebar ke 9 area aplikasi.</td></tr>
+            </table>
+        </section>
+
+        <!-- 6. CATATAN LANJUTAN -->
+        <section id="lanjutan" class="pb-16">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><i data-lucide="lightbulb" class="w-6 h-6 text-emerald-600"></i> 6. Catatan &amp; Potensi Pengembangan Lanjutan</h2>
+            <div class="bg-white border border-slate-200 rounded-xl p-6 text-sm leading-relaxed text-slate-700 space-y-3">
+                <ul class="list-disc pl-6 space-y-1.5">
+                    <li>Atribusi CS untuk agen saat ini hanya dihitung sebagai jumlah ("Agen Direkrut") — belum menghitung kontribusi performa jamaah yang didatangkan lewat agen tersebut ke skor CS yang merekrutnya (sempat didiskusikan, disepakati cukup jumlah dulu).</li>
+                    <li>Detail Expense Report (modal, bukan tabel daftar) belum menampilkan avatar untuk field "User" &amp; "User responsible for approval" — baru tabel daftar utama yang diperbarui.</li>
+                    <li>Kolom <code>company_assets.assigned_to</code> (siapa memegang aset) sengaja belum diberi avatar karena bisa berisi nama non-karyawan; hanya field "Riwayat Perpindahan &middot; oleh [nama]" (selalu karyawan sistem) yang diberi avatar.</li>
+                    <li>Endpoint <code>/api/users/directory</code> mengembalikan foto seluruh karyawan ke semua role yang login — cukup aman karena hanya nama+foto (tanpa data HR sensitif), tapi perlu diingat saat menambah field baru ke endpoint ini di kemudian hari agar tidak tidak sengaja membocorkan data lain.</li>
+                </ul>
+            </div>
+        </section>
+
+    </main>
+</div>
+
+<footer class="bg-slate-900 text-slate-400 py-6 text-center text-xs">
+    &copy; 2026 UMAR CRM &mdash; Catatan Rilis Internal. Disusun otomatis berdasarkan sesi pengembangan 23 Juli 2026.
+</footer>
+
+<script>
+    hljs.highlightAll();
+    lucide.createIcons();
+    const sections = document.querySelectorAll('section, header');
+    const links = document.querySelectorAll('.sidebar-link');
+    window.addEventListener('scroll', () => {
+        let cur = '';
+        sections.forEach(s => { if (scrollY >= s.offsetTop - 120) cur = s.id; });
+        links.forEach(l => {
+            l.classList.toggle('active', l.getAttribute('href') === '#' + cur);
+        });
+    });
+</script>
+</body>
+</html>

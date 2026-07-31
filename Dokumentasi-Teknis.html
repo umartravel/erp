@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dokumentasi Teknis — UMAR CRM (Travel Umroh)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Syntax highlighting -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css">
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        code, pre { font-family: 'JetBrains Mono', monospace; }
+        .gradient-text { background: linear-gradient(135deg, #059669 0%, #0284c7 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        .sidebar-link.active { background-color: #ecfdf5; color: #059669; font-weight: 600; border-right: 3px solid #059669; }
+        pre { border-radius: 0.75rem; padding: 1rem 1.25rem; overflow-x: auto; font-size: 0.82rem; line-height: 1.6; margin: 0.75rem 0; }
+        pre code.hljs { background: transparent; padding: 0; }
+        .code-cap { font-size: 0.72rem; color: #64748b; margin-bottom: -0.25rem; display:block; font-weight:600; }
+        h2 { scroll-margin-top: 6rem; }
+        h3 { scroll-margin-top: 6rem; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th, td { border: 1px solid #e2e8f0; padding: 0.6rem 0.75rem; text-align: left; vertical-align: top; }
+        th { background: #f1f5f9; font-weight: 700; }
+        .badge { display:inline-block; padding: 0.1rem 0.5rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 700; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased">
+
+<nav class="fixed w-full z-50 border-b border-slate-200 top-0 bg-white/90 backdrop-blur">
+    <div class="max-w-screen-2xl mx-auto px-4 lg:px-8 flex justify-between h-16 items-center">
+        <div class="flex items-center gap-3">
+            <div class="bg-slate-900 p-2 rounded-lg"><i data-lucide="file-code-2" class="w-5 h-5 text-emerald-400"></i></div>
+            <span class="font-bold text-lg tracking-tight">UMAR CRM <span class="gradient-text">— Dokumentasi Teknis</span></span>
+        </div>
+        <span class="hidden md:inline text-xs text-slate-500">Dokumen Tesis &middot; Backend Python / FastAPI &middot; v2.0</span>
+    </div>
+</nav>
+
+<div class="max-w-screen-2xl mx-auto px-4 lg:px-8 pt-20 pb-12 flex gap-8">
+
+    <!-- Sidebar -->
+    <aside class="hidden lg:block w-72 shrink-0">
+        <div class="sticky top-20 bg-white border border-slate-200 rounded-xl p-4 shadow-sm max-h-[85vh] overflow-y-auto">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-3">Daftar Isi</h3>
+            <nav class="space-y-0.5 text-sm" id="sidebar-nav">
+                <a href="#abstrak" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">Abstrak</a>
+                <a href="#pendahuluan" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">1. Pendahuluan</a>
+                <a href="#tobe" class="sidebar-link block px-3 py-1.5 text-emerald-700 font-semibold rounded-lg hover:bg-slate-50">★ Alur Proses To-Be (ERP)</a>
+                <a href="#arsitektur" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">2. Arsitektur Sistem</a>
+                <a href="#teknologi" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">3. Teknologi &amp; Pustaka</a>
+                <a href="#modul" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">4. Struktur Modul</a>
+                <a href="#data" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">5. Model Data</a>
+                <a href="#dimensi" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">6. Desain Dimensi Status</a>
+                <a href="#auth" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">7. Autentikasi &amp; Keamanan</a>
+                <a href="#realtime" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">8. Real-Time (Socket.IO)</a>
+                <a href="#roles" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">9. Peran (RBAC)</a>
+                <a href="#fitur" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">10. Fitur per Modul</a>
+                <a href="#whatsapp" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">11. Integrasi WhatsApp</a>
+                <a href="#visa" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">12. Automasi Visa</a>
+                <a href="#pengujian" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">13. Pengujian</a>
+                <a href="#justifikasi" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">14. Justifikasi Metode</a>
+                <a href="#instalasi" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">15. Instalasi &amp; Menjalankan</a>
+                <a href="#kesimpulan" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">16. Kesimpulan</a>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- Content -->
+    <main class="flex-1 max-w-4xl space-y-14">
+
+        <!-- COVER -->
+        <header class="bg-slate-900 text-white rounded-2xl p-10 relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-72 h-72 bg-emerald-500/20 rounded-full blur-3xl"></div>
+            <div class="relative">
+                <span class="badge bg-emerald-500/20 text-emerald-300 mb-4">DOKUMEN TEKNIS UNTUK TESIS</span>
+                <h1 class="text-3xl md:text-4xl font-extrabold mb-3 leading-tight">Rancang Bangun Sistem <span class="gradient-text">CRM Travel Umroh</span> Berbasis Web dengan Arsitektur Client–Server, REST API, dan Komunikasi Real-Time</h1>
+                <p class="text-slate-300 text-sm leading-relaxed max-w-3xl">Dokumentasi teknis lengkap aplikasi <b>UMAR CRM</b>: arsitektur, pustaka yang digunakan beserta alasannya, struktur modul, model data, desain keamanan, manajemen peran, dan justifikasi pemilihan metode dibanding alternatif lain.</p>
+            </div>
+        </header>
+
+        <!-- ABSTRAK -->
+        <section id="abstrak">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="file-text" class="w-6 h-6 text-emerald-600"></i> Abstrak</h2>
+            <div class="bg-white border border-slate-200 rounded-xl p-6 text-sm leading-relaxed text-slate-700 space-y-3">
+                <p>UMAR CRM adalah aplikasi <i>Customer Relationship Management</i> terpadu untuk bisnis travel umroh yang mengintegrasikan empat divisi — <b>Sales, Keuangan (Finance), Operasional (Ops), dan Manajemen (Admin)</b> — ke dalam satu sistem berbasis web. Sistem menggantikan proses manual (catatan terpisah, banyak ponsel WhatsApp, rekap Excel) dengan satu sumber data tunggal yang tersinkronisasi secara <i>real-time</i>.</p>
+                <p>Aplikasi dibangun dengan arsitektur <b>client–server</b>: backend <b>Python/FastAPI</b> menyediakan REST API dan kanal <i>WebSocket</i> (Socket.IO), sedangkan frontend berupa <i>Single Page Application</i> HTML/JavaScript. Basis data menggunakan <b>SQLite</b>. Sistem dilengkapi automasi WhatsApp, pemeriksaan visa otomatis berbasis <i>headless browser</i>, mekanisme <i>gatekeeper</i> (SOP digital), kontrol akses berbasis peran (RBAC), serta pemodelan status multi-dimensi untuk merepresentasikan siklus hidup jamaah secara akurat.</p>
+                <p>Dokumen ini memaparkan keputusan rekayasa perangkat lunak yang diambil, lengkap dengan perbandingan terhadap metode/pustaka alternatif dan alasan pemilihannya.</p>
+            </div>
+        </section>
+
+        <!-- 1. PENDAHULUAN -->
+        <section id="pendahuluan">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><i data-lucide="info" class="w-6 h-6 text-emerald-600"></i> 1. Pendahuluan</h2>
+            <h3 class="font-bold text-lg mb-2 mt-4">1.1 Latar Belakang</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-3">Bisnis travel umroh memiliki alur kerja lintas-divisi yang panjang: akuisisi calon jamaah (lead), pembayaran bertahap (DP hingga lunas), pengurusan dokumen &amp; visa, distribusi perlengkapan, hingga keberangkatan. Tanpa sistem terpadu, tiap divisi bekerja terpisah sehingga rawan kesalahan: harga paket berubah sepihak, jamaah lunas tetapi visanya tidak diproses, atau perlengkapan diserahkan padahal pembayaran belum cukup. UMAR CRM hadir untuk menutup celah tersebut melalui satu basis data bersama dan aturan SOP yang ditegakkan oleh sistem (bukan sekadar imbauan).</p>
+            <h3 class="font-bold text-lg mb-2 mt-4">1.2 Tujuan Sistem</h3>
+            <ul class="list-disc pl-6 text-sm text-slate-700 space-y-1.5">
+                <li>Menyatukan data Sales, Finance, dan Ops dalam satu sumber kebenaran (<i>single source of truth</i>).</li>
+                <li>Menegakkan SOP secara otomatis melalui mekanisme <i>gatekeeper</i> untuk mencegah <i>human error</i> dan kecurangan.</li>
+                <li>Mengotomasi komunikasi (invoice &amp; pengingat WhatsApp) dan pemeriksaan visa.</li>
+                <li>Menyediakan pemantauan manajerial (dashboard, deteksi <i>bottleneck</i>, audit aktivitas).</li>
+            </ul>
+            <h3 class="font-bold text-lg mb-2 mt-4">1.3 Ruang Lingkup</h3>
+            <p class="text-sm text-slate-700 leading-relaxed">Sistem mencakup modul pendaftaran &amp; CRM, follow-up lead, keuangan &amp; buku besar, operasional &amp; logistik, manajemen vendor, live-chat WhatsApp multi-agen, pelaporan, serta pengaturan aplikasi. Tidak mencakup (saat ini) integrasi <i>payment gateway</i> nyata dan aplikasi mobile native.</p>
+        </section>
+
+        <!-- ALUR TO-BE ERP -->
+        <section id="tobe">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="git-merge" class="w-6 h-6 text-emerald-600"></i> Alur Proses Bisnis <span class="gradient-text">To-Be</span> (ERP Terintegrasi)</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-5">Diagram berikut menggambarkan <b>alur proses bisnis sasaran (To-Be)</b> setelah penerapan UMAR CRM: setiap divisi bekerja pada <b>satu basis data bersama</b>, perpindahan antar-tahap memicu pembaruan dimensi status, dan sejumlah langkah dijalankan/dijaga otomatis oleh sistem (kolom kanan). Bandingkan dengan kondisi <i>As-Is</i> (manual, terpisah) di bawah.</p>
+
+            <!-- Legend aktor -->
+            <div class="flex flex-wrap gap-3 mb-5 text-xs font-semibold">
+                <span class="badge bg-sky-100 text-sky-700">● Calon Jamaah</span>
+                <span class="badge bg-blue-100 text-blue-700">● Sales</span>
+                <span class="badge bg-emerald-100 text-emerald-700">● Finance</span>
+                <span class="badge bg-purple-100 text-purple-700">● Operasional</span>
+                <span class="badge bg-amber-100 text-amber-700">● Manajemen/Sistem</span>
+            </div>
+
+            <!-- Flow To-Be -->
+            <div class="relative border-l-2 border-emerald-400 ml-4 pl-6 space-y-5">
+                <!-- step template -->
+                <div class="relative">
+                    <span class="absolute -left-[31px] top-1 w-3.5 h-3.5 rounded-full bg-sky-500 ring-4 ring-white"></span>
+                    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                            <h4 class="font-bold text-slate-800 text-sm">1. Inquiry &amp; Akuisisi Lead</h4>
+                            <span class="badge bg-sky-100 text-sky-700">Calon Jamaah → Sales</span>
+                        </div>
+                        <p class="text-xs text-slate-600 mt-1">Calon jamaah bertanya via WhatsApp → masuk <b>Live Chat</b>. Sales melayani, mendaftarkan, dan menjadwalkan follow-up.</p>
+                        <div class="mt-2 flex flex-wrap gap-1.5 text-[10px]">
+                            <span class="badge bg-slate-100 text-slate-600">pipeline → Lead/Registered</span>
+                            <span class="badge bg-amber-50 text-amber-700">⚙ Otomasi: pesan WA tersimpan, reminder follow-up</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative">
+                    <span class="absolute -left-[31px] top-1 w-3.5 h-3.5 rounded-full bg-emerald-500 ring-4 ring-white"></span>
+                    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                            <h4 class="font-bold text-slate-800 text-sm">2. Pembayaran DP</h4>
+                            <span class="badge bg-emerald-100 text-emerald-700">Finance</span>
+                        </div>
+                        <p class="text-xs text-slate-600 mt-1">Finance memverifikasi setoran DP. Sistem mencatat ke buku besar &amp; mengunci harga/paket (gatekeeper anti-fraud).</p>
+                        <div class="mt-2 flex flex-wrap gap-1.5 text-[10px]">
+                            <span class="badge bg-slate-100 text-slate-600">payment → DP &middot; pipeline → Booked</span>
+                            <span class="badge bg-amber-50 text-amber-700">⚙ Otomasi: invoice WA terkirim, harga terkunci</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative">
+                    <span class="absolute -left-[31px] top-1 w-3.5 h-3.5 rounded-full bg-emerald-500 ring-4 ring-white"></span>
+                    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                            <h4 class="font-bold text-slate-800 text-sm">3. Pelunasan &amp; Komisi</h4>
+                            <span class="badge bg-emerald-100 text-emerald-700">Finance</span>
+                        </div>
+                        <p class="text-xs text-slate-600 mt-1">Saat jamaah melunasi, sistem otomatis mencatat pencairan komisi agen pada saat yang sama.</p>
+                        <div class="mt-2 flex flex-wrap gap-1.5 text-[10px]">
+                            <span class="badge bg-slate-100 text-slate-600">payment → Lunas</span>
+                            <span class="badge bg-amber-50 text-amber-700">⚙ Otomasi: komisi agen cair, invoice lunas WA</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative">
+                    <span class="absolute -left-[31px] top-1 w-3.5 h-3.5 rounded-full bg-purple-500 ring-4 ring-white"></span>
+                    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                            <h4 class="font-bold text-slate-800 text-sm">4. Visa, Dokumen &amp; Logistik</h4>
+                            <span class="badge bg-purple-100 text-purple-700">Operasional</span>
+                        </div>
+                        <p class="text-xs text-slate-600 mt-1">Begitu lunas, jamaah muncul di antrean Ops. Ops memproses visa (robot Playwright), mengatur kamar/bus, dan menyerahkan perlengkapan (gerbang minimal DP).</p>
+                        <div class="mt-2 flex flex-wrap gap-1.5 text-[10px]">
+                            <span class="badge bg-slate-100 text-slate-600">visa → Approved</span>
+                            <span class="badge bg-amber-50 text-amber-700">⚙ Otomasi: cek visa, notif WA, gerbang perlengkapan</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative">
+                    <span class="absolute -left-[31px] top-1 w-3.5 h-3.5 rounded-full bg-purple-500 ring-4 ring-white"></span>
+                    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                            <h4 class="font-bold text-slate-800 text-sm">5. Keberangkatan</h4>
+                            <span class="badge bg-purple-100 text-purple-700">Operasional</span>
+                        </div>
+                        <p class="text-xs text-slate-600 mt-1">Ops mencetak manifest &amp; memberangkatkan rombongan.</p>
+                        <div class="mt-2 flex flex-wrap gap-1.5 text-[10px]"><span class="badge bg-slate-100 text-slate-600">trip → OnTrip</span></div>
+                    </div>
+                </div>
+
+                <div class="relative">
+                    <span class="absolute -left-[31px] top-1 w-3.5 h-3.5 rounded-full bg-amber-500 ring-4 ring-white"></span>
+                    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                            <h4 class="font-bold text-slate-800 text-sm">6. Monitoring &amp; Evaluasi (lintas seluruh tahap)</h4>
+                            <span class="badge bg-amber-100 text-amber-700">Manajemen / Sistem</span>
+                        </div>
+                        <p class="text-xs text-slate-600 mt-1">Admin memantau dashboard real-time: saldo, piutang, funnel, dan <b>deteksi bottleneck</b> (mis. lunas tapi visa belum diproses). Seluruh aksi tercatat di audit log.</p>
+                        <div class="mt-2 flex flex-wrap gap-1.5 text-[10px]"><span class="badge bg-amber-50 text-amber-700">⚙ Otomasi: sinkronisasi real-time, deteksi bottleneck, audit trail</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- As-Is vs To-Be -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                <div class="bg-rose-50 border border-rose-200 rounded-xl p-4">
+                    <h4 class="font-bold text-rose-700 text-sm mb-2 flex items-center gap-2"><i data-lucide="x-circle" class="w-4 h-4"></i> Kondisi As-Is (Sebelum)</h4>
+                    <ul class="text-xs text-rose-900/80 list-disc pl-4 space-y-1">
+                        <li>Data terpisah: catatan sales, Excel keuangan, ponsel WA sendiri-sendiri.</li>
+                        <li>SOP berupa imbauan lisan — rawan harga diubah sepihak &amp; over-booking.</li>
+                        <li>Invoice &amp; pengingat ditulis manual; cek visa dilakukan satu-per-satu.</li>
+                        <li>Tidak ada pemantauan menyeluruh; bottleneck baru ketahuan saat masalah terjadi.</li>
+                    </ul>
+                </div>
+                <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                    <h4 class="font-bold text-emerald-700 text-sm mb-2 flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4"></i> Kondisi To-Be (Sesudah)</h4>
+                    <ul class="text-xs text-emerald-900/80 list-disc pl-4 space-y-1">
+                        <li>Satu basis data bersama, tersinkron real-time antar divisi.</li>
+                        <li>SOP ditegakkan otomatis oleh sistem (gatekeeper) — tidak bisa di-bypass.</li>
+                        <li>Invoice, komisi, &amp; pengingat WA otomatis; cek visa via robot.</li>
+                        <li>Dashboard manajerial + deteksi bottleneck + audit trail menyeluruh.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. ARSITEKTUR -->
+        <section id="arsitektur">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><i data-lucide="network" class="w-6 h-6 text-emerald-600"></i> 2. Arsitektur Sistem</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-4">Sistem menganut pola <b>client–server</b> dengan backend <b>monolit modular</b> (satu proses aplikasi, dipecah menjadi beberapa modul berdasarkan tanggung jawab). Komunikasi terjadi melalui dua kanal: <b>REST API</b> (request–response, untuk operasi CRUD) dan <b>WebSocket/Socket.IO</b> (server push, untuk pembaruan real-time).</p>
+
+            <div class="bg-white border border-slate-200 rounded-xl p-6 mb-4">
+                <span class="code-cap">Diagram lapisan (text)</span>
+<pre class="bg-slate-900"><code class="language-text">┌────────────────────────────────────────────────────────────┐
+│  CLIENT (Browser)  —  public/index.html  (SPA, Tailwind, JS) │
+│   • fetch() ──► REST  • io() ──► WebSocket  • Chart.js, etc.  │
+└───────────────┬───────────────────────────┬──────────────────┘
+                │ HTTP/JSON (REST)          │ WebSocket (Socket.IO)
+┌───────────────▼───────────────────────────▼──────────────────┐
+│  ASGI APP  =  socketio.ASGIApp(sio, other_asgi_app=FastAPI)   │
+│  ┌──────────────┐  ┌───────────┐  ┌──────────┐  ┌──────────┐  │
+│  │  app.py      │  │ auth.py   │  │realtime  │  │whatsapp  │  │
+│  │ (REST routes)│  │ JWT/RBAC  │  │ .py (sio)│  │ .py      │  │
+│  └──────┬───────┘  └─────┬─────┘  └────┬─────┘  └────┬─────┘  │
+│         │                │             │             │        │
+│  ┌──────▼────────────────▼─────────────▼──────┐ ┌────▼─────┐  │
+│  │  db.py  —  akses SQLite (thread-safe lock)  │ │visa_che- │  │
+│  └──────┬──────────────────────────────────────┘ │cker.py   │  │
+│         │                                         │(Playwright)│ │
+│  ┌──────▼───────┐                                 └──────────┘  │
+│  │ umar_crm.db  │   uploads_private/  (file PII, akses ber-token)│
+│  └──────────────┘                                                │
+└──────────────────────────────────────────────────────────────┘</code></pre>
+            </div>
+
+            <h3 class="font-bold text-lg mb-2">2.1 Penggabungan FastAPI + Socket.IO</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Kedua kanal dijalankan dalam satu proses ASGI. Socket.IO membungkus aplikasi FastAPI sehingga request <code>/socket.io/*</code> ditangani oleh mesin Socket.IO, sisanya diteruskan ke FastAPI.</p>
+            <span class="code-cap">app.py — titik gabung ASGI</span>
+<pre class="bg-slate-900"><code class="language-python"># Gabungkan FastAPI + Socket.IO menjadi satu aplikasi ASGI.
+asgi = socketio.ASGIApp(sio, other_asgi_app=app, socketio_path="socket.io")
+
+if __name__ == "__main__":
+    uvicorn.run("app:asgi", host="0.0.0.0", port=PORT, log_level="info")</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed mt-2">Berkas statis frontend (<code>public/</code>) di-<i>mount</i> paling akhir agar route API, <code>/panduan</code>, dan <code>/uploads</code> ber-prioritas lebih tinggi daripada <i>static handler</i>.</p>
+        </section>
+
+        <!-- 3. TEKNOLOGI -->
+        <section id="teknologi">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><i data-lucide="layers" class="w-6 h-6 text-emerald-600"></i> 3. Teknologi &amp; Pustaka yang Digunakan</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-4">Berikut seluruh pustaka beserta versi, kegunaan, dan alasan pemilihannya. Kolom terakhir menjelaskan singkat <i>mengapa tidak memakai alternatif lain</i>.</p>
+
+            <h3 class="font-bold text-lg mb-2">3.1 Backend (Python)</h3>
+            <table class="mb-6">
+                <tr><th>Pustaka</th><th>Versi</th><th>Kegunaan</th><th>Alasan dipilih vs alternatif</th></tr>
+                <tr><td><b>FastAPI</b></td><td>0.115.6</td><td>Framework web — mendefinisikan REST API, validasi, dependency injection (auth).</td><td>Async-native &amp; ringan. <b>Django</b> terlalu berat (ORM, admin, template) untuk API murni; <b>Flask</b> sinkron dan butuh banyak ekstensi untuk fitur setara. FastAPI memberi <i>type hints</i> + dependency injection bawaan.</td></tr>
+                <tr><td><b>Uvicorn</b></td><td>0.34.0</td><td>Server ASGI yang menjalankan aplikasi (HTTP + WebSocket).</td><td>Server ASGI berperforma tinggi berbasis uvloop/httptools. <b>Gunicorn</b> (WSGI) tidak mendukung async/WebSocket tanpa worker khusus.</td></tr>
+                <tr><td><b>python-socketio</b></td><td>5.12.1</td><td>Server Socket.IO untuk push real-time (status WA, pesan, sinyal refresh).</td><td>Kompatibel protokol dengan klien Socket.IO v4 yang dipakai frontend. Alternatif <b>polling</b> boros request; <b>SSE</b> hanya satu arah (lihat §8).</td></tr>
+                <tr><td><b>PyJWT</b></td><td>2.10.1</td><td>Membuat &amp; memverifikasi token JWT untuk autentikasi <i>stateless</i>.</td><td>Standar industri, ringan. Alternatif <b>session server-side</b> butuh penyimpanan state (lihat §7).</td></tr>
+                <tr><td><b>bcrypt</b></td><td>4.2.1</td><td>Hashing kata sandi dengan <i>salt</i> &amp; <i>cost factor</i>.</td><td>Tahan <i>brute-force</i> (lambat secara sengaja). <b>MD5/SHA-256</b> terlalu cepat → mudah ditebak; <b>argon2</b> lebih baru namun bcrypt cukup &amp; kompatibel lintas-bahasa (hash dari Node.js terbaca).</td></tr>
+                <tr><td><b>Playwright</b></td><td>1.49.1</td><td>Automasi <i>headless browser</i> untuk cek status visa di portal pemerintah.</td><td>API modern, <i>auto-wait</i>, lebih stabil dari <b>Selenium</b> (yang rawan <i>flaky</i> &amp; perlu manajemen driver manual).</td></tr>
+                <tr><td><b>neonize</b></td><td>0.3.5</td><td>Klien WhatsApp Multi-Device (berbasis whatsmeow/Go) untuk kirim/terima pesan.</td><td>Satu-satunya pustaka WhatsApp Python yang matang &amp; mendukung multi-device. Alternatif <b>Twilio</b> berbayar &amp; butuh nomor resmi; <b>Baileys</b> berbasis Node (tidak sesuai migrasi ke Python).</td></tr>
+                <tr><td><b>qrcode[pil]</b></td><td>8.0</td><td>Mengubah string QR pairing WhatsApp menjadi gambar (data-URL) agar tampil di UI.</td><td>Ringan &amp; standar. Tanpa ini QR hanya bisa di-scan dari terminal.</td></tr>
+                <tr><td><b>sqlite3</b></td><td>(bawaan Python)</td><td>Mesin basis data file tunggal.</td><td>Tanpa server terpisah, cocok untuk satu agen travel (lihat §5 &amp; §14). Mudah dimigrasi ke PostgreSQL bila skala bertambah.</td></tr>
+            </table>
+
+            <h3 class="font-bold text-lg mb-2">3.2 Frontend (via CDN)</h3>
+            <table>
+                <tr><th>Pustaka</th><th>Kegunaan</th><th>Alasan</th></tr>
+                <tr><td><b>Tailwind CSS</b></td><td>Sistem styling berbasis <i>utility class</i>.</td><td>Pengembangan UI cepat tanpa berkas CSS terpisah; konsisten.</td></tr>
+                <tr><td><b>Socket.IO client 4.8</b></td><td>Menerima event real-time dari server.</td><td>Pasangan resmi python-socketio.</td></tr>
+                <tr><td><b>Chart.js</b></td><td>Grafik pemasukan/pengeluaran di dashboard.</td><td>Ringan, deklaratif.</td></tr>
+                <tr><td><b>jQuery + Select2</b></td><td><i>Dropdown</i> pencarian pintar (pilih paket/jamaah).</td><td>Select2 menyediakan pencarian bawaan yang matang.</td></tr>
+                <tr><td><b>Lucide</b></td><td>Ikon SVG.</td><td>Ringan, konsisten, gratis.</td></tr>
+            </table>
+        </section>
+
+        <!-- 4. MODUL -->
+        <section id="modul">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><i data-lucide="folder-tree" class="w-6 h-6 text-emerald-600"></i> 4. Struktur Modul (Backend)</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-4">Backend dipecah berdasarkan tanggung jawab tunggal (<i>separation of concerns</i>) agar mudah diuji &amp; dirawat:</p>
+            <table class="mb-5">
+                <tr><th>Berkas</th><th>Tanggung jawab</th></tr>
+                <tr><td><code>app.py</code></td><td>Definisi seluruh route REST, logika bisnis, gatekeeper, penyajian file PII, penggabungan ASGI.</td></tr>
+                <tr><td><code>db.py</code></td><td>Koneksi SQLite, skema tabel, <i>seeding</i> data awal, migrasi kolom, helper query (thread-safe).</td></tr>
+                <tr><td><code>auth.py</code></td><td>Hashing kata sandi (bcrypt), pembuatan/verifikasi JWT, <i>dependency</i> autentikasi untuk FastAPI.</td></tr>
+                <tr><td><code>realtime.py</code></td><td>Instance server Socket.IO &amp; helper <code>notify()</code> yang aman dipanggil lintas-thread.</td></tr>
+                <tr><td><code>whatsapp.py</code></td><td>Abstraksi backend WhatsApp (neonize/stub), event, persistensi pesan ke DB.</td></tr>
+                <tr><td><code>visa_checker.py</code></td><td>Automasi Playwright untuk cek status visa.</td></tr>
+                <tr><td><code>public/index.html</code></td><td>Seluruh antarmuka pengguna (SPA) — render, state, pemanggilan API, socket.</td></tr>
+            </table>
+
+            <h3 class="font-bold text-lg mb-2">4.1 Lapisan Akses Data (db.py)</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Karena SQLite dipakai dari banyak thread (FastAPI <i>threadpool</i> + thread WhatsApp), koneksi dibuat dengan <code>check_same_thread=False</code> dan setiap operasi dilindungi <code>RLock</code> untuk mencegah <i>race condition</i>. Mode <b>WAL</b> meningkatkan konkurensi baca/tulis.</p>
+            <span class="code-cap">db.py — koneksi &amp; helper</span>
+<pre class="bg-slate-900"><code class="language-python">_conn = sqlite3.connect(DB_FILE, check_same_thread=False)
+_conn.row_factory = sqlite3.Row          # hasil query sebagai dict
+_conn.execute("PRAGMA journal_mode=WAL") # konkurensi lebih baik
+_lock = threading.RLock()
+
+def query_all(sql, params=()):
+    with _lock:
+        cur = _conn.execute(sql, params)
+        return [dict(r) for r in cur.fetchall()]
+
+def execute(sql, params=()):
+    with _lock:
+        cur = _conn.execute(sql, params)
+        _conn.commit()
+        return cur.lastrowid, cur.rowcount</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed mt-2">Pola helper ini menyembunyikan detail koneksi sehingga route di <code>app.py</code> cukup menulis <code>db.query_all(...)</code> / <code>db.execute(...)</code> — meniru gaya API <code>db.all/db.run</code> pada versi Node.js sebelumnya untuk memudahkan migrasi.</p>
+        </section>
+
+        <!-- 5. MODEL DATA -->
+        <section id="data">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><i data-lucide="database" class="w-6 h-6 text-emerald-600"></i> 5. Model Data</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-4">Basis data terdiri atas tabel-tabel utama berikut. Tabel <code>jamaah</code> adalah pusat (sumber kebenaran tunggal) yang ditautkan oleh seluruh divisi.</p>
+            <table class="mb-5">
+                <tr><th>Tabel</th><th>Fungsi</th></tr>
+                <tr><td><code>users</code></td><td>Akun karyawan: username, password (hash), nama, <code>role</code>, gaji pokok.</td></tr>
+                <tr><td><code>jamaah</code></td><td>Data calon/jamaah: biodata, paket, harga, <code>paid_amount</code>, dimensi status, dokumen, sales pemilik.</td></tr>
+                <tr><td><code>packages</code></td><td>Paket umroh: harga per tipe kamar, tanggal berangkat, kuota, tour leader/mutawwif.</td></tr>
+                <tr><td><code>transactions</code></td><td>Buku besar: pemasukan (pembayaran) &amp; pengeluaran (operasional, komisi, gaji).</td></tr>
+                <tr><td><code>inventory</code> / <code>jamaah_inventory</code></td><td>Stok perlengkapan &amp; riwayat serah terima.</td></tr>
+                <tr><td><code>agents</code></td><td>Mitra/reseller eksternal &amp; fee komisi.</td></tr>
+                <tr><td><code>lead_activities</code></td><td><span class="badge bg-emerald-100 text-emerald-700">v2.0</span> Riwayat follow-up sales tiap lead (jenis, catatan, jadwal berikutnya).</td></tr>
+                <tr><td><code>wa_conversations</code> / <code>wa_messages</code></td><td>Percakapan &amp; pesan WhatsApp (live chat multi-agen).</td></tr>
+                <tr><td><code>settings</code></td><td><span class="badge bg-emerald-100 text-emerald-700">v2.0</span> Konfigurasi (key–value): logo, nama perusahaan, ambang DP.</td></tr>
+                <tr><td><code>audit_logs</code> / <code>incidents</code> / <code>procurement</code> / <code>jamaah_comments</code></td><td>Jejak audit, laporan insiden lapangan, kontrak vendor, catatan internal lintas-divisi.</td></tr>
+            </table>
+            <p class="text-sm text-slate-700 leading-relaxed">Migrasi skema dilakukan secara <i>idempotent</i>: pernyataan <code>CREATE TABLE IF NOT EXISTS</code> untuk tabel, dan daftar <code>ALTER TABLE ... ADD COLUMN</code> yang dijalankan dengan menelan galat "kolom sudah ada" — sehingga basis data lama otomatis ter-<i>upgrade</i> tanpa kehilangan data.</p>
+        </section>
+
+        <!-- 6. DIMENSI STATUS -->
+        <section id="dimensi">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><i data-lucide="git-branch" class="w-6 h-6 text-emerald-600"></i> 6. Desain Dimensi Status (Keputusan Inti)</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-3"><b>Masalah:</b> versi awal menyimpan seluruh siklus hidup jamaah dalam <i>satu</i> kolom <code>status</code> yang mencampur empat hal: tahap penjualan, pembayaran, visa, dan perjalanan. Akibatnya, ketika visa disetujui dan status menjadi <code>"Visa Approved"</code>, informasi <code>"Lunas"</code> <b>hilang</b> — satu kolom tidak bisa menyatakan dua keadaan sekaligus.</p>
+            <p class="text-sm text-slate-700 leading-relaxed mb-3"><b>Solusi:</b> status dipecah menjadi <b>empat dimensi independen</b>, sementara kolom <code>status</code> lama dipertahankan sebagai <b>cermin turunan</b> (<i>derived mirror</i>) demi kompatibilitas frontend yang sudah ada.</p>
+            <table class="mb-4">
+                <tr><th>Dimensi</th><th>Nilai</th></tr>
+                <tr><td><code>pipeline_stage</code></td><td>Lead → Waitlisted → Registered → Booked → Cancelled</td></tr>
+                <tr><td><code>payment_status</code></td><td>Unpaid → DP → Lunas (→ Refunded)</td></tr>
+                <tr><td><code>visa_status</code></td><td>Belum Proses → Proses Kedutaan → Visa Approved</td></tr>
+                <tr><td><code>trip_status</code></td><td>NotStarted → OnTrip → Completed</td></tr>
+            </table>
+            <span class="code-cap">app.py — menurunkan label kompatibel dari dimensi</span>
+<pre class="bg-slate-900"><code class="language-python">def _derive_status(pipeline, payment, visa, trip):
+    if trip == "OnTrip":         return "On Trip"
+    if pipeline == "Cancelled":  return "Cancelled"
+    if visa == "Visa Approved":  return "Visa Approved"
+    if payment == "Lunas":       return "Lunas"
+    if payment == "DP":          return "DP Masuk"
+    if pipeline == "Registered": return "Terdaftar"
+    if pipeline == "Waitlisted": return "Waitlisted"
+    return "Lead - Follow Up"
+
+def sync_status_mirror(jid):
+    j = db.query_one("SELECT pipeline_stage, payment_status, visa_status, "
+                     "trip_status FROM jamaah WHERE id = ?", (jid,))
+    label = _derive_status(j["pipeline_stage"], j["payment_status"],
+                           j["visa_status"], j["trip_status"])
+    db.execute("UPDATE jamaah SET status = ? WHERE id = ?", (label, jid))
+    return label</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed mt-3"><b>Mengapa pola "cermin", bukan langsung mengganti kolom status?</b> Mengganti kolom akan memaksa perubahan di puluhan titik frontend (filter, badge, tombol) sekaligus — berisiko tinggi. Dengan cermin, dimensi menjadi sumber kebenaran yang bersih (siap dipakai fitur baru &amp; pelaporan akurat), <b>tanpa</b> mengubah frontend lama sama sekali. <b>Mengapa tidak memakai pustaka state-machine?</b> Empat dimensi ini bergerak <i>independen</i> (jamaah bisa Lunas tapi visa masih diproses), sehingga model multi-atribut lebih tepat daripada satu mesin status tunggal.</p>
+            <p class="text-sm text-slate-700 leading-relaxed mt-2"><b>Hasil:</b> setelah perubahan, ketika visa disetujui, <code>payment_status</code> tetap bernilai <code>"Lunas"</code> — bug kehilangan data tuntas, dan laporan keuangan menjadi akurat.</p>
+        </section>
+
+        <!-- 7. AUTH & KEAMANAN -->
+        <section id="auth">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><i data-lucide="shield-check" class="w-6 h-6 text-emerald-600"></i> 7. Autentikasi &amp; Keamanan</h2>
+
+            <h3 class="font-bold text-lg mb-2">7.1 Kata Sandi (bcrypt)</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Kata sandi tidak pernah disimpan polos. bcrypt menambah <i>salt</i> acak &amp; <i>cost factor</i> sehingga proses verifikasi sengaja lambat — menghambat serangan <i>brute-force</i>.</p>
+            <span class="code-cap">auth.py</span>
+<pre class="bg-slate-900"><code class="language-python">def hash_password(plain):  return bcrypt.hashpw(plain.encode(), bcrypt.gensalt(10)).decode()
+def verify_password(plain, hashed):
+    try:    return bcrypt.checkpw(plain.encode(), hashed.encode())
+    except (ValueError, TypeError): return False</code></pre>
+
+            <h3 class="font-bold text-lg mb-2 mt-4">7.2 Token JWT (stateless)</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Setelah login, server menerbitkan JWT berisi id, peran, &amp; nama dengan masa berlaku 8 jam. Token dikirim klien di header <code>Authorization</code> pada tiap request; server cukup memverifikasi tanda tangan — <b>tanpa</b> menyimpan sesi.</p>
+            <span class="code-cap">auth.py — dependency RBAC FastAPI</span>
+<pre class="bg-slate-900"><code class="language-python">def authenticate_token(authorization: str = Header(default=None)) -&gt; dict:
+    token = authorization.split(" ", 1)[1] if authorization and \
+            authorization.startswith("Bearer ") else None
+    if not token:
+        raise HTTPException(status_code=401, detail="Akses Ditolak")
+    try:
+        return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGO])
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=403, detail="Token tidak valid")</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed mt-2"><b>Mengapa JWT, bukan session server-side?</b> JWT bersifat <i>stateless</i> — tidak perlu menyimpan state sesi di server/Redis, cocok untuk arsitektur sederhana &amp; mudah di-<i>scale</i> horizontal. Pengecekan peran dilakukan oleh helper <code>require_role(user, "admin", "finance")</code> di setiap route sensitif.</p>
+
+            <h3 class="font-bold text-lg mb-2 mt-4">7.3 Perlindungan Dokumen PII</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Dokumen sensitif (KTP, KK, <b>Paspor</b>, sertifikat vaksin) &amp; media WhatsApp disimpan di folder privat <code>uploads_private/</code> di luar direktori statis publik, lalu disajikan hanya melalui route ber-autentikasi. Karena tag <code>&lt;img&gt;</code>/<code>&lt;a&gt;</code> tidak mengirim header, token boleh dikirim via <i>query string</i>. Serangan <i>path traversal</i> dicegah dengan <code>os.path.basename</code>.</p>
+            <span class="code-cap">app.py — penyajian file ber-token</span>
+<pre class="bg-slate-900"><code class="language-python">@app.get("/uploads/{filename}")
+async def serve_upload(filename: str, _user=Depends(authenticate_file_token)):
+    safe = os.path.basename(filename)            # cegah ../ path traversal
+    path = os.path.join(UPLOAD_DIR, safe)
+    if not os.path.isfile(path):
+        raise HTTPException(status_code=404, detail="File tidak ditemukan")
+    return FileResponse(path)</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed mt-2"><b>Mengapa tidak menaruh file di folder publik?</b> Pada versi awal, dokumen berada di <code>public/uploads</code> sehingga siapa pun yang menebak URL dapat mengunduh paspor jamaah — pelanggaran privasi. Pemindahan ke folder privat + gerbang token menutup celah tersebut (terverifikasi: tanpa token → HTTP 401).</p>
+
+            <h3 class="font-bold text-lg mb-2 mt-4">7.4 Gatekeeper (SOP yang ditegakkan sistem)</h3>
+            <p class="text-sm text-slate-700 leading-relaxed">Selain RBAC, sistem menegakkan aturan bisnis: harga/paket terkunci setelah DP, kuota tidak boleh terlampaui, perlengkapan hanya boleh diserahkan bila pembayaran ≥ ambang (default 75%, dapat diatur), dan komisi agen cair otomatis tepat saat lunas. Aturan ini berada di sisi <i>server</i> (bukan hanya UI) sehingga tidak bisa di-<i>bypass</i>.</p>
+        </section>
+
+        <!-- 8. REALTIME -->
+        <section id="realtime">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><i data-lucide="radio" class="w-6 h-6 text-emerald-600"></i> 8. Komunikasi Real-Time (Socket.IO)</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Saat satu divisi mengubah data, divisi lain perlu melihatnya tanpa me-<i>refresh</i>. Server mengirim event ke seluruh klien melalui Socket.IO. Karena perubahan dapat dipicu dari <i>thread</i> lain (mis. callback WhatsApp), helper <code>notify()</code> menjadwalkan emit secara aman ke <i>event loop</i> utama.</p>
+            <span class="code-cap">realtime.py — emit aman lintas-thread</span>
+<pre class="bg-slate-900"><code class="language-python">sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
+
+def notify(event, data=None):
+    if _loop is None: return
+    try:
+        asyncio.run_coroutine_threadsafe(sio.emit(event, data), _loop)
+    except RuntimeError:
+        pass</code></pre>
+            <table class="mt-4">
+                <tr><th>Event</th><th>Arti</th></tr>
+                <tr><td><code>wa_status</code></td><td>Status koneksi WhatsApp + QR pairing.</td></tr>
+                <tr><td><code>wa_new_message</code></td><td>Pesan WhatsApp masuk/keluar baru.</td></tr>
+                <tr><td><code>wa_conversation_updated</code></td><td>Ringkasan percakapan diperbarui.</td></tr>
+                <tr><td><code>data_updated</code></td><td>Sinyal agar klien menyegarkan data (jamaah/transaksi/dll.).</td></tr>
+            </table>
+            <p class="text-sm text-slate-700 leading-relaxed mt-3"><b>Mengapa WebSocket, bukan polling atau SSE?</b> <b>Polling</b> (klien bertanya berkala) boros bandwidth &amp; lambat. <b>SSE</b> hanya satu arah (server→klien). Socket.IO memberi kanal dua arah, otomatis <i>reconnect</i>, dan <i>fallback</i> bila WebSocket diblokir — paling sesuai untuk live chat &amp; sinkronisasi.</p>
+        </section>
+
+        <!-- 9. ROLES -->
+        <section id="roles">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><i data-lucide="users-round" class="w-6 h-6 text-emerald-600"></i> 9. Peran Pengguna (RBAC) &amp; Tujuannya</h2>
+            <div class="space-y-3">
+                <div class="bg-white border-l-4 border-red-500 rounded-r-xl p-4 shadow-sm">
+                    <h4 class="font-bold">Administrator <span class="badge bg-red-100 text-red-700">Super User</span></h4>
+                    <p class="text-sm text-slate-600 mt-1"><b>Tujuan:</b> pemilik/manajemen. Akses penuh, dapat menembus gatekeeper untuk koreksi, mengelola karyawan &amp; paket, melihat audit, dan mengatur aplikasi (logo, ambang DP).</p>
+                </div>
+                <div class="bg-white border-l-4 border-blue-500 rounded-r-xl p-4 shadow-sm">
+                    <h4 class="font-bold">Sales <span class="badge bg-blue-100 text-blue-700">Frontliner</span></h4>
+                    <p class="text-sm text-slate-600 mt-1"><b>Tujuan:</b> akuisisi &amp; perawatan calon jamaah. Mendaftarkan jamaah, mencatat follow-up, melayani live chat. Hanya melihat jamaah <b>miliknya sendiri</b> (privasi data lintas-sales) dan dilarang mengubah harga setelah DP.</p>
+                </div>
+                <div class="bg-white border-l-4 border-emerald-500 rounded-r-xl p-4 shadow-sm">
+                    <h4 class="font-bold">Finance <span class="badge bg-emerald-100 text-emerald-700">Keuangan</span></h4>
+                    <p class="text-sm text-slate-600 mt-1"><b>Tujuan:</b> verifikasi pembayaran, buku besar, payroll, deposit vendor, laporan laba-rugi. Satu-satunya yang boleh memperbarui pembayaran.</p>
+                </div>
+                <div class="bg-white border-l-4 border-purple-500 rounded-r-xl p-4 shadow-sm">
+                    <h4 class="font-bold">Operasional (Ops) <span class="badge bg-purple-100 text-purple-700">Logistik &amp; Visa</span></h4>
+                    <p class="text-sm text-slate-600 mt-1"><b>Tujuan:</b> proses visa, rooming list, paspor, serah terima perlengkapan, keberangkatan, penugasan tour leader.</p>
+                </div>
+            </div>
+            <p class="text-sm text-slate-700 leading-relaxed mt-3">Pengecekan peran berlapis: di <b>frontend</b> menu disembunyikan sesuai peran (UX), dan di <b>backend</b> tiap route memanggil <code>require_role(...)</code> (keamanan sebenarnya). Pemisahan ini memastikan akses tidak bisa ditembus hanya dengan memanipulasi tampilan.</p>
+        </section>
+
+        <!-- 10. FITUR -->
+        <section id="fitur">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><i data-lucide="list-checks" class="w-6 h-6 text-emerald-600"></i> 10. Fitur per Modul</h2>
+            <table>
+                <tr><th>Modul</th><th>Fitur &amp; penjelasan</th></tr>
+                <tr><td><b>CRM &amp; Sales</b></td><td>Pendaftaran jamaah dengan validasi harga sisi-server &amp; gerbang kuota; Document Vault (unggah KTP/KK/paspor/vaksin); soft-delete (cancel) yang menjaga jejak keuangan.</td></tr>
+                <tr><td><b>Follow-up Lead</b> <span class="badge bg-emerald-100 text-emerald-700">v2.0</span></td><td>Jadwal follow-up + riwayat aktivitas per lead (tabel <code>lead_activities</code>); dashboard kinerja sales (<code>/api/sales/performance</code>) — pribadi untuk sales, leaderboard untuk admin; baris jatuh tempo ditandai merah.</td></tr>
+                <tr><td><b>Live Chat WhatsApp</b></td><td>Satu nomor perusahaan dilayani banyak agen; <i>assign</i>/<i>dispatch</i> percakapan; quick-reply template; kirim media; broadcast &amp; auto-reminder tagihan dengan jeda anti-banned.</td></tr>
+                <tr><td><b>Keuangan</b></td><td>Verifikasi pembayaran → status &amp; invoice WA otomatis; buku besar; payroll dengan pengaman anti-dobel per bulan; komisi agen otomatis saat lunas; penghapusan transaksi pembayaran otomatis mengembalikan <code>paid_amount</code> (integritas data).</td></tr>
+                <tr><td><b>Operasional</b></td><td>Tabel <i>Excel-like</i> untuk visa/kamar/bus/paspor; tombol cek visa (Playwright); serah terima perlengkapan (gerbang DP); cetak manifest PDF.</td></tr>
+                <tr><td><b>Pengaturan</b> <span class="badge bg-emerald-100 text-emerald-700">v2.0</span></td><td>Unggah logo, nama/tagline perusahaan, &amp; ambang minimum DP — semua dapat diubah admin tanpa menyentuh kode.</td></tr>
+                <tr><td><b>Dashboard</b></td><td>Saldo kas, piutang, funnel, deteksi bottleneck (lunas tapi visa belum diproses), demografi kota, laporan laba-rugi per paket.</td></tr>
+            </table>
+        </section>
+
+        <!-- 11. WHATSAPP -->
+        <section id="whatsapp">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><i data-lucide="message-circle" class="w-6 h-6 text-emerald-600"></i> 11. Integrasi WhatsApp</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Modul <code>whatsapp.py</code> memakai pola <b>Strategy</b>: antarmuka seragam (<code>connect</code>, <code>logout</code>, <code>get_status</code>, <code>send_message</code>) dengan dua implementasi — <code>NeonizeBackend</code> (WhatsApp asli) dan <code>StubBackend</code> (cadangan). Bila pustaka neonize tidak terpasang, sistem otomatis memakai stub sehingga <b>aplikasi tetap berjalan</b>.</p>
+            <span class="code-cap">whatsapp.py — pemilihan backend</span>
+<pre class="bg-slate-900"><code class="language-python">def _get_backend():
+    global _backend
+    if _backend is not None: return _backend
+    try:
+        _backend = NeonizeBackend()        # WhatsApp asli (whatsmeow)
+    except Exception:
+        _backend = StubBackend()           # fallback aman (mode simulasi)
+    return _backend</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed mt-2"><b>Mengapa pola ini?</b> Integrasi WhatsApp adalah dependensi paling rapuh (butuh biner Go, sesi pairing). Dengan abstraksi + fallback, kegagalan WhatsApp tidak menjatuhkan seluruh CRM, dan alur dapat diuji memakai mode simulasi (<code>WA_SIMULATE=1</code>). Operasi pengiriman dijalankan via <code>asyncio.to_thread</code> agar tidak memblokir server.</p>
+        </section>
+
+        <!-- 12. VISA -->
+        <section id="visa">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><i data-lucide="plane" class="w-6 h-6 text-emerald-600"></i> 12. Automasi Pemeriksaan Visa</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Pemeriksaan status visa di portal pemerintah diotomasi dengan Playwright (<i>headless Chromium</i>). Fungsi bersifat <i>async</i> agar tidak memblokir server, dan menyertakan <i>fallback</i> simulasi bila browser belum terpasang.</p>
+            <span class="code-cap">visa_checker.py</span>
+<pre class="bg-slate-900"><code class="language-python">async def check_visa_status(nik, jamaah_name):
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        page = await (await browser.new_context()).new_page()
+        # await page.goto("https://siskopatuh.kemenag.go.id/...")
+        # await page.fill("#username", ...) ; await page.click("button[type=submit]")
+        ...
+        return "Visa Approved" if approved else "Proses Kedutaan"</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed mt-2"><b>Mengapa Playwright, bukan Selenium?</b> Playwright memiliki <i>auto-wait</i> bawaan (menunggu elemen siap), manajemen browser otomatis tanpa <i>driver</i> terpisah, dan API async yang selaras dengan FastAPI — lebih stabil dan ringkas.</p>
+        </section>
+
+        <!-- 13. PENGUJIAN -->
+        <section id="pengujian">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><i data-lucide="flask-conical" class="w-6 h-6 text-emerald-600"></i> 13. Pengujian &amp; Verifikasi</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-3">Verifikasi dilakukan secara <i>end-to-end</i> terhadap server yang berjalan:</p>
+            <ul class="list-disc pl-6 text-sm text-slate-700 space-y-1.5">
+                <li><b>Uji API:</b> tiap endpoint dipanggil dengan token tiap peran untuk memastikan RBAC, gatekeeper, dan integritas data (mis. hapus transaksi mengembalikan <code>paid_amount</code>).</li>
+                <li><b>Uji alur status:</b> satu jamaah ditelusuri dari daftar → DP → lunas → visa → berangkat, memverifikasi tiap dimensi (terbukti <code>payment_status</code> tetap "Lunas" setelah visa disetujui).</li>
+                <li><b>Uji keamanan file:</b> akses dokumen tanpa token ditolak (HTTP 401), token salah (403), <i>path traversal</i> (404).</li>
+                <li><b>Uji antarmuka:</b> verifikasi visual di browser sungguhan (login, halaman Pengaturan, Follow-up) — tanpa galat konsol.</li>
+            </ul>
+        </section>
+
+        <!-- 14. JUSTIFIKASI -->
+        <section id="justifikasi">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><i data-lucide="scale" class="w-6 h-6 text-emerald-600"></i> 14. Justifikasi Pemilihan Metode (Ringkasan)</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-4">Tabel berikut merangkum keputusan rekayasa: metode yang dipakai, alternatif yang dipertimbangkan, dan alasan pemilihan.</p>
+            <table>
+                <tr><th>Keputusan</th><th>Dipakai</th><th>Alternatif</th><th>Alasan</th></tr>
+                <tr><td>Framework backend</td><td>FastAPI</td><td>Django, Flask</td><td>Async-native, ringan, dependency injection &amp; validasi bawaan; tidak butuh fitur berat Django.</td></tr>
+                <tr><td>Basis data</td><td>SQLite</td><td>PostgreSQL, MySQL</td><td>Tanpa server terpisah, cukup untuk skala satu agen; mudah migrasi nanti.</td></tr>
+                <tr><td>Real-time</td><td>Socket.IO</td><td>Polling, SSE</td><td>Dua arah, auto-reconnect, fallback; polling boros, SSE satu arah.</td></tr>
+                <tr><td>Autentikasi</td><td>JWT</td><td>Session server-side</td><td>Stateless, tanpa penyimpanan sesi, mudah di-scale.</td></tr>
+                <tr><td>Hash sandi</td><td>bcrypt</td><td>SHA-256, argon2</td><td>Lambat secara sengaja (anti brute-force), kompatibel lintas-bahasa.</td></tr>
+                <tr><td>WhatsApp</td><td>neonize (+fallback)</td><td>Twilio, Baileys (Node)</td><td>Gratis, multi-device, sesuai ekosistem Python; fallback menjaga keandalan.</td></tr>
+                <tr><td>Automasi browser</td><td>Playwright</td><td>Selenium</td><td>Auto-wait, tanpa driver manual, API async.</td></tr>
+                <tr><td>Pemodelan status</td><td>4 dimensi + cermin</td><td>1 kolom status, state-machine lib</td><td>Status saling-independen; cermin menjaga kompatibilitas tanpa merombak frontend.</td></tr>
+                <tr><td>Penyimpanan file PII</td><td>Folder privat + token</td><td>Folder publik, signed-URL</td><td>Menutup kebocoran publik; token via query agar &lt;img&gt;/&lt;a&gt; tetap jalan.</td></tr>
+                <tr><td>Konfigurasi</td><td>Tabel settings (key–value)</td><td>Hardcode di kode</td><td>Admin dapat mengubah logo/DP tanpa deploy ulang.</td></tr>
+            </table>
+        </section>
+
+        <!-- 15. INSTALASI -->
+        <section id="instalasi">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><i data-lucide="terminal" class="w-6 h-6 text-emerald-600"></i> 15. Instalasi &amp; Menjalankan</h2>
+            <span class="code-cap">Langkah menjalankan (Windows / Linux)</span>
+<pre class="bg-slate-900"><code class="language-bash"># 1. Buat virtual environment &amp; pasang dependensi
+python -m venv .venv
+.venv\Scripts\activate           # Windows  (Linux: source .venv/bin/activate)
+pip install -r requirements.txt
+
+# 2. (Opsional) pasang browser untuk cek visa
+playwright install chromium
+
+# 3. Jalankan server
+python app.py
+# Server aktif di http://localhost:3000  (login: admin / password123)
+
+# Mode uji tanpa WhatsApp asli:
+#   set WA_SIMULATE=1   (Windows)   /   export WA_SIMULATE=1 (Linux)</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed mt-2">Basis data <code>umar_crm.db</code> dibuat &amp; di-<i>seed</i> otomatis pada eksekusi pertama (4 user default: <code>admin</code>, <code>sales1</code>, <code>finance1</code>, <code>ops1</code> — semua kata sandi awal <code>password123</code>, <b>wajib diganti</b> sebelum dipakai nyata).</p>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">15.1 Variabel Lingkungan</h3>
+            <table class="mb-4">
+                <tr><th>Variabel</th><th>Fungsi</th><th>Default</th></tr>
+                <tr><td><code>PORT</code></td><td>Port server.</td><td>3000</td></tr>
+                <tr><td><code>JWT_SECRET</code></td><td>Kunci tanda tangan token. <b>Wajib diisi di produksi/VPS</b> dengan nilai acak yang rahasia.</td><td>(nilai bawaan untuk lokal)</td></tr>
+                <tr><td><code>WA_SIMULATE</code></td><td>Bila <code>1</code>, pengiriman WhatsApp dianggap berhasil (untuk uji alur tanpa WA asli).</td><td>0</td></tr>
+            </table>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">15.2 WhatsApp Bersifat Opsional</h3>
+            <p class="text-sm text-slate-700 leading-relaxed">Pustaka <code>neonize</code> (WhatsApp asli) membutuhkan komponen Go dan terkadang gagal terpasang pada sebagian sistem operasi. Bila demikian, hapus baris <code>neonize</code> dari <code>requirements.txt</code> — aplikasi <b>tetap berjalan penuh</b> memakai backend cadangan (<i>stub</i>), dan seluruh fitur CRM lain tidak terpengaruh. Untuk menguji alur tanpa WhatsApp nyata, jalankan dengan <code>WA_SIMULATE=1</code>.</p>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">15.3 Paket untuk Tim (Distribusi Source Code)</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2"><b>Disertakan:</b> <code>app.py, db.py, auth.py, realtime.py, whatsapp.py, visa_checker.py</code>, <code>requirements.txt</code>, folder <code>public/</code>, <code>Panduan.html</code>, <code>Dokumentasi-Teknis.html</code>, <code>README_PYTHON.md</code>, <code>.gitignore</code>.</p>
+            <p class="text-sm text-slate-700 leading-relaxed"><b>Tidak disertakan</b> (dibuat ulang otomatis / berisi data lokal &amp; PII): <code>.venv/</code>, <code>__pycache__/</code>, <code>umar_crm.db*</code>, <code>uploads_private/</code>, <code>public/branding/</code>, <code>neonize_auth.sqlite3</code>, arsip <code>*.zip</code>. Semua sudah tercantum di <code>.gitignore</code>.</p>
+        </section>
+
+        <!-- 16. KESIMPULAN -->
+        <section id="kesimpulan" class="pb-16">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><i data-lucide="flag" class="w-6 h-6 text-emerald-600"></i> 16. Kesimpulan</h2>
+            <div class="bg-white border border-slate-200 rounded-xl p-6 text-sm leading-relaxed text-slate-700 space-y-3">
+                <p>UMAR CRM menunjukkan penerapan rekayasa perangkat lunak modern pada domain travel umroh: arsitektur client–server dengan FastAPI, komunikasi real-time Socket.IO, keamanan berlapis (bcrypt, JWT, RBAC, perlindungan PII), serta pemodelan status multi-dimensi yang akurat. Setiap keputusan teknis diambil dengan mempertimbangkan alternatif dan disesuaikan dengan kebutuhan serta skala bisnis.</p>
+                <p>Sistem dirancang untuk berkembang: basis data dapat dipindah ke PostgreSQL, dan fondasi dimensi status telah disiapkan untuk lapisan tugas/notifikasi/SLA antar-divisi pada pengembangan berikutnya.</p>
+            </div>
+        </section>
+
+    </main>
+</div>
+
+<footer class="bg-slate-900 text-slate-400 py-6 text-center text-xs">
+    &copy; 2026 UMAR CRM &mdash; Dokumen Teknis Konfidensial. Disusun untuk keperluan akademik (tesis).
+</footer>
+
+<script>
+    hljs.highlightAll();
+    lucide.createIcons();
+    // Highlight link sidebar aktif saat scroll
+    const sections = document.querySelectorAll('section, header');
+    const links = document.querySelectorAll('.sidebar-link');
+    window.addEventListener('scroll', () => {
+        let cur = '';
+        sections.forEach(s => { if (scrollY >= s.offsetTop - 120) cur = s.id; });
+        links.forEach(l => {
+            l.classList.toggle('active', l.getAttribute('href') === '#' + cur);
+        });
+    });
+</script>
+</body>
+</html>

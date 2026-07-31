@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dokumentasi Fitur Baru — UMAR CRM (17 Juli 2026)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css">
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        code, pre { font-family: 'JetBrains Mono', monospace; }
+        .gradient-text { background: linear-gradient(135deg, #059669 0%, #0284c7 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        .sidebar-link.active { background-color: #ecfdf5; color: #059669; font-weight: 600; border-right: 3px solid #059669; }
+        pre { border-radius: 0.75rem; padding: 1rem 1.25rem; overflow-x: auto; font-size: 0.82rem; line-height: 1.6; margin: 0.75rem 0; }
+        pre code.hljs { background: transparent; padding: 0; }
+        .code-cap { font-size: 0.72rem; color: #64748b; margin-bottom: -0.25rem; display:block; font-weight:600; }
+        h2 { scroll-margin-top: 6rem; }
+        h3 { scroll-margin-top: 6rem; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th, td { border: 1px solid #e2e8f0; padding: 0.6rem 0.75rem; text-align: left; vertical-align: top; }
+        th { background: #f1f5f9; font-weight: 700; }
+        .badge { display:inline-block; padding: 0.1rem 0.5rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 700; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased">
+
+<nav class="fixed w-full z-50 border-b border-slate-200 top-0 bg-white/90 backdrop-blur">
+    <div class="max-w-screen-2xl mx-auto px-4 lg:px-8 flex justify-between h-16 items-center">
+        <div class="flex items-center gap-3">
+            <div class="bg-slate-900 p-2 rounded-lg"><i data-lucide="sparkles" class="w-5 h-5 text-emerald-400"></i></div>
+            <span class="font-bold text-lg tracking-tight">UMAR CRM <span class="gradient-text">— Dokumentasi Fitur Baru</span></span>
+        </div>
+        <span class="hidden md:inline text-xs text-slate-500">Sesi Pengembangan &middot; 17 Juli 2026 &middot; v2.2</span>
+    </div>
+</nav>
+
+<div class="max-w-screen-2xl mx-auto px-4 lg:px-8 pt-20 pb-12 flex gap-8">
+
+    <!-- Sidebar -->
+    <aside class="hidden lg:block w-72 shrink-0">
+        <div class="sticky top-20 bg-white border border-slate-200 rounded-xl p-4 shadow-sm max-h-[85vh] overflow-y-auto">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-3">Daftar Isi</h3>
+            <nav class="space-y-0.5 text-sm" id="sidebar-nav">
+                <a href="#ringkasan" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">Ringkasan Eksekutif</a>
+                <a href="#peta-fitur" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">Peta Fitur Baru</a>
+                <a href="#latar-belakang" class="sidebar-link block px-3 py-1.5 text-emerald-700 font-semibold rounded-lg hover:bg-slate-50">★ 1. Latar Belakang &amp; Desain</a>
+                <a href="#skema-data" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">2. Skema Basis Data</a>
+                <a href="#form-publik" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">3. Form Publik (/daftar)</a>
+                <a href="#anti-spam" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">4. Anti-Spam: Honeypot &amp; Rate Limit</a>
+                <a href="#kotak-masuk" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">5. Kotak Masuk Pendaftaran Publik</a>
+                <a href="#alur-terima" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">6. Alur "Terima" — Reuse Endpoint Jamaah</a>
+                <a href="#alur-tolak" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">7. Alur "Tolak" &amp; Peringatan NIK Ganda</a>
+                <a href="#bug" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">8. Bug Ditemukan &amp; Diperbaiki</a>
+                <a href="#pengujian" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">9. Pengujian End-to-End</a>
+                <a href="#berkas" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">10. Ringkasan Berkas Diubah</a>
+                <a href="#lanjutan" class="sidebar-link block px-3 py-1.5 text-slate-600 rounded-lg hover:bg-slate-50">11. Catatan &amp; Potensi Lanjutan</a>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- Content -->
+    <main class="flex-1 max-w-4xl space-y-14">
+
+        <!-- COVER -->
+        <header class="bg-slate-900 text-white rounded-2xl p-10 relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-72 h-72 bg-emerald-500/20 rounded-full blur-3xl"></div>
+            <div class="relative">
+                <span class="badge bg-emerald-500/20 text-emerald-300 mb-4">CATATAN RILIS &middot; DEVELOPMENT LOG</span>
+                <h1 class="text-3xl md:text-4xl font-extrabold mb-3 leading-tight">Fitur Baru UMAR CRM — <span class="gradient-text">Pendaftaran Publik (Self-Service) &amp; Kotak Masuk Validasi CS</span></h1>
+                <p class="text-slate-300 text-sm leading-relaxed max-w-3xl">Dokumen ini merangkum seluruh fitur, perbaikan, dan perubahan skema basis data yang dibangun dalam satu sesi pengembangan pada <b>17 Juli 2026</b>. Ditulis dengan format &amp; gaya yang sama dengan <code>Dokumentasi-Fitur-Baru.html</code> (15 Juli 2026) agar menyatu sebagai bagian dari dokumentasi teknis sistem secara keseluruhan.</p>
+            </div>
+        </header>
+
+        <!-- RINGKASAN EKSEKUTIF -->
+        <section id="ringkasan">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="file-text" class="w-6 h-6 text-emerald-600"></i> Ringkasan Eksekutif</h2>
+            <div class="bg-white border border-slate-200 rounded-xl p-6 text-sm leading-relaxed text-slate-700 space-y-3">
+                <p>Sesi ini menjawab kebutuhan agar <b>calon jamaah dapat mengisi data pendaftaran sendiri</b> tanpa perlu masuk (login) ke sistem ERP, namun datanya tetap <b>divalidasi manual oleh tim CS</b> sebelum benar-benar tercatat sebagai jamaah aktif. Solusinya adalah alur tiga tahap: <b>Form Publik → Tabel Staging (antrean validasi) → Kotak Masuk internal untuk tim CS Terima/Tolak</b>.</p>
+                <p>Desain ini secara sengaja <b>tidak</b> langsung menulis ke tabel <code>jamaah</code> produksi — mengikuti prinsip <i>gatekeeper</i> yang sama dipakai pada penguncian harga &amp; kuota paket (lihat §9 <code>Dokumentasi-Teknis.html</code>): data mentah dari internet tidak pernah masuk ke sistem produksi tanpa tinjauan manusia. Saat diterima, sistem <b>menggunakan kembali</b> endpoint <code>POST /api/jamaah</code> yang sudah ada &amp; teruji — bukan menduplikasi logika pembuatan jamaah — sehingga validasi harga/kuota otomatis tetap berlaku.</p>
+                <p>Seluruh alur telah <b>diuji langsung di browser end-to-end</b>: pengisian form publik, validasi CS (Terima &amp; Tolak), peringatan NIK ganda, serta pengujian khusus terhadap mekanisme <b>rate limiting</b> anti-spam (dikirim 5 request beruntun dari IP yang sama untuk memastikan pembatasan 3x/jam benar-benar aktif). Dua bug nyata ditemukan &amp; diperbaiki selama proses verifikasi (lihat §8).</p>
+            </div>
+        </section>
+
+        <!-- PETA FITUR -->
+        <section id="peta-fitur">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><i data-lucide="map" class="w-6 h-6 text-emerald-600"></i> Peta Fitur Baru</h2>
+            <table>
+                <tr><th>Area</th><th>Perubahan</th><th>Status</th></tr>
+                <tr><td><b>Form Publik <code>/daftar</code></b></td><td>Halaman pendaftaran mandiri tanpa login, dengan dropdown wilayah bertingkat (Provinsi→Kota→Kecamatan→Kelurahan).</td><td><span class="badge bg-emerald-100 text-emerald-700">Baru</span></td></tr>
+                <tr><td><b>Tabel Staging <code>pendaftaran_publik</code></b></td><td>Antrean data mentah, terpisah dari tabel <code>jamaah</code> produksi, menunggu validasi.</td><td><span class="badge bg-emerald-100 text-emerald-700">Baru</span></td></tr>
+                <tr><td><b>Kotak Masuk Pendaftaran Publik</b></td><td>Halaman internal baru (admin/sales) untuk meninjau, menerima, atau menolak pendaftaran masuk — dengan badge notifikasi realtime.</td><td><span class="badge bg-emerald-100 text-emerald-700">Baru</span></td></tr>
+                <tr><td><b>Anti-Spam</b></td><td>Honeypot (jebakan bot tersembunyi) + rate limiting 3x/jam per IP.</td><td><span class="badge bg-emerald-100 text-emerald-700">Baru</span></td></tr>
+                <tr><td><b>Reuse <code>POST /api/jamaah</code></b></td><td>Alur "Terima" memakai endpoint pembuatan jamaah yang sudah ada via parameter opsional <code>source_submission_id</code> — bukan logika baru.</td><td><span class="badge bg-emerald-100 text-emerald-700">Baru</span></td></tr>
+                <tr><td><b>Peringatan NIK Ganda</b></td><td>Badge peringatan otomatis bila NIK pendaftar publik sudah tercatat di tabel jamaah.</td><td><span class="badge bg-emerald-100 text-emerald-700">Baru</span></td></tr>
+                <tr><td><b>Bug: Kolom Kota Hilang</b></td><td>Field <code>city</code> sempat tidak tersimpan sama sekali dari form publik.</td><td><span class="badge bg-rose-100 text-rose-700">Perbaikan Bug</span></td></tr>
+                <tr><td><b>Bug: Provinsi Tertimpa Kosong</b></td><td>Race condition antara prefill data &amp; pemuatan async API wilayah saat alur "Terima" dibuka.</td><td><span class="badge bg-rose-100 text-rose-700">Perbaikan Bug</span></td></tr>
+            </table>
+        </section>
+
+        <!-- 1. LATAR BELAKANG & DESAIN -->
+        <section id="latar-belakang">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="lightbulb" class="w-6 h-6 text-emerald-600"></i> 1. Latar Belakang &amp; Keputusan Desain</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-4">Pertanyaan awal yang mendasari fitur ini: <i>"Bagaimana cara calon jamaah mengisi data sendiri tanpa masuk ke sistem ERP, tetapi datanya tetap divalidasi tim CS sebelum masuk ke sistem?"</i> Didiskusikan lebih dulu (tanpa coding) sebelum implementasi dimulai, dan menghasilkan tiga keputusan desain kunci berikut.</p>
+
+            <h3 class="font-bold text-lg mb-2">1.1 Tabel Staging, Bukan Insert Langsung ke <code>jamaah</code></h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-3">Opsi tercepat adalah form publik langsung menulis ke tabel <code>jamaah</code>. Ini ditolak karena melanggar prinsip <i>gatekeeper</i> sistem: harga paket, kuota keberangkatan, dan validitas data (NIK ganda, format salah, spam) harus lolos pemeriksaan sebelum menjadi data produksi. Sebagai gantinya, data publik masuk ke tabel terpisah <code>pendaftaran_publik</code> berstatus <code>Pending</code>, dan hanya berubah menjadi jamaah sungguhan setelah tim CS menekan "Terima".</p>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">1.2 Pola Maker-Checker</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-3">Sama seperti Expense Report (lihat §1.3 <code>Dokumentasi-Fitur-Baru.html</code>), alur ini memakai pola <b>maker-checker</b>: calon jamaah (maker, tanpa akun) mengisi data mentah; tim CS (checker, admin/sales) memvalidasi &amp; melengkapi data sebelum data tersebut resmi menjadi jamaah.</p>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">1.3 DRY — Reuse Endpoint yang Sudah Ada</h3>
+            <p class="text-sm text-slate-700 leading-relaxed">Alih-alih menulis ulang logika pembuatan jamaah (validasi harga per tipe kamar, pengecekan kuota, dsb.) khusus untuk jalur publik, tombol "Terima" pada Kotak Masuk hanya <b>mengisi otomatis form Pendaftaran Baru yang sudah ada</b> lalu mengirimkannya lewat endpoint <code>POST /api/jamaah</code> yang sudah teruji — dengan tambahan satu parameter opsional <code>source_submission_id</code> untuk penautan balik. Ini menjamin gatekeeper harga/kuota yang sudah ada otomatis berlaku tanpa duplikasi kode (lihat §6).</p>
+        </section>
+
+        <!-- 2. SKEMA DATA -->
+        <section id="skema-data">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="database" class="w-6 h-6 text-emerald-600"></i> 2. Skema Basis Data</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-3">Tabel baru <code>pendaftaran_publik</code> menampung seluruh isian form publik plus metadata proses validasi (siapa yang meninjau, kapan, status, dan tautan ke jamaah hasil "Terima").</p>
+            <span class="code-cap">db.py — skema tabel staging</span>
+<pre class="bg-slate-900"><code class="language-sql">CREATE TABLE IF NOT EXISTS pendaftaran_publik (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    status TEXT DEFAULT 'Pending',
+    reviewed_by TEXT, reviewed_at DATETIME, review_note TEXT,
+    jamaah_id INTEGER,
+    name TEXT, orderer_name TEXT, citizenship TEXT,
+    identity_type TEXT, nik TEXT,
+    passport_number TEXT, passport_issued TEXT, passport_issuer_city TEXT,
+    gender TEXT, birth_place_date TEXT,
+    phone TEXT, family_phone TEXT, email TEXT,
+    address TEXT, province TEXT, city TEXT, subdistrict TEXT, village TEXT,
+    health_history TEXT, mahram TEXT, interest_note TEXT,
+    source_ip TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed mt-2">Kolom <code>status</code> memiliki tiga nilai: <code>Pending</code> (menunggu), <code>Diterima</code>, <code>Ditolak</code>. Kolom <code>jamaah_id</code> baru terisi setelah "Terima" berhasil, menjadi jejak audit yang menghubungkan data staging dengan data jamaah final.</p>
+        </section>
+
+        <!-- 3. FORM PUBLIK -->
+        <section id="form-publik">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="clipboard-list" class="w-6 h-6 text-emerald-600"></i> 3. Form Publik — <code>/daftar</code></h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-3">Halaman baru <code>Pendaftaran-Publik.html</code>, mengikuti pola route publik tanpa autentikasi yang sudah ada (sama seperti <code>/panduan</code> dan <code>/dokumentasi-teknis</code>) — disajikan langsung sebagai <code>FileResponse</code>, tidak melalui SPA utama.</p>
+            <span class="code-cap">app.py — route publik baru</span>
+<pre class="bg-slate-900"><code class="language-python">@app.get("/daftar")
+async def daftar_publik():
+    return FileResponse(os.path.join(BASE_DIR, "Pendaftaran-Publik.html"))</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Branding (logo &amp; nama perusahaan) dimuat secara dinamis lewat <code>fetch('/api/settings')</code> — sama seperti kop surat PDF pada Expense Report — sehingga halaman ini otomatis mengikuti identitas perusahaan tanpa perlu diubah manual.</p>
+            <p class="text-sm text-slate-700 leading-relaxed">Dropdown Provinsi/Kota/Kecamatan/Kelurahan bersifat <i>cascading</i>, memakai API publik <code>emsifa/api-wilayah-indonesia</code> yang sama dipakai form internal Pendaftaran Baru — dipanggil langsung dari browser (tanpa proxy server), dengan atribut <code>data-id</code> pada tiap <code>&lt;option&gt;</code> untuk pencarian jenjang berikutnya.</p>
+        </section>
+
+        <!-- 4. ANTI-SPAM -->
+        <section id="anti-spam">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="shield-check" class="w-6 h-6 text-emerald-600"></i> 4. Anti-Spam: Honeypot &amp; Rate Limiting</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-3">Karena endpoint ini <b>tanpa autentikasi</b> (harus bisa diakses siapa saja), dua lapis perlindungan sederhana ditambahkan tanpa memerlukan layanan eksternal (captcha pihak ketiga, dsb.).</p>
+
+            <h3 class="font-bold text-lg mb-2">4.1 Honeypot</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Field tersembunyi bernama <code>website</code> disisipkan di form (diposisikan di luar layar lewat CSS, bukan <code>display:none</code>, agar lebih sulit dideteksi bot sederhana). Manusia tidak akan pernah mengisinya; bot yang mengisi semua field secara otomatis kemungkinan besar akan mengisinya juga.</p>
+            <span class="code-cap">app.py — pemeriksaan honeypot (silent success, tidak memberi tahu bot)</span>
+<pre class="bg-slate-900"><code class="language-python">if g("website"):  # honeypot terisi -> kemungkinan bot
+    return {"message": "Data Anda sudah kami terima dan akan diverifikasi tim kami."}</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed mt-2">Jika honeypot terisi, sistem <b>tidak menyimpan data apa pun</b> ke database, namun tetap mengembalikan pesan sukses yang sama persis seperti submission asli — agar bot tidak tahu bahwa submission-nya ditolak diam-diam (silent-fail).</p>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">4.2 Rate Limiting (3x / Jam / IP)</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Dibatasi memakai dictionary in-memory sederhana <code>{ip: [timestamp, ...]}</code> — cukup untuk skala saat ini, tanpa perlu infrastruktur tambahan (Redis, dsb.).</p>
+            <span class="code-cap">app.py — rate limiter in-memory</span>
+<pre class="bg-slate-900"><code class="language-python">_public_submit_log = {}  # ip -> [timestamp, ...]
+RATE_LIMIT_MAX = 3
+RATE_LIMIT_WINDOW_SEC = 3600
+
+def _check_rate_limit(ip):
+    now = time.time()
+    recent = [t for t in _public_submit_log.get(ip, []) if now - t < RATE_LIMIT_WINDOW_SEC]
+    if len(recent) >= RATE_LIMIT_MAX:
+        _public_submit_log[ip] = recent
+        return False
+    recent.append(now)
+    _public_submit_log[ip] = recent
+    return True</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed mt-2">Percobaan ke-4 dan seterusnya dalam jendela 1 jam yang sama akan ditolak dengan HTTP <code>429</code> beserta pesan Bahasa Indonesia yang ramah. Hasil pengujian nyata mekanisme ini ada di §9.3.</p>
+        </section>
+
+        <!-- 5. KOTAK MASUK -->
+        <section id="kotak-masuk">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="inbox" class="w-6 h-6 text-emerald-600"></i> 5. Kotak Masuk Pendaftaran Publik (Internal)</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-3">Halaman baru pada sidebar SPA (menu <b>"Kotak Masuk Publik"</b>, khusus role <code>admin</code> &amp; <code>sales</code>) menampilkan seluruh data staging: kartu statistik (Menunggu Validasi / Diterima / Ditolak), tabel daftar, dan modal detail dengan tombol aksi Terima/Tolak.</p>
+            <table class="mb-3">
+                <tr><th>Endpoint</th><th>Fungsi</th><th>Akses</th></tr>
+                <tr><td><code>GET /api/pendaftaran-publik</code></td><td>Daftar seluruh staging + flag <code>nik_exists</code> per baris.</td><td>admin, sales</td></tr>
+                <tr><td><code>PUT /api/pendaftaran-publik/{id}/reject</code></td><td>Tolak dengan alasan wajib diisi.</td><td>admin, sales</td></tr>
+            </table>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Badge notifikasi merah pada menu sidebar menghitung jumlah status <code>Pending</code>, diperbarui otomatis lewat event realtime Socket.IO yang sudah ada (<code>data_updated</code>) — pola yang sama dipakai fitur-fitur lain di sistem ini.</p>
+            <span class="code-cap">public/index.html — refresh badge realtime</span>
+<pre class="bg-slate-900"><code class="language-javascript">if (type === 'pendaftaran_publik' && ['admin', 'sales'].includes(currentUser.role)) refreshInboxBadge();
+if (type === 'pendaftaran_publik' && activePage === 'page-inbox') fetchInbox();</code></pre>
+        </section>
+
+        <!-- 6. ALUR TERIMA -->
+        <section id="alur-terima">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="check-circle" class="w-6 h-6 text-emerald-600"></i> 6. Alur "Terima" — Reuse Endpoint Jamaah</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-3">Menekan "Terima &amp; Lengkapi Data" pada modal detail akan menutup modal, membuka halaman <b>Pendaftaran Baru</b>, dan mengisi otomatis seluruh field yang tersedia dari data publik. Field yang disengaja <b>tidak</b> diisi otomatis: Status/Pipeline, Agen, Paket, Tipe Kamar, dan Harga — karena keempatnya adalah keputusan yang hanya boleh diambil tim CS, bukan calon jamaah.</p>
+            <span class="code-cap">public/index.html — acceptSubmission()</span>
+<pre class="bg-slate-900"><code class="language-javascript">function acceptSubmission(id) {
+    const r = inboxCache.find(x => x.id === id);
+    closeModal('modal-inbox-detail');
+    pendingSubmissionId = id;
+    showPage('pendaftaran');
+    showToast('Data dari pendaftaran publik sudah diisikan. Lengkapi paket & harga, lalu simpan.');
+    const set = (elId, val) => { const el = document.getElementById(elId); if (el && val) { el.value = val; $(el).trigger('change'); } };
+    set('reg-name', r.name); set('reg-nik', r.nik); /* ...dst untuk field lain... */
+    // Provinsi ditunda sampai data wilayah async selesai dimuat (lihat §8.2)
+    (wilayahLoadPromise || Promise.resolve()).then(() => set('reg-province', r.province));
+}</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Saat form disubmit, payload menyertakan <code>source_submission_id</code>. Di endpoint <code>POST /api/jamaah</code> yang sudah ada, ditambahkan logika penautan balik berikut — dijalankan <b>setelah</b> jamaah berhasil dibuat &amp; gatekeeper harga/kuota lolos:</p>
+            <span class="code-cap">app.py — penautan balik di dalam jamaah_create()</span>
+<pre class="bg-slate-900"><code class="language-python">source_submission_id = g("source_submission_id")
+if source_submission_id:
+    sub = db.query_one("SELECT status FROM pendaftaran_publik WHERE id = ?", (source_submission_id,))
+    if sub and sub["status"] == "Pending":
+        db.execute(
+            "UPDATE pendaftaran_publik SET status = 'Diterima', jamaah_id = ?, "
+            "reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (last_id, user["name"], source_submission_id),
+        )
+        notify("data_updated", "pendaftaran_publik")</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed">Pemeriksaan <code>sub["status"] == "Pending"</code> mencegah double-processing — bila submission yang sama entah bagaimana sudah diproses (misal dua tab CS terbuka bersamaan), penautan kedua tidak akan menimpa hasil yang pertama.</p>
+        </section>
+
+        <!-- 7. ALUR TOLAK -->
+        <section id="alur-tolak">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="x-circle" class="w-6 h-6 text-emerald-600"></i> 7. Alur "Tolak" &amp; Peringatan NIK Ganda</h2>
+            <h3 class="font-bold text-lg mb-2">7.1 Tolak — Alasan Wajib</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Tombol "Tolak" memunculkan dialog input alasan. Validasi <b>diterapkan di server</b> (bukan hanya UI) — percobaan tanpa alasan akan ditolak dengan HTTP 400.</p>
+            <span class="code-cap">app.py</span>
+<pre class="bg-slate-900"><code class="language-python">@app.put("/api/pendaftaran-publik/{pid}/reject")
+async def pendaftaran_publik_reject(pid: int, body: dict = Depends(json_body), user=Depends(authenticate_token)):
+    require_role(user, "admin", "sales")
+    reason = (body.get("reason") or "").strip()
+    if not reason:
+        raise HTTPException(status_code=400, detail="Alasan penolakan wajib diisi.")
+    # ...update status jadi 'Ditolak', simpan review_note, catat log_action REJECT_PUBLIC_REGISTRATION</code></pre>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">7.2 Peringatan NIK Ganda</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Alih-alih memblokir otomatis pendaftaran dengan NIK yang sudah ada di tabel <code>jamaah</code> (berisiko menolak kasus sah, misal keluarga mendaftarkan dengan NIK admin/pemesan yang sama), sistem hanya menampilkan <b>peringatan visual</b> ke tim CS — keputusan akhir tetap di tangan manusia.</p>
+            <span class="code-cap">app.py — flag nik_exists dihitung di endpoint list</span>
+<pre class="bg-slate-900"><code class="language-python">existing = db.query_one("SELECT id FROM jamaah WHERE nik = ?", (r["nik"],)) if r["nik"] else None
+r["nik_exists"] = bool(existing)</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed">Baris tabel Kotak Masuk menampilkan ikon peringatan (⚠️) di sebelah nama, dan modal detail menampilkan banner kuning bila <code>nik_exists</code> bernilai <code>true</code>.</p>
+        </section>
+
+        <!-- 8. BUG -->
+        <section id="bug">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="bug" class="w-6 h-6 text-emerald-600"></i> 8. Bug Ditemukan &amp; Diperbaiki Saat Verifikasi</h2>
+
+            <h3 class="font-bold text-lg mb-2">8.1 Kolom "Kota/Kab" Tidak Tersimpan</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Saat pengujian pertama (submit data uji dengan Kota "KOTA BOGOR"), modal detail internal menampilkan "Kota/Kab: -". Penyebabnya: baik skema <code>CREATE TABLE</code> maupun statement <code>INSERT</code> pada endpoint submit <b>sama sekali tidak menyertakan kolom <code>city</code></b> — hanya provinsi, kecamatan, kelurahan, dan alamat yang ditangkap.</p>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2"><b>Perbaikan:</b> kolom <code>city TEXT</code> ditambahkan ke definisi <code>CREATE TABLE</code>, serta ke <code>ALTER_QUERIES</code> (diperlukan karena tabel sudah lebih dulu dibuat di database development yang sedang berjalan, dengan data uji tersimpan di dalamnya):</p>
+            <span class="code-cap">db.py — migrasi idempotent untuk database yang sudah berjalan</span>
+<pre class="bg-slate-900"><code class="language-python">ALTER_QUERIES = [
+    # ...
+    "ALTER TABLE pendaftaran_publik ADD COLUMN city TEXT",
+]</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed">Statement <code>INSERT INTO pendaftaran_publik</code> pada <code>app.py</code> turut diperbarui menyertakan <code>city</code>. Diverifikasi ulang dengan submission uji kedua ("Budi Santoso", Kota "KOTA DEPOK") — hasilnya tersimpan &amp; tampil benar.</p>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">8.2 Field Provinsi Tertimpa Kosong Setelah "Terima"</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Ditemukan saat menguji alur "Terima": provinsi sempat terisi otomatis ("JAWA BARAT"), namun beberapa saat kemudian kembali kosong tanpa interaksi apa pun dari pengguna. Root cause: <code>showPage('pendaftaran')</code> memicu <code>loadWilayah()</code> — sebuah <i>fetch</i> async ke API provinsi yang <b>mengganti total isi</b> elemen <code>&lt;select&gt;</code> provinsi begitu selesai dimuat. Karena <code>acceptSubmission()</code> mengisi field provinsi secara <i>synchronous</i> tepat setelah memanggil <code>showPage()</code> (bukan menunggu fetch-nya selesai), isian tersebut tertimpa balik ke kosong begitu <code>loadWilayah()</code> resolve belakangan.</p>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2"><b>Perbaikan:</b> promise dari <code>loadWilayah()</code> kini disimpan ke variabel global <code>wilayahLoadPromise</code>, dan pengisian field provinsi menunggu promise tersebut selesai lebih dulu:</p>
+            <span class="code-cap">public/index.html — before → after (disingkat)</span>
+<pre class="bg-slate-900"><code class="language-javascript">// Sebelum: set('reg-province', r.province);  // langsung tertimpa oleh loadWilayah() yang masih berjalan
+
+// Sesudah:
+if(id === 'pendaftaran') wilayahLoadPromise = loadWilayah();  // di dalam showPage()
+// ...
+(wilayahLoadPromise || Promise.resolve()).then(() => set('reg-province', r.province));</code></pre>
+            <p class="text-sm text-slate-700 leading-relaxed">Diverifikasi dengan memeriksa nilai <code>document.getElementById('reg-province').value</code> setelah jeda 1.5 detik — hasilnya tetap "JAWA BARAT", tidak lagi kosong.</p>
+        </section>
+
+        <!-- 9. PENGUJIAN -->
+        <section id="pengujian">
+            <h2 class="text-2xl font-bold mb-3 flex items-center gap-2"><i data-lucide="flask-conical" class="w-6 h-6 text-emerald-600"></i> 9. Pengujian End-to-End yang Dilakukan</h2>
+            <p class="text-sm text-slate-700 leading-relaxed mb-3">Seluruh pengujian dilakukan langsung di browser (bukan hanya tinjauan kode), memakai data uji nyata yang diisi manual pada form publik maupun panggilan API langsung untuk pengujian rate limit.</p>
+
+            <h3 class="font-bold text-lg mb-2">9.1 Submit Form Publik &amp; Perbaikan Kota</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Dua submission uji dikirim ("Siti Aminah" sebelum perbaikan, "Budi Santoso" sesudah perbaikan) — hasil kedua menunjukkan "Kota/Kab: KOTA DEPOK" tampil benar di Kotak Masuk untuk data yang dikirim setelah perbaikan §8.1.</p>
+
+            <h3 class="font-bold text-lg mb-2 mt-4">9.2 Alur Terima &amp; Tolak</h3>
+            <table class="mb-3">
+                <tr><th>Skenario</th><th>Hasil</th></tr>
+                <tr><td>Terima "Budi Santoso" (lengkapi paket, kamar, wilayah, harga otomatis Rp 25.900.000)</td><td>Jamaah baru tercatat di Database Jamaah; status staging → <b>Diterima</b>, tertaut <code>jamaah_id</code>.</td></tr>
+                <tr><td>Tolak "Siti Aminah" tanpa alasan</td><td>Ditolak sistem — dialog tetap terbuka, tidak ada perubahan status.</td></tr>
+                <tr><td>Tolak "Siti Aminah" dengan alasan</td><td>Status staging → <b>Ditolak</b>, alasan tersimpan di <code>review_note</code>.</td></tr>
+                <tr><td>Peringatan NIK ganda</td><td>Ikon ⚠️ otomatis muncul untuk "Budi Santoso" di tabel Kotak Masuk setelah NIK-nya tercatat di tabel jamaah.</td></tr>
+            </table>
+            <p class="text-sm text-slate-700 leading-relaxed">Statistik akhir Kotak Masuk setelah pengujian: <b>Menunggu Validasi = 0, Diterima = 1, Ditolak = 1</b> — sesuai ekspektasi.</p>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">9.3 Rate Limiting (3x / Jam / IP)</h3>
+            <p class="text-sm text-slate-700 leading-relaxed mb-2">Diuji dengan mengirim 5 request <code>POST /api/public/pendaftaran</code> beruntun dari IP browser yang sama (memakai <code>fetch()</code> langsung, bukan isi form berkali-kali, agar pengujian backend murni tanpa variabel UI):</p>
+            <table>
+                <tr><th>Percobaan</th><th>Status HTTP</th><th>Hasil</th></tr>
+                <tr><td>1</td><td><span class="badge bg-emerald-100 text-emerald-700">200</span></td><td>Diterima (IP ini sudah punya 1 riwayat submit sebelumnya di jam yang sama)</td></tr>
+                <tr><td>2</td><td><span class="badge bg-emerald-100 text-emerald-700">200</span></td><td>Diterima — genap 3 submission dalam jendela 1 jam</td></tr>
+                <tr><td>3</td><td><span class="badge bg-rose-100 text-rose-700">429</span></td><td>Diblokir: "Terlalu banyak percobaan dari perangkat ini. Silakan coba lagi nanti."</td></tr>
+                <tr><td>4</td><td><span class="badge bg-rose-100 text-rose-700">429</span></td><td>Diblokir</td></tr>
+                <tr><td>5</td><td><span class="badge bg-rose-100 text-rose-700">429</span></td><td>Diblokir</td></tr>
+            </table>
+            <p class="text-sm text-slate-700 leading-relaxed mt-2">Hasil ini mengonfirmasi <code>RATE_LIMIT_MAX = 3</code> per jam per IP bekerja tepat sesuai desain. <i>Catatan: dua baris data uji ("Test RateLimit 0/1") tercipta di database development akibat pengujian ini — dapat dibersihkan kapan saja karena murni data uji.</i></p>
+
+            <h3 class="font-bold text-lg mb-2 mt-5">9.4 Belum Diuji</h3>
+            <p class="text-sm text-slate-700 leading-relaxed">Honeypot (perilaku silent-success saat field <code>website</code> terisi) belum diuji langsung di browser pada sesi ini — logikanya sudah diverifikasi lewat tinjauan kode (§4.1), namun pengujian end-to-end via UI belum dilakukan.</p>
+        </section>
+
+        <!-- 10. RINGKASAN BERKAS -->
+        <section id="berkas">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><i data-lucide="folder-git-2" class="w-6 h-6 text-emerald-600"></i> 10. Ringkasan Berkas yang Diubah</h2>
+            <table>
+                <tr><th>Berkas</th><th>Perubahan</th></tr>
+                <tr><td><code>Pendaftaran-Publik.html</code></td><td><span class="badge bg-emerald-100 text-emerald-700">Baru</span> Halaman form publik tanpa login di <code>/daftar</code>, cascading wilayah, honeypot.</td></tr>
+                <tr><td><code>db.py</code></td><td>Tabel baru <code>pendaftaran_publik</code> (termasuk kolom <code>city</code>); migrasi <code>ALTER TABLE pendaftaran_publik ADD COLUMN city TEXT</code>.</td></tr>
+                <tr><td><code>app.py</code></td><td><code>import time</code>; rate limiter in-memory; route <code>/daftar</code>; 3 endpoint baru (<code>POST /api/public/pendaftaran</code>, <code>GET /api/pendaftaran-publik</code>, <code>PUT .../reject</code>); logika penautan balik <code>source_submission_id</code> di <code>jamaah_create()</code>.</td></tr>
+                <tr><td><code>public/index.html</code></td><td>Menu &amp; badge sidebar "Kotak Masuk Publik"; halaman &amp; modal detail Kotak Masuk; fungsi <code>refreshInboxBadge()</code>, <code>fetchInbox()</code>, <code>openInboxDetail()</code>, <code>acceptSubmission()</code>, <code>rejectSubmission()</code>; perbaikan race condition <code>wilayahLoadPromise</code>; payload <code>source_submission_id</code> pada form Pendaftaran Baru.</td></tr>
+            </table>
+        </section>
+
+        <!-- 11. CATATAN LANJUTAN -->
+        <section id="lanjutan" class="pb-16">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><i data-lucide="lightbulb" class="w-6 h-6 text-emerald-600"></i> 11. Catatan &amp; Potensi Pengembangan Lanjutan</h2>
+            <div class="bg-white border border-slate-200 rounded-xl p-6 text-sm leading-relaxed text-slate-700 space-y-3">
+                <ul class="list-disc pl-6 space-y-1.5">
+                    <li>Field Kota/Kecamatan/Kelurahan pada alur "Terima" sengaja <b>tidak</b> diisi otomatis (hanya Provinsi) karena bersifat cascading dan butuh data API wilayah termuat berurutan — tim CS perlu memilih ulang jenjang di bawah Provinsi secara manual. Bisa ditingkatkan di kemudian hari dengan mengantre pemuatan cascading secara berurutan otomatis.</li>
+                    <li>Honeypot belum diuji end-to-end lewat UI browser (baru tinjauan kode) — sebaiknya diuji sebelum fitur ini dianggap sepenuhnya matang secara keamanan.</li>
+                    <li>Rate limit memakai dictionary in-memory per-proses — akan reset setiap kali server di-restart, dan tidak akan konsisten bila aplikasi suatu saat dijalankan multi-proses/multi-server. Cukup untuk skala saat ini; perlu dipindah ke penyimpanan bersama (mis. Redis) bila arsitektur berkembang ke multi-instance.</li>
+                    <li>Data uji dari pengujian rate limiting ("Test RateLimit 0/1") masih tersimpan di database development — dapat dihapus kapan saja tanpa dampak, murni data pengujian.</li>
+                </ul>
+            </div>
+        </section>
+
+    </main>
+</div>
+
+<footer class="bg-slate-900 text-slate-400 py-6 text-center text-xs">
+    &copy; 2026 UMAR CRM &mdash; Catatan Rilis Internal. Disusun otomatis berdasarkan sesi pengembangan 17 Juli 2026.
+</footer>
+
+<script>
+    hljs.highlightAll();
+    lucide.createIcons();
+    const sections = document.querySelectorAll('section, header');
+    const links = document.querySelectorAll('.sidebar-link');
+    window.addEventListener('scroll', () => {
+        let cur = '';
+        sections.forEach(s => { if (scrollY >= s.offsetTop - 120) cur = s.id; });
+        links.forEach(l => {
+            l.classList.toggle('active', l.getAttribute('href') === '#' + cur);
+        });
+    });
+</script>
+</body>
+</html>

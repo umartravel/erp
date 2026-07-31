@@ -1,0 +1,555 @@
+CETAK BIRU SISTEM (SYSTEM BLUEPRINT) & SPESIFIKASI TEKNIS
+
+PLATFORM ERP SAAS MANAJEMEN TRAVEL UMRAH & HAJI TERPADU
+
+Versi Dokumen: 2.4 (Enterprise Production Ready)
+
+1. ARSITEKTUR KONSEPTUAL & DIAGRAM ALIR DATA (DFD)
+
+Sistem ini menggunakan arsitektur Event-Driven & Relational-Centric, di mana setiap transaksi keuangan otomatis memicu jurnal akuntansi, alokasi stok logistik, dan kalkulasi komisi agen secara real-time.
+
+   [ FRONT-END / LANDING PAGE ] <---- (API Gateway) ----> [ SECURITY & AUTH (RBAC) ]
+                |                                                  |
+                v                                                  v
+     +--------------------+                             +---------------------+
+     | CRM & LEAD ENGINE  |                             | CORE TRANSACTION    |
+     | - WhatsApp Lead    |                             | - Booking Engine    |
+     | - Follow-up Log    |                             | - Invoice Generator |
+     +--------------------+                             +---------------------+
+                |                                                  |
+                v                                                  v
+     +--------------------+                             +---------------------+
+     |  OPERASIONAL HUB   | <--- (Real-Time Sync) ----> | FINANCE & GL ENGINE |
+     | - Manifest & Visa  |                             | - Auto-Journaling   |
+     | - Roomlist/Buslist |                             | - Currency Hedging  |
+     | - Siskopatuh Sync  |                             | - COA & Ledger      |
+     +--------------------+                             +---------------------+
+
+
+2. MATRIKS STRUKTUR MENU & SUB-MENU (MODULAR ENGINE)
+
+Berikut adalah struktur hirarki menu admin tingkat tinggi yang wajib ada dalam ERP Travel Umrah & Haji:
+
+[1.0] DASHBOARD KINERJA (Executive Summary)
+ ├── [1.1] Widget Real-time: Kuota Paket, Pendaftar Hari Ini, Kas/Bank Aktif
+ ├── [1.2] Grafik Revenue vs Cost, Forecast Keberangkatan (3 Bulan ke Depan)
+ └── [1.3] Alerts: Paspor Expired, Visa Belum Terbit, Piutang Jatuh Tempo
+
+[2.0] MANAJEMEN HUBUNGAN PELANGGAN (CRM & Lead Management)
+ ├── [2.1] Database Jamaah (Master)
+ ├── [2.2] Leads/Prospek Sales (Pipeline Kanban: New -> Contacted -> Booked -> Lost)
+ ├── [2.3] Log Aktivitas Follow-up (WA, Telepon, Pertemuan)
+ └── [2.4] Broadcast Center (Template WA & Email Automation)
+
+[3.0] MANAJEMEN PRODUK & LOGISTIK (Inventory Master)
+ ├── [3.1] Katalog Paket (Umrah, Haji, Tour Wisata)
+ ├── [3.2] Master Vendor (Maskapai, Hotel Saudi, LA Provider, Katering, Transportasi)
+ ├── [3.3] Inventori Perlengkapan (Manajemen Stok Koper, Seragam, Kain Ihram, Buku Panduan)
+ └── [3.4] Distribusi Perlengkapan (QR-Code Scanner Handover Status)
+
+[4.0] OPERASIONAL KEBERANGKATAN (Departure & Manifest)
+ ├── [4.1] Flight Allocator & Grouping (Pembagian Kloter & Bus)
+ ├── [4.2] Manifest Generator (Ekspor ke Format Maskapai & Visa Provider)
+ ├── [4.3] Tracking Dokumen (Status: Paspor, Buku Kuning/Meningitis, Foto, Visa)
+ ├── [4.4] Siskopatuh Kemenag Bridge (Penyelarasan Data Legalitas)
+ ├── [4.5] Roomlist Builder (Kombinasi Kamar Quad, Triple, Double dengan Validasi Mahram)
+ └── [4.6] Buslist & Seat Planner (Visual Drag-and-Drop Kursi Bus)
+
+[5.0] SISTEM KEAGENAN & AFFILIATE (Partnership Engine)
+ ├── [5.1] Hierarki Agen (Master Agen, Sub-Agen, Agen Cabang)
+ ├── [5.2] Aturan Komisi (Flat, Persentase, Multi-tier / MLM-style)
+ └── [5.3] Portal Mandiri Agen (Pendaftaran Jamaah & Klaim Komisi)
+
+[6.0] KEUANGAN & AKUNTANSI (ERP General Ledger)
+ ├── [6.1] Rencana Anggaran Biaya (RAB) Paket / Pricing Engine
+ ├── [6.2] Manajemen Piutang (Invoicing, Termin Cicilan, Virtual Account Gateway)
+ ├── [6.3] Manajemen Utang Vendor (AP - Pembayaran Tiket, Hotel Saudi, & LA)
+ ├── [6.4] Kas & Rekening Bank (Multi-currency IDR & SAR)
+ └── [6.5] Jurnal Otomatis, Buku Besar, Neraca, Laba-Rugi Per Keberangkatan
+
+[7.0] PENGATURAN & KEAMANAN (System Settings)
+ ├── [7.1] Hak Akses Berbasis Peran (RBAC - Role Based Access Control)
+ ├── [7.2] API Connector (Payment Gateway, Kemenag, WhatsApp API)
+ └── [7.3] Audit Trail (Log aktivitas login, perubahan data transaksi, penghapusan)
+
+
+3. LOGIKA BISNIS & FORMULA MATEMATIS UTAMA
+
+Sistem Erahajj mengadopsi beberapa formula matematika keuangan dan logistik untuk menjamin presisi data operasional:
+
+A. Rumus Harga Pokok Penjualan (HPP) & Pricing Paket
+
+Untuk menentukan kelayakan finansial sebelum paket dirilis ke publik, digunakan formula Harga Pokok Penjualan ($HPP$) per pax berdasarkan pilihan akomodasi:
+
+$$HPP_{pax} = \frac{Cost_{Tiket} + Cost_{LA} + Cost_{Visa} + Cost_{Perlengkapan}}{Kurs} + \left( \frac{Cost_{HotelMakkah}}{Kapasitas_{Kamar}} \right) + \left( \frac{Cost_{HotelMadinah}}{Kapasitas_{Kamar}} \right)$$
+
+Di mana $Kapasitas_{Kamar}$ diwakili oleh nilai:
+
+$\text{Quad} = 4$
+
+$\text{Triple} = 3$
+
+$\text{Double} = 2$
+
+B. Rumus Skema Komisi Agen Multi-Tier
+
+Sistem menghitung komisi bertingkat (multi-tier) otomatis untuk merangsang penjualan keagenan:
+
+$$K_{total} = K_{langsung} + \sum_{i=1}^{n} (P_{downline\_i} \times K_{overriding\_i})$$
+
+Di mana:
+
+$K_{total}$ = Total komisi yang diperoleh agen utama.
+
+$K_{langsung}$ = Komisi flat per jamaah dari penjualan pribadi.
+
+$P_{downline\_i}$ = Jumlah pax yang terjual oleh downline level-$i$.
+
+$K_{overriding\_i}$ = Nilai komisi overriding untuk level-$i$.
+
+4. SKEMA DATABASE RELASIONAL (SPESIFIKASI FIELD LEVEL)
+
+Berikut adalah rancangan skema database fisik (PostgreSQL / MySQL kompatibel) untuk tabel-tabel inti sistem:
+
+A. Tabel: mst_paket (Master Paket Perjalanan)
+
+Menyimpan spesifikasi produk perjalanan umrah/haji yang ditawarkan.
+
+Nama Field
+
+Tipe Data
+
+Atribut/Constraint
+
+Deskripsi / Validasi
+
+id_paket
+
+UUID
+
+PRIMARY KEY, DEFAULT gen_random_uuid()
+
+ID Unik Paket (Keamanan URL)
+
+kode_paket
+
+VARCHAR(30)
+
+UNIQUE, NOT NULL
+
+Kode unik (misal: UMR-REG-SEP26)
+
+nama_paket
+
+VARCHAR(150)
+
+NOT NULL
+
+Nama Paket Publik
+
+jenis_paket
+
+ENUM
+
+'UMRAH', 'HAJI', 'TOUR'
+
+Kategori utama paket
+
+tgl_keberangkatan
+
+DATE
+
+NOT NULL
+
+Tanggal keberangkatan grup
+
+durasi_hari
+
+INT
+
+CHECK (durasi_hari > 0)
+
+Jumlah hari perjalanan
+
+kuota_max
+
+INT
+
+NOT NULL
+
+Kapasitas maksimal jamaah
+
+kuota_terisi
+
+INT
+
+DEFAULT 0
+
+Terisi otomatis saat transaksi sukses
+
+currency
+
+VARCHAR(3)
+
+DEFAULT 'IDR'
+
+Pilihan mata uang transaksi
+
+harga_quad
+
+DECIMAL(15,2)
+
+NOT NULL
+
+Harga sekamar berempat
+
+harga_triple
+
+DECIMAL(15,2)
+
+NOT NULL
+
+Harga sekamar bertiga
+
+harga_double
+
+DECIMAL(15,2)
+
+NOT NULL
+
+Harga sekamar berdua
+
+status_paket
+
+VARCHAR(20)
+
+DEFAULT 'DRAFT'
+
+State: DRAFT, PUBLISHED, CLOSED
+
+B. Tabel: mst_jamaah (Informasi Kependudukan & Dokumen)
+
+Menyimpan data pribadi legal jamaah guna kebutuhan manifes dan paspor.
+
+Nama Field
+
+Tipe Data
+
+Atribut/Constraint
+
+Deskripsi / Validasi
+
+id_jamaah
+
+UUID
+
+PRIMARY KEY
+
+ID Unik Jamaah
+
+nik
+
+VARCHAR(16)
+
+UNIQUE, NOT NULL
+
+Nomor Induk Kependudukan
+
+nama_lengkap
+
+VARCHAR(150)
+
+NOT NULL
+
+Sesuai KTP & Paspor (Min. 3 kata jika umrah)
+
+no_paspor
+
+VARCHAR(20)
+
+UNIQUE, NULLABLE
+
+Diisi jika paspor sudah tersedia
+
+paspor_expiry
+
+DATE
+
+NULLABLE
+
+Validasi: Minimal 6 bulan sebelum tgl berangkat
+
+jenis_kelamin
+
+CHAR(1)
+
+CHECK (in ('L', 'P'))
+
+Kode Jenis Kelamin
+
+tempat_lahir
+
+VARCHAR(50)
+
+NOT NULL
+
+Tempat lahir jamaah
+
+tgl_lahir
+
+DATE
+
+NOT NULL
+
+Tanggal lahir
+
+no_hp
+
+VARCHAR(20)
+
+NOT NULL
+
+No HP utama yang terhubung WhatsApp
+
+status_mahram
+
+VARCHAR(30)
+
+NULLABLE
+
+Misal: Suami, Ayah Kandung, Ibu Kandung
+
+mahram_id
+
+UUID
+
+FOREIGN KEY -> mst_jamaah
+
+Menunjuk ke jamaah pendamping/mahramnya
+
+ukuran_seragam
+
+VARCHAR(5)
+
+NOT NULL
+
+S, M, L, XL, XXL, XXXL, Custom
+
+path_dokumen
+
+JSONB
+
+NULLABLE
+
+Menyimpan link scan KTP, Paspor, & Foto
+
+C. Tabel: trx_pendaftaran (Transaksi & Billing)
+
+Mencatat pendaftaran paket oleh jamaah serta status keuangannya.
+
+Nama Field
+
+Tipe Data
+
+Atribut/Constraint
+
+Deskripsi / Validasi
+
+id_transaksi
+
+UUID
+
+PRIMARY KEY
+
+ID Unik Transaksi
+
+no_invoice
+
+VARCHAR(50)
+
+UNIQUE, NOT NULL
+
+Format: INV/YYYYMMDD/[AUTO_INC]
+
+jamaah_id
+
+UUID
+
+FOREIGN KEY -> mst_jamaah
+
+ID Jamaah pendaftar utama
+
+paket_id
+
+UUID
+
+FOREIGN KEY -> mst_paket
+
+ID Paket yang dipilih
+
+agen_id
+
+UUID
+
+FOREIGN KEY -> mst_agen, NULLABLE
+
+NULL jika pendaftaran mandiri
+
+tipe_kamar
+
+ENUM
+
+'QUAD', 'TRIPLE', 'DOUBLE'
+
+Pilihan akomodasi kamar
+
+total_tagihan
+
+DECIMAL(15,2)
+
+NOT NULL
+
+Tagihan bersih (Harga Kamar + Biaya Tambahan)
+
+status_bayar
+
+VARCHAR(20)
+
+DEFAULT 'UNPAID'
+
+State: UNPAID, DP, PAID
+
+created_at
+
+TIMESTAMP
+
+DEFAULT CURRENT_TIMESTAMP
+
+Waktu pencatatan transaksi
+
+D. Tabel: acc_jurnal_umum (Double Entry Accounting Ledger)
+
+Setiap transaksi pembayaran secara instan memicu pembuatan baris entri akuntansi (Debit dan Kredit seimbang).
+
+Nama Field
+
+Tipe Data
+
+Atribut/Constraint
+
+Deskripsi / Validasi
+
+id_jurnal
+
+UUID
+
+PRIMARY KEY
+
+ID Unik Jurnal
+
+no_bukti
+
+VARCHAR(50)
+
+NOT NULL
+
+Berelasi dengan No Invoice / Kwitansi
+
+tgl_jurnal
+
+DATE
+
+NOT NULL
+
+Tanggal pembukuan
+
+coa_code
+
+VARCHAR(20)
+
+FOREIGN KEY -> acc_coa
+
+Chart of Account (Aset, Pendapatan, HPP, dll)
+
+posisi
+
+ENUM
+
+'DEBIT', 'KREDIT'
+
+Sisi penempatan dana
+
+nominal
+
+DECIMAL(15,2)
+
+NOT NULL
+
+Nilai uang transaksi
+
+keterangan
+
+TEXT
+
+NOT NULL
+
+Keterangan Jurnal (misal: DP Paket Umrah Bpk. X)
+
+5. FLOW WORKFLOW & STATE MACHINES (ALUR PROSES UTAMA)
+
+Setiap proses utama memiliki transisi status yang ketat untuk meminimalisir kesalahan operasional manusia (human error).
+
+A. Alur Siklus Dokumen Jamaah (Passport & Visa Workflow)
+
+[DRAFT] --> [DOKUMEN DITERIMA] --> [VERIFIKASI FISIK] --> [PENGAJUAN VISA] --> [VISA ISSUED]
+
+
+Draft: Data nama telah di-input namun dokumen fisik belum diterima di kantor travel.
+
+Dokumen Diterima: Paspor, Pasfoto, & Buku Kuning fisik telah diserahkan jamaah.
+
+Verifikasi Fisik: Pemeriksaan masa aktif paspor (>6 bulan dari kepulangan) dan kesesuaian 3 suku kata nama.
+
+Pengajuan Visa: Paspor dikirim ke Provider Visa (termasuk pembuatan MOFA).
+
+Visa Issued: Visa resmi diterbitkan oleh Kementerian Haji dan Umrah Arab Saudi (siap tempel/print).
+
+B. Alur Logika Keuangan Otomatis (Auto-Journaling Rules)
+
+Saat terjadi transaksi DP (Down Payment) dari jamaah senilai Rp 10.000.000,- melalui Virtual Account, sistem akuntansi melakukan posting jurnal otomatis secara instan:
+
+Jurnal Saat DP Diterima:
+
+Debit: 101-0001 (Kas/Bank IDR) | Rp 10.000.000,00
+
+Kredit: 201-0002 (Pendapatan Diterima di Muka - Paket Umrah) | Rp 10.000.000,00
+
+Jurnal Pengakuan Pendapatan (Setelah Jamaah Berangkat / Selesai):
+
+Debit: 201-0002 (Pendapatan Diterima di Muka) | Rp 10.000.000,00
+
+Kredit: 401-0001 (Pendapatan Paket Umrah) | Rp 10.000.000,00
+
+6. INTEGRASI EKSTERNAL (THIRD-PARTY CONNECTOR GATEWAY)
+
+Sistem ERP Erahajj mengandalkan 4 API eksternal utama untuk memastikan efisiensi tinggi:
+
+SISKOPATUH API (Kementerian Agama RI):
+
+Metode: POST /api/v1/siskopatuh/sinkronisasi-jamaah
+
+Payload: Berisi data paspor, NIK, ID travel berizin (PPIU), dan asuransi guna mendapatkan nomor porsi keberangkatan legal secara instan.
+
+PAYMENT GATEWAY (Xendit/Midtrans):
+
+Metode: POST /v2/charge
+
+Output: Mengeluarkan nomor Virtual Account (VA) untuk BCA, Mandiri, BNI, BSI secara unik per invoice pendaftaran.
+
+WHATSAPP GATEWAY (Fonnte/Waba API):
+
+Fungsi: Mengirimkan kuitansi PDF digital dan notifikasi jadwal manasik kepada nomor WhatsApp jamaah yang tersimpan dalam mst_jamaah.no_hp.
+
+SAUDI ARABIAN HAJJ GATEWAY (MOFA Portal Sync):
+
+Fungsi: Sinkronisasi status E-Visa dan pemesanan layanan akomodasi BRN (Booking Reference Number) untuk hotel & transportasi langsung dari penyedia layanan di Makkah & Madinah.
