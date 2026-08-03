@@ -2205,12 +2205,13 @@ async def company_assets_create(body: dict = Depends(json_body), user=Depends(au
     if condition not in ASSET_CONDITIONS:
         raise HTTPException(status_code=400, detail="Kondisi tidak valid.")
     assigned_to = (g("assigned_to") or "").strip() or None
+    asset_code = db.next_asset_code()
     new_id, _ = db.execute(
-        "INSERT INTO company_assets (item_name, serial_number, condition, assigned_to, assigned_at, notes) "
-        "VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO company_assets (item_name, serial_number, condition, assigned_to, assigned_at, notes, asset_code) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
         (
             item_name, g("serial_number"), condition, assigned_to,
-            datetime.datetime.now().isoformat() if assigned_to else None, g("notes"),
+            datetime.datetime.now().isoformat() if assigned_to else None, g("notes"), asset_code,
         ),
     )
     if assigned_to:
@@ -2256,20 +2257,21 @@ async def company_assets_transfer(aid: int, body: dict = Depends(json_body), use
     asset = db.query_one("SELECT * FROM company_assets WHERE id = ?", (aid,))
     if not asset:
         raise HTTPException(status_code=404, detail="Aset tidak ditemukan")
-    new_holder = (body.get("assigned_to") or "").strip()
-    if not new_holder:
-        raise HTTPException(status_code=400, detail="Nama pemegang baru wajib diisi.")
+    # Nilai kosong = dikembalikan ke gudang/belum ditugaskan -- dropdown pemilihan di
+    # frontend sudah punya opsi eksplisit untuk itu, jadi tidak perlu lagi dipaksa lewat
+    # Edit Aset seperti sebelumnya.
+    new_holder = (body.get("assigned_to") or "").strip() or None
     db.execute(
         "UPDATE company_assets SET assigned_to = ?, assigned_at = ? WHERE id = ?",
-        (new_holder, datetime.datetime.now().isoformat(), aid),
+        (new_holder, datetime.datetime.now().isoformat() if new_holder else None, aid),
     )
     _record_asset_transfer(aid, asset["assigned_to"], new_holder, user["name"])
     log_action(
         user, "TRANSFER_ASSET",
-        f"Memindahkan aset {asset['item_name']} dari {asset['assigned_to'] or 'gudang'} ke {new_holder}",
+        f"Memindahkan aset {asset['item_name']} dari {asset['assigned_to'] or 'gudang'} ke {new_holder or 'gudang'}",
     )
     notify("data_updated", "company_asset")
-    return {"message": f"Aset berhasil dipindahkan ke {new_holder}."}
+    return {"message": f"Aset berhasil dipindahkan ke {new_holder or 'gudang'}."}
 
 
 @app.delete("/api/company-assets/{aid}")

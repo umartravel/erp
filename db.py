@@ -562,6 +562,11 @@ ALTER_QUERIES = [
     "ALTER TABLE procurement ADD COLUMN reviewed_at DATETIME",
     "ALTER TABLE procurement ADD COLUMN reject_reason TEXT",
     "ALTER TABLE procurement ADD COLUMN created_by TEXT",
+    # Kode aset internal untuk fitur scan/label QR -- terpisah dari serial_number pabrik
+    # yang bisa kosong/duplikat. CREATE UNIQUE INDEX idempoten sendiri lewat IF NOT EXISTS,
+    # dimasukkan ke daftar ini juga supaya jalan lewat mekanisme migrasi yang sama.
+    "ALTER TABLE company_assets ADD COLUMN asset_code TEXT",
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_company_assets_code ON company_assets(asset_code)",
 ]
 
 
@@ -584,7 +589,46 @@ def init_db():
     _seed_settings()
     _backfill_status_dimensions()
     _backfill_procurement_status()
+    _backfill_asset_codes()
     print("Berhasil terhubung ke SQLite database Umar CRM.")
+
+
+def next_asset_code():
+    """Kode aset internal unik (AST-0001 dst) untuk fitur scan/label QR -- disimpan sebagai
+    counter monoton di tabel settings (BUKAN MAX() dari baris yang masih ada), supaya kode
+    dari aset yang sudah dihapus tidak pernah dipakai ulang untuk aset lain (mencegah barcode
+    lama yang masih tertempel fisik di suatu barang tiba-tiba menunjuk ke aset yang salah)."""
+    row = query_one("SELECT value FROM settings WHERE key = 'asset_code_seq'")
+    seq = (int(row["value"]) if row and row["value"] else 0) + 1
+    execute(
+        "INSERT INTO settings (key, value) VALUES ('asset_code_seq', ?) "
+        "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        (str(seq),),
+    )
+    return f"AST-{seq:04d}"
+
+
+def _backfill_asset_codes():
+    # Angkat counter ke kode tertinggi yang sudah terpakai (mis. baris yang sempat dibuat
+    # sebelum counter ini ada) -- supaya next_asset_code() tidak pernah menabrak kode lama.
+    rows = query_all("SELECT asset_code FROM company_assets WHERE asset_code IS NOT NULL")
+    max_seq = 0
+    for r in rows:
+        try:
+            max_seq = max(max_seq, int(r["asset_code"].split("-")[1]))
+        except (IndexError, ValueError):
+            pass
+    if max_seq:
+        current = query_one("SELECT value FROM settings WHERE key = 'asset_code_seq'")
+        if not current or int(current["value"] or 0) < max_seq:
+            execute(
+                "INSERT INTO settings (key, value) VALUES ('asset_code_seq', ?) "
+                "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                (str(max_seq),),
+            )
+    missing = query_all("SELECT id FROM company_assets WHERE asset_code IS NULL ORDER BY id ASC")
+    for r in missing:
+        execute("UPDATE company_assets SET asset_code = ? WHERE id = ?", (next_asset_code(), r["id"]))
 
 
 def _backfill_procurement_status():

@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
     <!-- Smart Search Dropdown (Select2) -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
@@ -747,8 +748,22 @@
                                 <button onclick="openAddAssetModal()" class="bg-indigo-600 text-white text-xs px-3 py-1.5 rounded-md hover:bg-indigo-700 shadow-sm flex items-center gap-1"><i data-lucide="plus" class="w-3 h-3"></i>Tambah Aset</button>
                             </div>
                             <div class="p-4 flex-1 overflow-x-auto">
+                                <div class="flex gap-2 mb-3">
+                                    <div class="relative flex-1">
+                                        <i data-lucide="scan-line" class="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                        <input type="text" id="asset-scan-input" placeholder="Scan atau ketik kode aset (AST-0001)..." class="w-full border rounded-md pl-8 pr-2 py-1.5 text-xs bg-gray-50">
+                                    </div>
+                                </div>
+                                <div id="asset-scan-result" class="hidden border border-indigo-200 bg-indigo-50/50 rounded-lg p-3 mb-3"></div>
+                                <div id="asset-bulk-bar" class="hidden items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 mb-3">
+                                    <span class="text-xs text-blue-700"><b id="asset-bulk-count">0</b> aset dipilih</span>
+                                    <button onclick="bulkPrintAssetLabels()" class="px-2.5 py-1 bg-indigo-600 text-white rounded-md text-xs font-medium hover:bg-indigo-700 flex items-center gap-1"><i data-lucide="printer" class="w-3 h-3"></i>Cetak Label Terpilih</button>
+                                </div>
                                 <table class="w-full text-sm text-left">
-                                    <thead class="text-xs text-gray-500 uppercase bg-gray-50"><tr><th>Nama Aset</th><th>No. Seri</th><th>Kondisi</th><th>Dipegang Oleh</th><th class="text-center">Aksi</th></tr></thead>
+                                    <thead class="text-xs text-gray-500 uppercase bg-gray-50"><tr>
+                                        <th class="w-6 px-2"></th>
+                                        <th>Nama Aset</th><th>Kode Aset</th><th>Kondisi</th><th>Dipegang Oleh</th><th class="text-right">Aksi</th>
+                                    </tr></thead>
                                     <tbody id="table-assets" class="divide-y"></tbody>
                                 </table>
                             </div>
@@ -1748,6 +1763,7 @@
             <h3 class="font-bold text-lg mb-4 border-b pb-2 flex items-center gap-2"><i data-lucide="laptop" class="w-5 h-5 text-indigo-600"></i><span id="modal-asset-title">Tambah Aset Baru</span></h3>
             <form id="form-asset" class="space-y-4">
                 <input type="hidden" id="asset-edit-id">
+                <div id="asset-code-row" class="hidden"><label class="text-xs font-medium">Kode Aset</label><input type="text" id="asset-code-display" class="w-full border p-2 rounded text-sm bg-gray-100 text-gray-500" disabled></div>
                 <div><label class="text-xs font-medium">Nama Aset</label><input type="text" id="asset-name" class="w-full border p-2 rounded text-sm bg-gray-50" placeholder="Cth: Laptop Dell XPS 13" required></div>
                 <div><label class="text-xs font-medium">No. Seri</label><input type="text" id="asset-serial" class="w-full border p-2 rounded text-sm bg-gray-50" placeholder="Opsional"></div>
                 <div>
@@ -1759,13 +1775,48 @@
                         <option value="Hilang">Hilang</option>
                     </select>
                 </div>
-                <div><label class="text-xs font-medium">Dipegang Oleh</label><input type="text" id="asset-assigned" class="w-full border p-2 rounded text-sm bg-gray-50" placeholder="Kosongkan bila masih di gudang"></div>
+                <div>
+                    <label class="text-xs font-medium">Dipegang Oleh</label>
+                    <select id="asset-assigned" class="w-full border p-2 rounded text-sm bg-gray-50" onchange="toggleAssetCustomHolder(this, 'asset-assigned-custom-row')"></select>
+                    <div id="asset-assigned-custom-row" class="hidden mt-2"><input type="text" id="asset-assigned-custom" class="w-full border p-2 rounded text-sm bg-gray-50" placeholder="Nama lokasi/ruangan baru..."></div>
+                </div>
                 <div><label class="text-xs font-medium">Catatan</label><textarea id="asset-notes" rows="2" class="w-full border p-2 rounded text-sm bg-gray-50"></textarea></div>
                 <div class="flex justify-end gap-2 mt-4">
                     <button type="button" onclick="closeModal('modal-asset')" class="px-4 py-2 border rounded-lg text-sm font-medium">Batal</button>
                     <button type="submit" id="modal-asset-submit-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium shadow-sm">Simpan Aset</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- MODAL PINDAH TANGAN ASET -->
+    <div id="modal-asset-transfer" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
+            <h3 class="font-bold text-lg mb-4 border-b pb-2 flex items-center gap-2"><i data-lucide="user-round-cog" class="w-5 h-5 text-indigo-600"></i>Pindah Tangan — <span id="asset-transfer-title">-</span></h3>
+            <input type="hidden" id="asset-transfer-id">
+            <label class="text-xs font-medium">Pindahkan ke</label>
+            <select id="asset-transfer-select" class="w-full border p-2 rounded text-sm bg-gray-50" onchange="toggleAssetCustomHolder(this, 'asset-transfer-custom-row')"></select>
+            <div id="asset-transfer-custom-row" class="hidden mt-2"><input type="text" id="asset-transfer-custom" class="w-full border p-2 rounded text-sm bg-gray-50" placeholder="Nama lokasi/ruangan baru..."></div>
+            <div class="flex justify-end gap-2 mt-5">
+                <button type="button" onclick="closeModal('modal-asset-transfer')" class="px-4 py-2 border rounded-lg text-sm font-medium">Batal</button>
+                <button type="button" onclick="submitAssetTransfer()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium shadow-sm">Konfirmasi Pindah</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL PRATINJAU LABEL QR ASET -->
+    <div id="modal-asset-label" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-xs p-6 text-center">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="font-bold text-sm">Pratinjau Label</h3>
+                <button onclick="closeModal('modal-asset-label')" class="text-gray-400 hover:text-red-500"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            <div class="border rounded-lg p-4">
+                <div id="asset-label-qr" class="mx-auto flex justify-center"></div>
+                <p id="asset-label-name" class="text-xs font-bold mt-2">-</p>
+                <p id="asset-label-code" class="text-[11px] text-gray-500 font-mono">-</p>
+            </div>
+            <button onclick="printSingleAssetLabel()" class="w-full mt-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium shadow-sm flex items-center justify-center gap-1"><i data-lucide="printer" class="w-4 h-4"></i>Cetak</button>
         </div>
     </div>
 
@@ -2415,6 +2466,7 @@
             showPage('dashboard');
             refreshInboxBadge();
             fetchInventory(); // supaya badge stok menipis langsung terlihat tanpa perlu buka halaman Ops dulu
+            handleAssetDeepLinkIfPresent(); // ?asset=AST-0001 dari scan QR kamera HP -> langsung buka detailnya
             // Real-Time Sync sekarang ditangani via WebSocket
         }
         
@@ -4025,32 +4077,96 @@
 
         // --- ASET PERUSAHAAN (per-unit, terpisah dari stok gudang) ---
         let assetsCache = [];
+        let assetSelected = new Set();
+        // Daftar lokasi generik -- gampang diedit di sini kalau mau disesuaikan ke ruangan/kantor sungguhan.
+        const ASSET_LOCATIONS = ['Gudang Kantor', 'Ruang Meeting', 'Resepsionis'];
         const ASSET_CONDITION_BADGE = {
             'Baik': 'bg-emerald-100 text-emerald-700',
             'Rusak Ringan': 'bg-amber-100 text-amber-700',
             'Rusak Berat': 'bg-red-100 text-red-700',
             'Hilang': 'bg-gray-200 text-gray-700',
         };
+        function toggleAssetCustomHolder(selectEl, customRowId) {
+            document.getElementById(customRowId).classList.toggle('hidden', selectEl.value !== '__custom__');
+        }
+        async function populateAssetHolderSelect(selectEl, currentValue) {
+            await loadUsersDirectory();
+            const employees = Object.keys(usersDirectory);
+            const isKnown = !currentValue || employees.includes(currentValue) || ASSET_LOCATIONS.includes(currentValue);
+            selectEl.innerHTML = '<option value="">-- Belum ditugaskan --</option>' +
+                (employees.length ? `<optgroup label="Karyawan">${employees.map(e => `<option value="${e}">${e}</option>`).join('')}</optgroup>` : '') +
+                `<optgroup label="Lokasi">${ASSET_LOCATIONS.map(l => `<option value="${l}">${l}</option>`).join('')}</optgroup>` +
+                `<option value="__custom__">+ Lokasi lain...</option>`;
+            const customRowId = selectEl.id === 'asset-transfer-select' ? 'asset-transfer-custom-row' : 'asset-assigned-custom-row';
+            const customInputId = selectEl.id === 'asset-transfer-select' ? 'asset-transfer-custom' : 'asset-assigned-custom';
+            if (!isKnown) {
+                selectEl.value = '__custom__';
+                document.getElementById(customRowId).classList.remove('hidden');
+                document.getElementById(customInputId).value = currentValue;
+            } else {
+                selectEl.value = currentValue || '';
+                document.getElementById(customRowId).classList.add('hidden');
+            }
+        }
+        function readAssetHolderValue(selectId, customInputId) {
+            const sel = document.getElementById(selectId).value;
+            if (sel === '__custom__') return document.getElementById(customInputId).value.trim();
+            return sel;
+        }
+        function closeAllAssetMenus() {
+            document.querySelectorAll('[id^="asset-menu-"]').forEach(m => m.classList.add('hidden'));
+        }
+        function toggleAssetMenu(id) {
+            const el = document.getElementById(id);
+            const wasHidden = el.classList.contains('hidden');
+            closeAllAssetMenus();
+            if (wasHidden) el.classList.remove('hidden');
+        }
+        document.addEventListener('click', e => {
+            if (!e.target.closest('[id^="asset-menu-"]') && !e.target.closest('[onclick^="toggleAssetMenu"]')) closeAllAssetMenus();
+        });
+        function toggleAssetSelect(id, checked) {
+            if (checked) assetSelected.add(id); else assetSelected.delete(id);
+            const bar = document.getElementById('asset-bulk-bar');
+            document.getElementById('asset-bulk-count').innerText = assetSelected.size;
+            bar.classList.toggle('hidden', assetSelected.size === 0);
+            bar.classList.toggle('flex', assetSelected.size > 0);
+        }
+        function assetActionsHtml(a) {
+            const menuId = `asset-menu-${a.id}`;
+            return `<button onclick="openTransferAssetModal(${a.id})" class="px-2.5 py-1.5 border border-gray-300 rounded-md text-xs font-medium hover:bg-gray-50 whitespace-nowrap inline-flex items-center gap-1"><i data-lucide="user-round-cog" class="w-3.5 h-3.5"></i>Pindah Tangan</button>
+                <div class="relative inline-block">
+                    <button onclick="toggleAssetMenu('${menuId}')" title="Aksi Lain" class="p-1.5 text-gray-500 hover:bg-gray-100 rounded-md"><i data-lucide="more-vertical" class="w-4 h-4"></i></button>
+                    <div id="${menuId}" class="hidden absolute right-0 top-9 bg-white border rounded-lg shadow-lg z-20 min-w-[160px] py-1 text-left">
+                        <div onclick="closeAllAssetMenus();openAssetHistoryModal(${a.id})" class="px-3 py-2 text-xs cursor-pointer hover:bg-gray-50 text-gray-700">Riwayat perpindahan</div>
+                        <div onclick="closeAllAssetMenus();openEditAssetModal(${a.id})" class="px-3 py-2 text-xs cursor-pointer hover:bg-gray-50 text-gray-700">Edit aset</div>
+                        <div onclick="closeAllAssetMenus();openAssetLabelModal(${a.id})" class="px-3 py-2 text-xs cursor-pointer hover:bg-gray-50 text-gray-700">Cetak label</div>
+                        <div onclick="closeAllAssetMenus();deleteAsset(${a.id})" class="px-3 py-2 text-xs cursor-pointer hover:bg-gray-50 text-red-600">Hapus aset</div>
+                    </div>
+                </div>`;
+        }
         async function fetchCompanyAssets() {
             try {
+                await loadUsersDirectory();
                 const res = await authFetch('/company-assets'); const list = await res.json();
+                const validIds = new Set(list.map(a => a.id));
+                assetSelected.forEach(id => { if (!validIds.has(id)) assetSelected.delete(id); });
                 assetsCache = list;
                 document.getElementById('table-assets').innerHTML = list.map(a => {
                     const badge = ASSET_CONDITION_BADGE[a.condition] || 'bg-gray-100 text-gray-700';
                     return `<tr>
+                        <td class="px-2 py-2"><input type="checkbox" onchange="toggleAssetSelect(${a.id}, this.checked)" ${assetSelected.has(a.id) ? 'checked' : ''} class="w-4 h-4 rounded border-gray-300"></td>
                         <td class="px-2 py-2 font-medium">${a.item_name}</td>
-                        <td class="px-2 py-2 text-xs text-gray-500">${a.serial_number || '-'}</td>
+                        <td class="px-2 py-2 text-xs"><span class="inline-flex items-center gap-1 bg-gray-100 rounded px-1.5 py-0.5 font-mono"><i data-lucide="qr-code" class="w-3 h-3"></i>${a.asset_code || '-'}</span></td>
                         <td class="px-2 py-2"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${badge}">${a.condition}</span></td>
                         <td class="px-2 py-2 text-xs">${a.assigned_to ? a.assigned_to : '<span class="text-gray-400 italic">Di gudang</span>'}</td>
-                        <td class="px-2 py-2 text-center">
-                            <button onclick="openAssetHistoryModal(${a.id})" class="p-1 text-gray-500 hover:text-purple-600" title="Riwayat Perpindahan"><i data-lucide="history" class="w-3.5 h-3.5"></i></button>
-                            <button onclick="openTransferAssetModal(${a.id})" class="p-1 text-gray-500 hover:text-indigo-600" title="Pindah Tangan"><i data-lucide="user-round-cog" class="w-3.5 h-3.5"></i></button>
-                            <button onclick="openEditAssetModal(${a.id})" class="p-1 text-gray-500 hover:text-blue-600" title="Edit Aset"><i data-lucide="edit" class="w-3.5 h-3.5"></i></button>
-                            <button onclick="deleteAsset(${a.id})" class="p-1 text-gray-500 hover:text-red-600" title="Hapus Aset"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
-                        </td>
+                        <td class="px-2 py-2 text-right whitespace-nowrap"><div class="flex items-center justify-end gap-1.5">${assetActionsHtml(a)}</div></td>
                     </tr>`;
-                }).join('') || '<tr><td colspan="5" class="p-4 text-center text-gray-400 text-xs">Belum ada aset perusahaan tercatat.</td></tr>';
+                }).join('') || '<tr><td colspan="6" class="p-4 text-center text-gray-400 text-xs">Belum ada aset perusahaan tercatat.</td></tr>';
                 if (typeof lucide !== 'undefined') lucide.createIcons();
+                document.getElementById('asset-bulk-count').innerText = assetSelected.size;
+                document.getElementById('asset-bulk-bar').classList.toggle('hidden', assetSelected.size === 0);
+                document.getElementById('asset-bulk-bar').classList.toggle('flex', assetSelected.size > 0);
             } catch (e) {}
         }
         function openAddAssetModal() {
@@ -4058,6 +4174,8 @@
             document.getElementById('modal-asset-title').innerText = 'Tambah Aset Baru';
             document.getElementById('modal-asset-submit-btn').innerText = 'Simpan Aset';
             document.getElementById('form-asset').reset();
+            document.getElementById('asset-code-row').classList.add('hidden');
+            populateAssetHolderSelect(document.getElementById('asset-assigned'), '');
             openModal('modal-asset');
         }
         function openEditAssetModal(id) {
@@ -4066,10 +4184,12 @@
             document.getElementById('asset-edit-id').value = a.id;
             document.getElementById('modal-asset-title').innerText = `Edit Aset — ${a.item_name}`;
             document.getElementById('modal-asset-submit-btn').innerText = 'Update Aset';
+            document.getElementById('asset-code-row').classList.remove('hidden');
+            document.getElementById('asset-code-display').value = a.asset_code || '-';
             document.getElementById('asset-name').value = a.item_name;
             document.getElementById('asset-serial').value = a.serial_number || '';
             document.getElementById('asset-condition').value = a.condition;
-            document.getElementById('asset-assigned').value = a.assigned_to || '';
+            populateAssetHolderSelect(document.getElementById('asset-assigned'), a.assigned_to || '');
             document.getElementById('asset-notes').value = a.notes || '';
             openModal('modal-asset');
         }
@@ -4080,7 +4200,7 @@
                 item_name: document.getElementById('asset-name').value,
                 serial_number: document.getElementById('asset-serial').value,
                 condition: document.getElementById('asset-condition').value,
-                assigned_to: document.getElementById('asset-assigned').value,
+                assigned_to: readAssetHolderValue('asset-assigned', 'asset-assigned-custom'),
                 notes: document.getElementById('asset-notes').value,
             };
             try {
@@ -4108,11 +4228,18 @@
         async function openTransferAssetModal(id) {
             const a = assetsCache.find(x => x.id === id);
             if (!a) return;
-            const newHolder = await showDialog({ type: 'prompt', title: 'Pindah Tangan Aset', message: `Pindahkan "${a.item_name}" ke siapa? (untuk kembalikan ke gudang, kosongkan lewat Edit Aset)`, okText: 'Pindahkan', icon: '<i data-lucide="user-round-cog" class="h-6 w-6 text-indigo-600"></i>', iconBg: 'bg-indigo-100' });
-            if (!newHolder) return;
+            document.getElementById('asset-transfer-id').value = a.id;
+            document.getElementById('asset-transfer-title').innerText = a.item_name;
+            await populateAssetHolderSelect(document.getElementById('asset-transfer-select'), a.assigned_to || '');
+            openModal('modal-asset-transfer');
+        }
+        async function submitAssetTransfer() {
+            const id = document.getElementById('asset-transfer-id').value;
+            const newHolder = readAssetHolderValue('asset-transfer-select', 'asset-transfer-custom');
             try {
                 const res = await authFetch(`/company-assets/${id}/transfer`, { method: 'PUT', body: JSON.stringify({ assigned_to: newHolder }) });
                 showToast((await res.json()).message);
+                closeModal('modal-asset-transfer');
                 fetchCompanyAssets();
             } catch (err) { showToast(err.message, 'error'); }
         }
@@ -4138,6 +4265,121 @@
                 `).join('') || '<p class="text-xs text-gray-400 italic">Belum ada riwayat perpindahan untuk aset ini.</p>';
                 if (typeof lucide !== 'undefined') lucide.createIcons();
             } catch (err) { body.innerHTML = `<p class="text-xs text-red-500">${err.message}</p>`; }
+        }
+        function renderAssetScanResult(id) {
+            const a = assetsCache.find(x => x.id === id);
+            const box = document.getElementById('asset-scan-result');
+            document.querySelectorAll('#table-assets tr').forEach(tr => tr.classList.remove('bg-indigo-50'));
+            if (!a) { box.classList.add('hidden'); return; }
+            const badge = ASSET_CONDITION_BADGE[a.condition] || 'bg-gray-100 text-gray-700';
+            box.innerHTML = `
+                <div class="flex items-center justify-between mb-2">
+                    <div>
+                        <p class="font-bold text-sm text-gray-800">${a.item_name}</p>
+                        <p class="text-xs text-gray-500 font-mono">${a.asset_code || '-'}</p>
+                    </div>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-bold ${badge}">${a.condition}</span>
+                </div>
+                <p class="text-xs text-gray-600 mb-3">Dipegang: ${a.assigned_to || 'Di gudang'}</p>
+                <div class="flex gap-2">
+                    <button onclick="openTransferAssetModal(${a.id})" class="flex-1 px-2.5 py-1.5 bg-indigo-600 text-white rounded-md text-xs font-medium hover:bg-indigo-700 flex items-center justify-center gap-1"><i data-lucide="user-round-cog" class="w-3.5 h-3.5"></i>Pindah Tangan</button>
+                    <button onclick="openAssetLabelModal(${a.id})" class="flex-1 px-2.5 py-1.5 border border-gray-300 rounded-md text-xs font-medium hover:bg-gray-50 flex items-center justify-center gap-1"><i data-lucide="printer" class="w-3.5 h-3.5"></i>Cetak Label</button>
+                </div>`;
+            box.classList.remove('hidden');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+        function assetScanSearch(rawCode) {
+            const code = (rawCode || '').trim();
+            if (!code) return;
+            const a = assetsCache.find(x => (x.asset_code || '').toLowerCase() === code.toLowerCase());
+            if (!a) {
+                showToast(`Kode aset "${code}" tidak ditemukan.`, 'error');
+                document.getElementById('asset-scan-result').classList.add('hidden');
+                return;
+            }
+            renderAssetScanResult(a.id);
+        }
+        document.getElementById('asset-scan-input').addEventListener('keydown', e => {
+            if (e.key === 'Enter') { assetScanSearch(e.target.value); e.target.value = ''; }
+        });
+
+        let currentLabelAssetId = null;
+        function assetDeepLinkUrl(code) {
+            const url = new URL(window.location.href);
+            url.search = '';
+            url.searchParams.set('asset', code);
+            return url.toString();
+        }
+        function _qrDataUrlSync(text, size) {
+            // qrcodejs merender ke elemen DOM (bukan fungsi toCanvas/toDataURL) -- generate
+            // ke div tersembunyi lalu ambil dataURL dari canvas yang otomatis dibuatnya.
+            if (typeof QRCode === 'undefined') return '';
+            const tempDiv = document.createElement('div');
+            tempDiv.style.cssText = 'position:absolute;left:-9999px;';
+            document.body.appendChild(tempDiv);
+            new QRCode(tempDiv, { text, width: size, height: size, correctLevel: QRCode.CorrectLevel.M });
+            const canvas = tempDiv.querySelector('canvas');
+            const dataUrl = canvas ? canvas.toDataURL('image/png') : '';
+            document.body.removeChild(tempDiv);
+            return dataUrl;
+        }
+        function openAssetLabelModal(id) {
+            const a = assetsCache.find(x => x.id === id);
+            if (!a || !a.asset_code) return;
+            currentLabelAssetId = id;
+            document.getElementById('asset-label-name').innerText = a.item_name;
+            document.getElementById('asset-label-code').innerText = a.asset_code;
+            const dataUrl = _qrDataUrlSync(assetDeepLinkUrl(a.asset_code), 160);
+            document.getElementById('asset-label-qr').innerHTML = dataUrl ? `<img src="${dataUrl}" width="160" height="160">` : '';
+            openModal('modal-asset-label');
+        }
+        async function _buildAssetLabelHtml(a) {
+            const dataUrl = _qrDataUrlSync(assetDeepLinkUrl(a.asset_code), 180);
+            const qrImg = dataUrl ? `<img src="${dataUrl}" style="width: 130px; height: 130px;">` : '';
+            return `<div style="border: 1px dashed #999; border-radius: 8px; padding: 12px; width: 160px; display: inline-block; text-align: center; margin: 6px; page-break-inside: avoid;">
+                ${qrImg}
+                <div style="font-size: 11px; font-weight: bold; margin-top: 6px;">${a.item_name}</div>
+                <div style="font-size: 10px; color: #555; font-family: monospace;">${a.asset_code}</div>
+            </div>`;
+        }
+        async function _printAssetLabels(list) {
+            if (!list.length) return showToast('Tidak ada aset dengan kode untuk dicetak.', 'error');
+            const printWindow = window.open('', '_blank');
+            if (!printWindow) return showToast('Gagal mencetak: Pop-up diblokir oleh browser. Mohon izinkan pop-up (Allow Pop-ups).', 'error');
+            const labelsHtml = (await Promise.all(list.map(_buildAssetLabelHtml))).join('');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Label Aset</title>
+                    <style>
+                        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 16px; }
+                        @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+                    </style>
+                </head>
+                <body>
+                    ${labelsHtml}
+                    <scr` + `ipt>window.onload = function() { setTimeout(function() { window.print(); }, 500); }</scr` + `ipt>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
+        async function printSingleAssetLabel() {
+            const a = assetsCache.find(x => x.id === Number(currentLabelAssetId));
+            if (!a) return;
+            await _printAssetLabels([a]);
+        }
+        async function bulkPrintAssetLabels() {
+            const list = assetsCache.filter(a => assetSelected.has(a.id));
+            if (!list.length) return showToast('Pilih minimal 1 aset untuk dicetak labelnya.', 'error');
+            await _printAssetLabels(list);
+        }
+        async function handleAssetDeepLinkIfPresent() {
+            const code = new URLSearchParams(window.location.search).get('asset');
+            if (!code) return;
+            showPage('operasional');
+            await fetchCompanyAssets();
+            assetScanSearch(code);
         }
         async function deleteInventoryItem(id) {
             const i = inventoryCache.find(x => x.id === id);
