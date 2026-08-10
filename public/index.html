@@ -1067,7 +1067,7 @@
                         <button id="btn-add-pkg" onclick="openAddPackageModal()" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 hidden"><i data-lucide="plus" class="inline w-4 h-4 mr-1"></i>Tambah Paket</button>
                     </div>
                     <table class="w-full text-sm text-left">
-                        <thead class="text-xs text-gray-500 uppercase bg-gray-50"><tr><th class="px-4 py-3">Nama Paket & Keberangkatan</th><th class="px-4 py-3">Sisa Kuota Kursi</th><th class="px-4 py-3">Tour Leader / Mutawwif</th><th class="px-4 py-3">Harga Pendaftaran</th><th class="px-4 py-3 text-center">Aksi</th></tr></thead>
+                        <thead class="text-xs text-gray-500 uppercase bg-gray-50"><tr><th class="px-4 py-3">Nama Paket & Keberangkatan</th><th class="px-4 py-3">Sisa Kuota Kursi</th><th class="px-4 py-3">Tour Leader / Mutawwif</th><th class="px-4 py-3">Harga Pendaftaran</th><th class="px-4 py-3">Detail Paket</th><th class="px-4 py-3 text-center">Aksi</th></tr></thead>
                         <tbody id="table-packages" class="divide-y"></tbody>
                     </table>
                 </div>
@@ -1436,7 +1436,7 @@
 
     <!-- MODAL TAMBAH PAKET UMROH (ADMIN) -->
     <div id="modal-package" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto custom-scrollbar">
             <h3 class="font-bold text-lg mb-4 border-b pb-2 flex items-center gap-2"><i data-lucide="package-plus" class="w-5 h-5 text-emerald-600"></i><span id="modal-package-title">Tambah Paket Umroh</span></h3>
             <form id="form-add-package" class="space-y-4">
                 <input type="hidden" id="package-edit-id">
@@ -1446,10 +1446,63 @@
                     <div><label class="text-xs font-medium">Harga TRIPLE (Rp)</label><input type="text" id="add-p-price-triple" class="w-full border p-2 rounded text-sm bg-gray-50" required oninput="formatCurrencyInput(this)"></div>
                     <div><label class="text-xs font-medium">Harga DOUBLE (Rp)</label><input type="text" id="add-p-price-double" class="w-full border p-2 rounded text-sm bg-gray-50" required oninput="formatCurrencyInput(this)"></div>
                 </div>
-                <div><label class="text-xs font-medium">Tanggal Keberangkatan</label><input type="date" id="add-p-date" class="w-full border p-2 rounded text-sm bg-gray-50" required></div>
-                <div class="grid grid-cols-2 gap-2"><div><label class="text-xs font-medium">Durasi (Hari)</label><input type="number" id="add-p-duration" class="w-full border p-2 rounded text-sm bg-gray-50" required value="9"></div>
-                <div><label class="text-xs font-medium">Total Kuota (Pax)</label><input type="number" id="add-p-quota" class="w-full border p-2 rounded text-sm bg-gray-50" required value="45"></div></div>
+                <div class="grid grid-cols-3 gap-2">
+                    <div><label class="text-xs font-medium">Tanggal Keberangkatan</label><input type="date" id="add-p-date" class="w-full border p-2 rounded text-sm bg-gray-50" required oninput="recomputeReturnDate()"></div>
+                    <div><label class="text-xs font-medium">Durasi (Hari)</label><input type="number" id="add-p-duration" class="w-full border p-2 rounded text-sm bg-gray-50" required value="9" oninput="recomputeReturnDate()"></div>
+                    <div><label class="text-xs font-medium">Tanggal Pulang <span id="return-date-badge" class="text-gray-400 font-normal">(otomatis)</span></label><input type="date" id="add-p-return-date" class="w-full border p-2 rounded text-sm bg-gray-50" oninput="markReturnDateManual()"></div>
+                </div>
+                <div id="return-date-reset-row" class="hidden"><button type="button" onclick="resetReturnDateAuto()" class="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1"><i data-lucide="refresh-cw" class="w-3 h-3"></i>Kembalikan ke otomatis</button></div>
+                <div><label class="text-xs font-medium">Total Kuota (Pax)</label><input type="number" id="add-p-quota" class="w-full border p-2 rounded text-sm bg-gray-50" required value="45"></div>
                 <div><label class="text-xs font-medium">Fee Komisi Default Agen (Rp / Jamaah)</label><input type="text" id="add-p-fee" class="w-full border p-2 rounded text-sm bg-gray-50" value="0" oninput="formatCurrencyInput(this)"></div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div><label class="text-xs font-medium">Hotel Mekkah</label><input type="text" id="add-p-hotel-mekkah" class="w-full border p-2 rounded text-sm bg-gray-50" placeholder="Nama hotel di Mekkah" oninput="uppercaseInput(this)"></div>
+                    <div><label class="text-xs font-medium">Hotel Madinah</label><input type="text" id="add-p-hotel-madinah" class="w-full border p-2 rounded text-sm bg-gray-50" placeholder="Nama hotel di Madinah" oninput="uppercaseInput(this)"></div>
+                </div>
+                <div>
+                    <label class="text-xs font-medium">Rute</label>
+                    <input type="hidden" id="add-p-route-type" value="Direct">
+                    <div class="flex gap-2">
+                        <button type="button" id="btn-p-route-direct" onclick="setPackageRoute('Direct')" class="flex-1 border rounded p-2 text-sm">Direct</button>
+                        <button type="button" id="btn-p-route-transit" onclick="setPackageRoute('Transit')" class="flex-1 border rounded p-2 text-sm">Transit</button>
+                    </div>
+                    <div id="add-p-transit-row" class="grid grid-cols-2 gap-2 mt-2 hidden">
+                        <input type="text" id="add-p-transit-city" class="w-full border p-2 rounded text-sm bg-gray-50" placeholder="Kota transit" oninput="uppercaseInput(this)">
+                        <input type="text" id="add-p-transit-airport" class="w-full border p-2 rounded text-sm bg-gray-50" placeholder="Bandara transit (mis. DXB)" oninput="uppercaseInput(this)">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-xs font-medium">Maskapai Keberangkatan</label>
+                        <select id="add-p-airline-depart" class="package-airline-select w-full border p-2 rounded text-sm bg-gray-50" onchange="toggleAirlineCustom(this, 'add-p-airline-depart-custom')"></select>
+                        <input type="text" id="add-p-airline-depart-custom" class="w-full border p-2 rounded text-sm bg-gray-50 mt-2 hidden" placeholder="Nama maskapai lain...">
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium">Maskapai Kepulangan</label>
+                        <select id="add-p-airline-return" class="package-airline-select w-full border p-2 rounded text-sm bg-gray-50" onchange="toggleAirlineCustom(this, 'add-p-airline-return-custom')"></select>
+                        <input type="text" id="add-p-airline-return-custom" class="w-full border p-2 rounded text-sm bg-gray-50 mt-2 hidden" placeholder="Nama maskapai lain...">
+                    </div>
+                </div>
+                <div id="add-p-airline-transit-row" class="hidden">
+                    <label class="text-xs font-medium">Maskapai Transit</label>
+                    <select id="add-p-airline-transit" class="package-airline-select w-full border p-2 rounded text-sm bg-gray-50" onchange="toggleAirlineCustom(this, 'add-p-airline-transit-custom')"></select>
+                    <input type="text" id="add-p-airline-transit-custom" class="w-full border p-2 rounded text-sm bg-gray-50 mt-2 hidden" placeholder="Nama maskapai lain...">
+                </div>
+                <div class="border-t pt-3 space-y-3">
+                    <div>
+                        <div class="flex justify-between items-center mb-2"><label class="text-xs font-medium">Kunjungan Negara Lain</label><button type="button" onclick="addPackageExtraRow('country')" class="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1"><i data-lucide="plus" class="w-3 h-3"></i>Tambah</button></div>
+                        <div id="package-extras-country" class="space-y-2"></div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between items-center mb-2"><label class="text-xs font-medium">City Tour</label><button type="button" onclick="addPackageExtraRow('citytour')" class="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1"><i data-lucide="plus" class="w-3 h-3"></i>Tambah</button></div>
+                        <div id="package-extras-citytour" class="space-y-2"></div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between items-center mb-2"><label class="text-xs font-medium">Fasilitas Tambahan</label><button type="button" onclick="addPackageExtraRow('extra')" class="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1"><i data-lucide="plus" class="w-3 h-3"></i>Tambah</button></div>
+                        <div id="package-extras-extra" class="space-y-2"></div>
+                    </div>
+                </div>
+
                 <div class="flex justify-end gap-2 mt-4">
                     <button type="button" onclick="closeModal('modal-package')" class="px-4 py-2 border rounded-lg text-sm font-medium">Batal</button>
                     <button type="submit" id="modal-package-submit-btn" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium shadow-sm">Simpan Paket</button>
@@ -5971,6 +6024,113 @@
         });
         
         let packagesCache = [];
+        const PACKAGE_AIRLINES = ['Saudia', 'Garuda Indonesia', 'Lion Air', 'Citilink', 'Qatar Airways', 'Etihad Airways', 'Emirates'];
+        const PACKAGE_EXTRA_CATS = {
+            country: { label: 'Kunjungan Negara Lain', icon: 'globe' },
+            citytour: { label: 'City Tour', icon: 'map-pin' },
+            extra: { label: 'Fasilitas Tambahan', icon: 'star' },
+        };
+        let packageExtraLists = { country: [], citytour: [], extra: [] };
+        function uppercaseInput(el) {
+            const pos = el.selectionStart;
+            el.value = el.value.toUpperCase();
+            el.setSelectionRange(pos, pos);
+        }
+        function populatePackageAirlineSelects() {
+            const optionsHtml = PACKAGE_AIRLINES.map(a => `<option value="${a}">${a}</option>`).join('') + '<option value="__custom__">+ Lainnya...</option>';
+            document.querySelectorAll('.package-airline-select').forEach(sel => { if (!sel.innerHTML) sel.innerHTML = optionsHtml; });
+        }
+        function toggleAirlineCustom(sel, customId) {
+            document.getElementById(customId).classList.toggle('hidden', sel.value !== '__custom__');
+        }
+        function setAirlineField(selId, customId, value) {
+            const sel = document.getElementById(selId);
+            const known = Array.from(sel.options).map(o => o.value).filter(v => v !== '__custom__');
+            if (value && !known.includes(value)) {
+                sel.value = '__custom__';
+                document.getElementById(customId).classList.remove('hidden');
+                document.getElementById(customId).value = value;
+            } else {
+                sel.value = value || 'Saudia';
+                document.getElementById(customId).classList.add('hidden');
+            }
+        }
+        function readAirlineField(selId, customId) {
+            const sel = document.getElementById(selId);
+            return sel.value === '__custom__' ? document.getElementById(customId).value.trim() : sel.value;
+        }
+        let returnDateManuallySet = false;
+        function addDaysToDate(dateStr, days) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr + 'T00:00:00');
+            d.setDate(d.getDate() + (Number(days) || 0) - 1);
+            // Bangun string tanggal dari komponen lokal secara manual -- toISOString()
+            // mengonversi ke UTC dan bisa mundur satu hari untuk timezone UTC+ (mis. WIB),
+            // karena tengah malam lokal jatuh ke sore hari sebelumnya di UTC.
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        }
+        function recomputeReturnDate() {
+            if (returnDateManuallySet) return;
+            document.getElementById('add-p-return-date').value = addDaysToDate(document.getElementById('add-p-date').value, document.getElementById('add-p-duration').value);
+        }
+        function markReturnDateManual() {
+            returnDateManuallySet = true;
+            document.getElementById('return-date-badge').textContent = '(disesuaikan manual)';
+            document.getElementById('return-date-reset-row').classList.remove('hidden');
+        }
+        function resetReturnDateAuto() {
+            returnDateManuallySet = false;
+            document.getElementById('return-date-badge').textContent = '(otomatis)';
+            document.getElementById('return-date-reset-row').classList.add('hidden');
+            recomputeReturnDate();
+        }
+        function setPackageRoute(type) {
+            document.getElementById('add-p-route-type').value = type;
+            document.getElementById('btn-p-route-direct').className = 'flex-1 border rounded p-2 text-sm' + (type === 'Direct' ? ' bg-emerald-600 text-white border-emerald-600' : '');
+            document.getElementById('btn-p-route-transit').className = 'flex-1 border rounded p-2 text-sm' + (type === 'Transit' ? ' bg-emerald-600 text-white border-emerald-600' : '');
+            document.getElementById('add-p-transit-row').classList.toggle('hidden', type !== 'Transit');
+            document.getElementById('add-p-airline-transit-row').classList.toggle('hidden', type !== 'Transit');
+        }
+        function renderPackageExtraList(cat) {
+            document.getElementById('package-extras-' + cat).innerHTML = packageExtraLists[cat].map((val, i) => `
+                <div class="flex gap-2">
+                    <input type="text" value="${val}" placeholder="Ketik nama..." class="flex-1 border p-2 rounded text-sm bg-gray-50" oninput="packageExtraLists['${cat}'][${i}] = this.value">
+                    <button type="button" onclick="packageExtraLists['${cat}'].splice(${i},1);renderPackageExtraList('${cat}')" class="p-2 text-red-500 hover:bg-red-50 rounded" aria-label="Hapus"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                </div>`).join('') || `<p class="text-xs text-gray-400 italic">Belum ada ${PACKAGE_EXTRA_CATS[cat].label.toLowerCase()}.</p>`;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+        function addPackageExtraRow(cat) {
+            packageExtraLists[cat].push('');
+            renderPackageExtraList(cat);
+        }
+        // Badge 3 Maskapai + Rute + hingga 2 chip per kategori Fasilitas (sisanya "+N lainnya")
+        // -- dipakai di kolom "Detail Paket" pada tabel daftar, bukan modal Edit yang sudah
+        // punya rinciannya.
+        function packageDetailHtml(x) {
+            const hotel = `${x.hotel_mekkah || '-'} / ${x.hotel_madinah || '-'}`;
+            const transitPlace = x.transit_city ? x.transit_city + (x.transit_airport ? ` (${x.transit_airport})` : '') : '';
+            const routeLabel = x.route_type === 'Transit' ? `Transit${transitPlace ? ' via ' + transitPlace : ''}` : 'Direct';
+            const routeBadge = x.route_type === 'Transit' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700';
+            const airlineBadges = `
+                <span class="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-[10px]">Berangkat: ${x.airline_depart || '-'}</span>
+                <span class="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-[10px]">Pulang: ${x.airline_return || '-'}</span>
+                ${x.route_type === 'Transit' ? `<span class="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-[10px]">Transit: ${x.airline_transit || '-'}</span>` : ''}
+                <span class="${routeBadge} px-1.5 py-0.5 rounded text-[10px]">${routeLabel}</span>`;
+            const extras = x.extras || [];
+            const catRows = Object.keys(PACKAGE_EXTRA_CATS).map(cat => {
+                const items = extras.filter(e => (e.category || 'extra') === cat);
+                if (!items.length) return '';
+                let chips = items.slice(0, 2).map(e => `<span class="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded text-[10px]">${e.value}</span>`).join('');
+                if (items.length > 2) chips += `<span class="text-gray-400 text-[10px] px-1">+${items.length - 2} lainnya</span>`;
+                return `<div class="flex flex-wrap gap-1 mt-1">${chips}</div>`;
+            }).join('');
+            return `<p class="text-xs text-gray-600 mb-1">${hotel}</p>
+                <div class="flex flex-wrap gap-1">${airlineBadges}</div>
+                ${catRows}`;
+        }
         async function fetchPackagesList() {
             try {
                 const res = await authFetch('/packages'); const p = await res.json();
@@ -5978,21 +6138,34 @@
                 document.getElementById('table-packages').innerHTML = p.map(x => {
                     const safeTL = (x.tour_leader || '').replace(/'/g, "\\'");
                     const safeMut = (x.mutawwif || '').replace(/'/g, "\\'");
-                    return `<tr class="hover:bg-gray-50/50"><td class="p-3 border-b"><p class="font-bold text-gray-800">${x.name}</p><p class="text-xs text-gray-500">${x.departure_date} (${x.duration} Hari)</p></td><td class="p-3 border-b"><span class="font-bold ${x.quota - x.filled <= 5 ? 'text-red-600' : 'text-emerald-600'}">${x.quota - x.filled}</span><span class="text-xs text-gray-500"> / ${x.quota}</span></td><td class="p-3 border-b text-xs"><div class="mb-1"><span class="font-semibold text-gray-600">TL:</span> ${x.tour_leader||'<i class="text-red-400">Belum diassign</i>'}</div><div><span class="font-semibold text-gray-600">Mutawwif:</span> ${x.mutawwif||'<i class="text-red-400">Belum diassign</i>'}</div></td><td class="p-3 border-b text-emerald-600 font-medium">${formatRp(x.price_quad || x.price)}</td><td class="p-3 border-b text-center">${currentUser.role === 'admin' ? `<button class="bg-blue-50 text-blue-700 px-3 py-1 rounded text-xs hover:bg-blue-100 mb-1 block w-full shadow-sm" onclick="openEditPackageModal(${x.id})">Edit Paket</button>` : ''}${['admin', 'ops'].includes(currentUser.role) ? `<button class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded text-xs hover:bg-indigo-100 mb-1 block w-full shadow-sm" onclick="openAssign(${x.id}, '${safeTL}', '${safeMut}')">Tugaskan TL</button>` : ''}${currentUser.role === 'admin' ? `<button class="bg-red-50 text-red-600 px-3 py-1 rounded text-xs hover:bg-red-100 block w-full" onclick="delPkg(${x.id})">Hapus Paket</button>` : ''}</td></tr>`;
+                    return `<tr class="hover:bg-gray-50/50"><td class="p-3 border-b"><p class="font-bold text-gray-800">${x.name}</p><p class="text-xs text-gray-500">${x.departure_date}${x.return_date ? ' &ndash; ' + x.return_date : ''} (${x.duration} Hari)</p></td><td class="p-3 border-b"><span class="font-bold ${x.quota - x.filled <= 5 ? 'text-red-600' : 'text-emerald-600'}">${x.quota - x.filled}</span><span class="text-xs text-gray-500"> / ${x.quota}</span></td><td class="p-3 border-b text-xs"><div class="mb-1"><span class="font-semibold text-gray-600">TL:</span> ${x.tour_leader||'<i class="text-red-400">Belum diassign</i>'}</div><div><span class="font-semibold text-gray-600">Mutawwif:</span> ${x.mutawwif||'<i class="text-red-400">Belum diassign</i>'}</div></td><td class="p-3 border-b text-emerald-600 font-medium">${formatRp(x.price_quad || x.price)}</td><td class="p-3 border-b">${packageDetailHtml(x)}</td><td class="p-3 border-b text-center">${currentUser.role === 'admin' ? `<button class="bg-blue-50 text-blue-700 px-3 py-1 rounded text-xs hover:bg-blue-100 mb-1 block w-full shadow-sm" onclick="openEditPackageModal(${x.id})">Edit Paket</button>` : ''}${['admin', 'ops'].includes(currentUser.role) ? `<button class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded text-xs hover:bg-indigo-100 mb-1 block w-full shadow-sm" onclick="openAssign(${x.id}, '${safeTL}', '${safeMut}')">Tugaskan TL</button>` : ''}${currentUser.role === 'admin' ? `<button class="bg-red-50 text-red-600 px-3 py-1 rounded text-xs hover:bg-red-100 block w-full" onclick="delPkg(${x.id})">Hapus Paket</button>` : ''}</td></tr>`;
                 }).join('');
+                if (typeof lucide !== 'undefined') lucide.createIcons();
             } catch(e) {}
         }
         function openAddPackageModal() {
+            populatePackageAirlineSelects();
             document.getElementById('package-edit-id').value = '';
             document.getElementById('modal-package-title').innerText = 'Tambah Paket Umroh';
             document.getElementById('modal-package-submit-btn').innerText = 'Simpan Paket';
             document.getElementById('form-add-package').reset();
             document.getElementById('add-p-fee').value = '0';
+            returnDateManuallySet = false;
+            document.getElementById('return-date-badge').textContent = '(otomatis)';
+            document.getElementById('return-date-reset-row').classList.add('hidden');
+            document.getElementById('add-p-return-date').value = '';
+            setAirlineField('add-p-airline-depart', 'add-p-airline-depart-custom', '');
+            setAirlineField('add-p-airline-return', 'add-p-airline-return-custom', '');
+            setAirlineField('add-p-airline-transit', 'add-p-airline-transit-custom', '');
+            setPackageRoute('Direct');
+            packageExtraLists = { country: [], citytour: [], extra: [] };
+            Object.keys(PACKAGE_EXTRA_CATS).forEach(renderPackageExtraList);
             openModal('modal-package');
         }
         function openEditPackageModal(id) {
             const x = packagesCache.find(p => p.id === id);
             if (!x) return;
+            populatePackageAirlineSelects();
             document.getElementById('package-edit-id').value = x.id;
             document.getElementById('modal-package-title').innerText = `Edit Paket — ${x.name}`;
             document.getElementById('modal-package-submit-btn').innerText = 'Update Paket';
@@ -6006,6 +6179,33 @@
             document.getElementById('add-p-duration').value = x.duration || 9;
             document.getElementById('add-p-quota').value = x.quota || 45;
             document.getElementById('add-p-fee').value = parseInt(x.default_commission_fee || 0).toLocaleString('id-ID');
+            document.getElementById('add-p-hotel-mekkah').value = x.hotel_mekkah || '';
+            document.getElementById('add-p-hotel-madinah').value = x.hotel_madinah || '';
+            // Tidak ada kolom tersendiri yang menandai "manual" -- disimpulkan dengan
+            // membandingkan return_date yang tersimpan terhadap hasil hitung otomatis.
+            document.getElementById('add-p-return-date').value = x.return_date || '';
+            const autoReturn = addDaysToDate(x.departure_date, x.duration);
+            if (x.return_date && x.return_date !== autoReturn) {
+                returnDateManuallySet = true;
+                document.getElementById('return-date-badge').textContent = '(disesuaikan manual)';
+                document.getElementById('return-date-reset-row').classList.remove('hidden');
+            } else {
+                returnDateManuallySet = false;
+                document.getElementById('return-date-badge').textContent = '(otomatis)';
+                document.getElementById('return-date-reset-row').classList.add('hidden');
+            }
+            setPackageRoute(x.route_type || 'Direct');
+            document.getElementById('add-p-transit-city').value = x.transit_city || '';
+            document.getElementById('add-p-transit-airport').value = x.transit_airport || '';
+            setAirlineField('add-p-airline-depart', 'add-p-airline-depart-custom', x.airline_depart || '');
+            setAirlineField('add-p-airline-return', 'add-p-airline-return-custom', x.airline_return || '');
+            setAirlineField('add-p-airline-transit', 'add-p-airline-transit-custom', x.airline_transit || '');
+            packageExtraLists = { country: [], citytour: [], extra: [] };
+            (x.extras || []).forEach(e => {
+                const cat = PACKAGE_EXTRA_CATS[e.category] ? e.category : 'extra';
+                packageExtraLists[cat].push(e.value || '');
+            });
+            Object.keys(PACKAGE_EXTRA_CATS).forEach(renderPackageExtraList);
             openModal('modal-package');
         }
         
@@ -6083,7 +6283,15 @@
         document.getElementById('form-add-package').addEventListener('submit', async e => {
             e.preventDefault();
             const editId = document.getElementById('package-edit-id').value;
-            const payload = { name: document.getElementById('add-p-name').value, price_quad: parseCurrency(document.getElementById('add-p-price-quad').value), price_triple: parseCurrency(document.getElementById('add-p-price-triple').value), price_double: parseCurrency(document.getElementById('add-p-price-double').value), departure_date: document.getElementById('add-p-date').value, duration: document.getElementById('add-p-duration').value, quota: document.getElementById('add-p-quota').value, default_commission_fee: parseCurrency(document.getElementById('add-p-fee').value) };
+            const flatExtras = Object.keys(packageExtraLists).flatMap(cat =>
+                packageExtraLists[cat].filter(v => v.trim()).map(v => ({ category: cat, value: v.trim() })));
+            const payload = { name: document.getElementById('add-p-name').value, price_quad: parseCurrency(document.getElementById('add-p-price-quad').value), price_triple: parseCurrency(document.getElementById('add-p-price-triple').value), price_double: parseCurrency(document.getElementById('add-p-price-double').value), departure_date: document.getElementById('add-p-date').value, duration: document.getElementById('add-p-duration').value, return_date: document.getElementById('add-p-return-date').value, quota: document.getElementById('add-p-quota').value, default_commission_fee: parseCurrency(document.getElementById('add-p-fee').value),
+                hotel_mekkah: document.getElementById('add-p-hotel-mekkah').value, hotel_madinah: document.getElementById('add-p-hotel-madinah').value,
+                route_type: document.getElementById('add-p-route-type').value, transit_city: document.getElementById('add-p-transit-city').value, transit_airport: document.getElementById('add-p-transit-airport').value,
+                airline_depart: readAirlineField('add-p-airline-depart', 'add-p-airline-depart-custom'),
+                airline_return: readAirlineField('add-p-airline-return', 'add-p-airline-return-custom'),
+                airline_transit: readAirlineField('add-p-airline-transit', 'add-p-airline-transit-custom'),
+                extras: flatExtras };
             try {
                 if (editId) {
                     const res = await authFetch(`/packages/${editId}`, { method: 'PUT', body: JSON.stringify(payload) });

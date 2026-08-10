@@ -110,6 +110,19 @@ SCHEMA = [
         quota INTEGER DEFAULT 45,
         default_commission_fee INTEGER DEFAULT 0
     )""",
+    # Fasilitas tambahan per paket, dikelompokkan ke 3 kategori tetap (category:
+    # 'country' / 'citytour' / 'extra') -- daftar dinamis per kategori, jadi anak tabel
+    # tersendiri (bisa berapa pun baris per paket) bukan kolom tetap di packages.
+    # `label` dipakai sebagai isian tunggal per baris (mis. "Turki"); `description`
+    # tidak lagi ditulis untuk baris baru, dipertahankan hanya untuk kompatibilitas mundur.
+    """CREATE TABLE IF NOT EXISTS package_extras (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        package_id INTEGER,
+        category TEXT DEFAULT 'extra',
+        label TEXT,
+        description TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )""",
     # Tabel Transaksi Keuangan (Buku Besar)
     """CREATE TABLE IF NOT EXISTS transactions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -567,6 +580,25 @@ ALTER_QUERIES = [
     # dimasukkan ke daftar ini juga supaya jalan lewat mekanisme migrasi yang sama.
     "ALTER TABLE company_assets ADD COLUMN asset_code TEXT",
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_company_assets_code ON company_assets(asset_code)",
+    # Detail paket: hotel, maskapai, rute -- harga SENGAJA tidak disentuh, akan dikelola
+    # lewat modul Simulasi Paket terpisah nanti.
+    "ALTER TABLE packages ADD COLUMN hotel_mekkah TEXT",
+    "ALTER TABLE packages ADD COLUMN hotel_madinah TEXT",
+    "ALTER TABLE packages ADD COLUMN airline TEXT",
+    "ALTER TABLE packages ADD COLUMN route_type TEXT DEFAULT 'Direct'",
+    "ALTER TABLE packages ADD COLUMN transit_city TEXT",
+    # `airline` (satu field) digantikan 3 field per arah -- kolom lama dibiarkan ada
+    # (tidak dihapus, konvensi yang sama dengan `price` lama di packages) tapi tidak
+    # dibaca/ditulis lagi oleh kode baru.
+    "ALTER TABLE packages ADD COLUMN airline_depart TEXT",
+    "ALTER TABLE packages ADD COLUMN airline_return TEXT",
+    "ALTER TABLE packages ADD COLUMN airline_transit TEXT",
+    "ALTER TABLE package_extras ADD COLUMN category TEXT DEFAULT 'extra'",
+    # Tanggal Pulang: field sungguhan (bukan sekadar dihitung dari Durasi) supaya bisa
+    # ditimpa manual kalau jadwal riil beda dari hitungan kalender biasa (reschedule,
+    # penerbangan malam, dll). Bandara Transit mendampingi transit_city yang sudah ada.
+    "ALTER TABLE packages ADD COLUMN return_date TEXT",
+    "ALTER TABLE packages ADD COLUMN transit_airport TEXT",
 ]
 
 

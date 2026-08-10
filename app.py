@@ -1124,24 +1124,61 @@ async def leave_request_review(lid: int, body: dict = Depends(json_body), user=D
 # ===========================================================================
 @app.get("/api/packages")
 async def packages_list(user=Depends(authenticate_token)):
-    return db.query_all(
+    packages = db.query_all(
         "SELECT p.*, (SELECT COUNT(*) FROM jamaah WHERE package_type = p.name "
         "AND status NOT IN ('Cancelled')) as filled FROM packages p ORDER BY p.departure_date ASC",
         (),
     )
+    for p in packages:
+        p["extras"] = db.query_all(
+            "SELECT id, category, label as value FROM package_extras WHERE package_id = ? ORDER BY id ASC",
+            (p["id"],),
+        )
+    return packages
+
+
+PACKAGE_EXTRA_CATEGORIES = ("country", "citytour", "extra")
+
+
+def _save_package_extras(pid, extras):
+    # Replace-all -- daftar fasilitas tambahan tidak punya id yang ditelusuri lintas
+    # sesi edit, jadi cara paling sederhana & aman adalah hapus semua lalu tulis ulang.
+    db.execute("DELETE FROM package_extras WHERE package_id = ?", (pid,))
+    for ex in extras or []:
+        category = ex.get("category") if ex.get("category") in PACKAGE_EXTRA_CATEGORIES else "extra"
+        value = (ex.get("value") or "").strip()
+        if not value:
+            continue
+        db.execute(
+            "INSERT INTO package_extras (package_id, category, label) VALUES (?, ?, ?)",
+            (pid, category, value),
+        )
 
 
 @app.post("/api/packages")
 async def packages_create(body: dict = Depends(json_body), user=Depends(authenticate_token)):
     require_role(user, "admin")
     g = body.get
+    route_type = g("route_type") or "Direct"
     last_id, _ = db.execute(
         "INSERT INTO packages (name, price, departure_date, duration, quota, "
-        "price_quad, price_triple, price_double, default_commission_fee) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (g("name"), g("price"), g("departure_date"), g("duration"),
-         int(g("quota")) if g("quota") else 45, g("price_quad"), g("price_triple"), g("price_double"),
-         int(g("default_commission_fee")) if g("default_commission_fee") else 0),
+        "price_quad, price_triple, price_double, default_commission_fee, "
+        "hotel_mekkah, hotel_madinah, route_type, transit_city, transit_airport, "
+        "airline_depart, airline_return, airline_transit, return_date) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            g("name"), g("price"), g("departure_date"), g("duration"),
+            int(g("quota")) if g("quota") else 45, g("price_quad"), g("price_triple"), g("price_double"),
+            int(g("default_commission_fee")) if g("default_commission_fee") else 0,
+            g("hotel_mekkah"), g("hotel_madinah"),
+            route_type, g("transit_city") if route_type == "Transit" else None,
+            g("transit_airport") if route_type == "Transit" else None,
+            g("airline_depart"), g("airline_return"),
+            g("airline_transit") if route_type == "Transit" else None,
+            g("return_date"),
+        ),
     )
+    _save_package_extras(last_id, g("extras"))
     log_action(user, "CREATE_PACKAGE", f"Menambah paket baru: {g('name')}")
     notify("data_updated", "package")
     return {"id": last_id, "message": "Paket berhasil ditambahkan."}
@@ -1154,18 +1191,28 @@ async def packages_update(pid: int, body: dict = Depends(json_body), user=Depend
     pkg = db.query_one("SELECT * FROM packages WHERE id = ?", (pid,))
     if not pkg:
         raise HTTPException(status_code=404, detail="Paket tidak ditemukan")
+    route_type = g("route_type") or "Direct"
     # `price` (harga umum lama, sebelum ada rincian per tipe kamar) sengaja TIDAK disentuh --
     # tidak ada field untuk itu di form Edit Paket, jadi kalau ikut ditulis ulang di sini akan
     # selalu jadi NULL (bug yang pernah terjadi & sudah diperbaiki: lihat commit ini).
     db.execute(
         "UPDATE packages SET name = ?, departure_date = ?, duration = ?, quota = ?, "
-        "price_quad = ?, price_triple = ?, price_double = ?, default_commission_fee = ? WHERE id = ?",
+        "price_quad = ?, price_triple = ?, price_double = ?, default_commission_fee = ?, "
+        "hotel_mekkah = ?, hotel_madinah = ?, route_type = ?, transit_city = ?, transit_airport = ?, "
+        "airline_depart = ?, airline_return = ?, airline_transit = ?, return_date = ? WHERE id = ?",
         (
             g("name"), g("departure_date"), g("duration"),
             int(g("quota")) if g("quota") else 45, g("price_quad"), g("price_triple"), g("price_double"),
-            int(g("default_commission_fee")) if g("default_commission_fee") else 0, pid,
+            int(g("default_commission_fee")) if g("default_commission_fee") else 0,
+            g("hotel_mekkah"), g("hotel_madinah"),
+            route_type, g("transit_city") if route_type == "Transit" else None,
+            g("transit_airport") if route_type == "Transit" else None,
+            g("airline_depart"), g("airline_return"),
+            g("airline_transit") if route_type == "Transit" else None,
+            g("return_date"), pid,
         ),
     )
+    _save_package_extras(pid, g("extras"))
     log_action(user, "UPDATE_PACKAGE", f"Mengubah data paket: {pkg['name']}")
     notify("data_updated", "package")
     return {"message": "Paket berhasil diperbarui."}
