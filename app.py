@@ -3452,6 +3452,238 @@ async def expense_reports_pdf(rid: int, user=Depends(authenticate_file_token)):
 
 
 # ===========================================================================
+# MARKETING ANALYTICS (data historis dari CSV web-umar; tabel marketing_*)
+# ===========================================================================
+_MARKETING_ROLES = ("admin", "management", "sales")
+
+
+def _require_marketing_access(user: dict):
+    if user.get("role") not in _MARKETING_ROLES:
+        raise HTTPException(status_code=403, detail="Halaman ini hanya untuk Admin, Management, dan Sales.")
+
+
+def _parse_indo_date(s):
+    """'11/10/2024' (dd/mm/yyyy) atau '2024-10-11' -> 'YYYY-MM' untuk time-bucket tren.
+    Kembalikan None kalau tidak bisa diparsing (biar tidak ikut chart tren)."""
+    if not s:
+        return None
+    s = s.strip()
+    # Format dd/mm/yyyy (paling umum di CSV)
+    if "/" in s:
+        parts = s.split("/")
+        if len(parts) == 3 and len(parts[2]) == 4:
+            try:
+                return f"{parts[2]}-{int(parts[1]):02d}"
+            except (ValueError, IndexError):
+                return None
+    # Format yyyy-mm-dd
+    if "-" in s and len(s) >= 7:
+        try:
+            y, m = s.split("-")[:2]
+            return f"{int(y):04d}-{int(m):02d}"
+        except ValueError:
+            return None
+    return None
+
+
+@app.get("/api/marketing/summary")
+async def marketing_summary(
+    period: str | None = None,          # 'YYYY-MM' -> filter satu bulan; None = semua
+    paket: str | None = None,
+    admin: str | None = None,           # nama admin marketing (LINA/TITIN/FARAH)
+    channel: str | None = None,         # ONLINE/OFFLINE
+    statpay: str | None = None,         # LUNAS/BELUM LUNAS
+    user=Depends(authenticate_token),
+):
+    _require_marketing_access(user)
+
+    # Ambil semua dulu, filter di Python -- volumenya kecil (~300 baris), dan periode
+    # butuh parse tanggal string yang tidak trivial di SQL.
+    rows = db.query_all(
+        "SELECT * FROM marketing_closings ORDER BY tanggal_order DESC"
+    )
+
+    def _match(r):
+        if paket and (r.get("paket") or "") != paket:
+            return False
+        if admin and (r.get("admin_marketing") or "") != admin:
+            return False
+        if channel and (r.get("channel") or "") != channel:
+            return False
+        if statpay and (r.get("statpay") or "") != statpay:
+            return False
+        if period:
+            ym = _parse_indo_date(r.get("tanggal_order"))
+            if ym != period:
+                return False
+        return True
+
+    filtered = [r for r in rows if _match(r)]
+
+    # Agregasi
+    total_jamaah = len(filtered)
+    total_omzet = sum((r.get("total_bayar") or 0) for r in filtered)
+    total_dp = sum((r.get("dp") or 0) for r in filtered)
+    total_kurang = sum((r.get("kurang") or 0) for r in filtered)
+    via_agen = sum(1 for r in filtered if (r.get("is_transaksi_agen") or "") == "YA")
+    via_direct = total_jamaah - via_agen
+
+    def _bucket(rows_, key_fn, sum_fn=None):
+        out = {}
+        for r in rows_:
+            k = key_fn(r) or "(kosong)"
+            if sum_fn:
+                out[k] = out.get(k, 0) + sum_fn(r)
+            else:
+                out[k] = out.get(k, 0) + 1
+        return sorted(out.items(), key=lambda kv: -kv[1])
+
+    # 1. Peta jamaah (agregasi per kab_kota + provinsi -> jumlah + omzet)
+    map_jamaah = {}
+    for r in filtered:
+        prov = (r.get("provinsi") or "").strip()
+        kab = (r.get("kab_kota") or "").strip() or prov
+        key = f"{kab}||{prov}"
+        if key not in map_jamaah:
+            map_jamaah[key] = {"kab_kota": kab, "provinsi": prov, "count": 0, "omzet": 0}
+        map_jamaah[key]["count"] += 1
+        map_jamaah[key]["omzet"] += r.get("total_bayar") or 0
+    map_jamaah_list = sorted(map_jamaah.values(), key=lambda x: -x["count"])
+
+    # 2. Tren bulanan (semua record filtered, group by YYYY-MM)
+    tren = {}
+    for r in filtered:
+        ym = _parse_indo_date(r.get("tanggal_order"))
+        if not ym:
+            continue
+        tren[ym] = tren.get(ym, 0) + 1
+    tren_sorted = sorted(tren.items())
+
+    # 3. Leaderboard admin marketing
+    leaderboard_admin = _bucket(filtered, lambda r: r.get("admin_marketing"))
+
+    # 4. Distribusi paket (top-10)
+    dist_paket = _bucket(filtered, lambda r: r.get("paket"))[:10]
+
+    # 5. Performa channel (ONLINE vs OFFLINE) + sub_channel
+    channel_bucket = _bucket(filtered, lambda r: r.get("channel"))
+    subchannel_bucket = _bucket(filtered, lambda r: r.get("sub_channel"))[:10]
+
+    # 6. Peta AGEN (agregasi transaksi via agen per kab_kota) -- pakai alamat agen dari
+    # marketing_agents (bukan alamat jamaah), agar mencerminkan sebaran agen di lapangan.
+    agen_rows = [r for r in filtered if (r.get("is_transaksi_agen") or "") == "YA"]
+    agen_dir = {a["id_agen"]: a for a in db.query_all("SELECT * FROM marketing_agents")}
+    map_agen = {}
+    for r in agen_rows:
+        aid = r.get("id_agen")
+        a = agen_dir.get(aid)
+        if not a:
+            continue
+        prov = (a.get("provinsi") or "").strip()
+        kab = (a.get("kab_kota") or "").strip() or prov
+        key = f"{kab}||{prov}"
+        if key not in map_agen:
+            map_agen[key] = {"kab_kota": kab, "provinsi": prov, "count": 0, "omzet": 0}
+        map_agen[key]["count"] += 1
+        map_agen[key]["omzet"] += r.get("total_bayar") or 0
+    map_agen_list = sorted(map_agen.values(), key=lambda x: -x["count"])
+
+    # 7. Leaderboard agen (top-10 by jumlah jamaah dikirim)
+    leaderboard_agen = _bucket(
+        agen_rows,
+        lambda r: r.get("nama_agen") or "(tanpa nama)",
+    )[:10]
+
+    # 8. Distribusi paket per agen (top-5)
+    paket_agen = _bucket(agen_rows, lambda r: r.get("paket"))[:5]
+
+    return {
+        "kpi": {
+            "total_jamaah": total_jamaah,
+            "total_omzet": total_omzet,
+            "total_dp": total_dp,
+            "total_kurang": total_kurang,
+            "via_agen": via_agen,
+            "via_direct": via_direct,
+            "agen_ratio": round((via_agen / total_jamaah * 100), 1) if total_jamaah else 0,
+        },
+        "map_jamaah": map_jamaah_list,
+        "tren": [{"period": k, "count": v} for k, v in tren_sorted],
+        "leaderboard_admin": [{"name": k, "count": v} for k, v in leaderboard_admin],
+        "dist_paket": [{"name": k, "count": v} for k, v in dist_paket],
+        "channel": [{"name": k, "count": v} for k, v in channel_bucket],
+        "subchannel": [{"name": k, "count": v} for k, v in subchannel_bucket],
+        "map_agen": map_agen_list,
+        "leaderboard_agen": [{"name": k, "count": v} for k, v in leaderboard_agen],
+        "paket_agen": [{"name": k, "count": v} for k, v in paket_agen],
+    }
+
+
+@app.get("/api/marketing/filters")
+async def marketing_filters(user=Depends(authenticate_token)):
+    """Nilai unik untuk dropdown filter (period, paket, admin, channel, statpay)."""
+    _require_marketing_access(user)
+    rows = db.query_all("SELECT * FROM marketing_closings")
+    paket = sorted({(r.get("paket") or "").strip() for r in rows if r.get("paket")})
+    admin_ = sorted({(r.get("admin_marketing") or "").strip() for r in rows if r.get("admin_marketing")})
+    channel = sorted({(r.get("channel") or "").strip() for r in rows if r.get("channel")})
+    statpay = sorted({(r.get("statpay") or "").strip() for r in rows if r.get("statpay")})
+    periods = sorted({p for p in (_parse_indo_date(r.get("tanggal_order")) for r in rows) if p})
+    return {
+        "period": periods,
+        "paket": paket,
+        "admin": admin_,
+        "channel": channel,
+        "statpay": statpay,
+    }
+
+
+@app.get("/api/marketing/rows")
+async def marketing_rows(
+    limit: int = 50,
+    offset: int = 0,
+    q: str | None = None,
+    user=Depends(authenticate_token),
+):
+    """Tabel transaksi terpaginasi -- untuk drill-down di halaman Marketing Analytics."""
+    _require_marketing_access(user)
+    limit = max(1, min(200, limit))
+    offset = max(0, offset)
+    if q:
+        like = f"%{q.strip().upper()}%"
+        total_row = db.query_one(
+            "SELECT COUNT(*) as c FROM marketing_closings WHERE "
+            "UPPER(nama_jamaah) LIKE ? OR UPPER(nama_pemesan) LIKE ? OR UPPER(id_jamaah) LIKE ? "
+            "OR UPPER(provinsi) LIKE ? OR UPPER(kab_kota) LIKE ?",
+            (like, like, like, like, like),
+        )
+        rows = db.query_all(
+            "SELECT * FROM marketing_closings WHERE "
+            "UPPER(nama_jamaah) LIKE ? OR UPPER(nama_pemesan) LIKE ? OR UPPER(id_jamaah) LIKE ? "
+            "OR UPPER(provinsi) LIKE ? OR UPPER(kab_kota) LIKE ? "
+            "ORDER BY tanggal_order DESC LIMIT ? OFFSET ?",
+            (like, like, like, like, like, limit, offset),
+        )
+    else:
+        total_row = db.query_one("SELECT COUNT(*) as c FROM marketing_closings")
+        rows = db.query_all(
+            "SELECT * FROM marketing_closings ORDER BY tanggal_order DESC LIMIT ? OFFSET ?",
+            (limit, offset),
+        )
+    return {"total": total_row["c"] if total_row else 0, "rows": rows}
+
+
+@app.post("/api/marketing/import")
+async def marketing_import(user=Depends(authenticate_token)):
+    """Re-import CSV -- HANYA admin. Upsert (data existing ditimpa nilai CSV terbaru)."""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Hanya admin yang boleh mengimpor ulang data marketing.")
+    import marketing_importer
+    result = marketing_importer.import_all_force()
+    return {"ok": True, "result": result}
+
+
+# ===========================================================================
 # HALAMAN STATIS & PANDUAN
 # ===========================================================================
 @app.get("/panduan")

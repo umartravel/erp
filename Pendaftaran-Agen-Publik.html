@@ -5,14 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Formulir Pendaftaran Mitra/Agen — Umar Travel</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // Brand UMAR palette override -- konsisten dengan index.html ERP.
+      tailwind.config = {
+        theme: { extend: { colors: { emerald: {
+          50:'#FFFDF7', 100:'#F4F1EA', 200:'#EDE5D0', 300:'#E3D6A8', 400:'#F8BE20',
+          500:'#D97706', 600:'#B8860B', 700:'#92670A', 800:'#3D2E00', 900:'#1D1D1B',
+        } } } },
+      };
+    </script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
-        .gradient-bg { background: linear-gradient(135deg, #065f46 0%, #059669 60%, #0284c7 100%); }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #F4F1EA; }
+        /* Brand UMAR luxury: hitam emas -> warm gold, mirror Marketing Analytics header. */
+        .gradient-bg { background: linear-gradient(135deg, #1D1D1B 0%, #3D2E00 60%, #B8860B 100%); }
         .field-label { display:block; font-size:.75rem; font-weight:600; color:#475569; text-transform:uppercase; letter-spacing:.03em; margin-bottom:.25rem; }
         .field-input { width:100%; padding:.6rem .75rem; border:1px solid #d1d5db; border-radius:.5rem; font-size:.9rem; background:#fff; }
-        .field-input:focus { outline:none; border-color:#059669; box-shadow:0 0 0 3px rgba(5,150,105,.15); }
+        .field-input:focus { outline:none; border-color:#B8860B; box-shadow:0 0 0 3px rgba(184,134,11,.20); }
         .honeypot { position:absolute; left:-9999px; top:-9999px; width:1px; height:1px; overflow:hidden; }
     </style>
 </head>
