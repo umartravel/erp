@@ -3083,7 +3083,11 @@
         async function fetchAgents() {
             try {
                 await loadUsersDirectory();
-                const res = await authFetch('/agents'); const agents = await res.json();
+                // scope=all supaya dropdown Pilih Agen di pendaftaran tetap tampil SEMUA agen --
+                // customer bisa datang dari agen siapa saja, bukan cuma yang di-handle sales
+                // yang sedang login. Backend default untuk role sales = scope=my (Skenario B
+                // Keagenan filter), jadi tanpa param sales cuma dapat agen mereka.
+                const res = await authFetch('/agents?scope=all'); const agents = await res.json();
                 agentsCache = agents;
                 const sel = document.getElementById('reg-agent'); if(sel) sel.innerHTML = '<option value="">-- Tanpa Agen (Daftar Direct) --</option>' + agents.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
 
@@ -3101,7 +3105,13 @@
                     csFilterEl.innerHTML = '<option value="">Semua CS</option>' +
                         Array.from(csOptions.entries()).sort((a, b) => a[1].localeCompare(b[1]))
                             .map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
-                    csFilterEl.value = currentCsFilter;
+                    // Sales role: default filter ke dirinya sendiri (Skenario B -- sales fokus ke
+                    // agen yang di-handle). Bisa switch ke "Semua CS" untuk overview.
+                    if (!currentCsFilter && currentUser.role === 'sales' && csOptions.has(currentUser.id)) {
+                        csFilterEl.value = String(currentUser.id);
+                    } else {
+                        csFilterEl.value = currentCsFilter;
+                    }
                 }
                 const csFilterValue = csFilterEl ? csFilterEl.value : '';
 

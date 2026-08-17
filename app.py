@@ -217,7 +217,7 @@ async def login(body: dict = Depends(json_body)):
     if not verify_password(password or "", user["password"]):
         raise HTTPException(status_code=401, detail="Password salah")
     token = create_token(user["id"], user["role"], user["name"])
-    return {"token": token, "user": {"name": user["name"], "role": user["role"], "photo_url": user["photo_url"]}}
+    return {"token": token, "user": {"id": user["id"], "name": user["name"], "role": user["role"], "photo_url": user["photo_url"]}}
 
 
 # ===========================================================================
@@ -2428,11 +2428,15 @@ async def dummy_va(body: dict = Depends(json_body), user=Depends(authenticate_to
 
 
 @app.get("/api/agents")
-async def agents_list(user=Depends(authenticate_token)):
-    return db.query_all(
-        "SELECT a.*, u.name as handler_cs_name FROM agents a "
-        "LEFT JOIN users u ON a.handler_cs_id = u.id ORDER BY a.name ASC", ()
-    )
+async def agents_list(scope: str | None = None, user=Depends(authenticate_token)):
+    """List agen. Sales role default hanya lihat agen yang mereka handle (handler_cs_id
+    = user.id). Toggle ?scope=all untuk lihat semua. Role lain (admin/mgmt/finance)
+    default semua."""
+    base = ("SELECT a.*, u.name as handler_cs_name FROM agents a "
+            "LEFT JOIN users u ON a.handler_cs_id = u.id ")
+    if user.get("role") == "sales" and scope != "all":
+        return db.query_all(base + "WHERE a.handler_cs_id = ? ORDER BY a.name ASC", (user["id"],))
+    return db.query_all(base + "ORDER BY a.name ASC", ())
 
 
 @app.get("/api/agents/performance")
