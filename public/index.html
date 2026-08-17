@@ -303,6 +303,21 @@
                     <div id="sh-stale-body" class="max-h-80 overflow-y-auto"></div>
                 </div>
 
+                <!-- Phase 4: Agen Saya Handle (Skenario B) -->
+                <div class="rounded-xl border shadow-sm overflow-hidden" style="background:#FFFDF7;border-color:#F4F1EA;">
+                    <div class="px-5 py-3 border-b flex justify-between items-center" style="background:#F4F1EA;border-color:#E8DFC8;">
+                        <h3 class="font-bold flex items-center gap-2 text-sm" style="color:#1D1D1B;">
+                            <i data-lucide="handshake" class="w-4 h-4" style="color:#B8860B;"></i>
+                            Agen Saya Handle <span class="text-[10px] font-normal" style="color:#6B7280;">(top produktif)</span>
+                        </h3>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" style="background:#F8BE20;color:#1D1D1B;" id="sh-agents-total">0 agen</span>
+                            <a href="#" onclick="showPage('agents'); return false;" class="text-[10px] font-bold" style="color:#B8860B;text-decoration:underline;">Kelola &rarr;</a>
+                        </div>
+                    </div>
+                    <div id="sh-agents-body" class="p-4"></div>
+                </div>
+
                 <!-- L1: Paket Terjadwal (5 keberangkatan berikutnya) -->
                 <div class="rounded-xl border shadow-sm overflow-hidden" style="background:#FFFDF7;border-color:#F4F1EA;">
                     <div class="px-5 py-3 border-b flex justify-between items-center" style="background:#F4F1EA;border-color:#E8DFC8;">
@@ -6628,7 +6643,7 @@
 
     </script>
     <!-- Marketing Analytics: heatmap + chart (dimuat setelah inline JS supaya authFetch sudah terdefinisi). -->
-    <script src="js/marketing.js?v=20260817c"></script>
-    <script src="js/sales-home.js?v=20260817c"></script>
+    <script src="js/marketing.js?v=20260817d"></script>
+    <script src="js/sales-home.js?v=20260817d"></script>
 </body>
 </html>

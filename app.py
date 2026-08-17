@@ -3665,6 +3665,36 @@ async def sales_home(user=Depends(authenticate_token)):
         "ORDER BY p.departure_date ASC LIMIT 5"
     )
 
+    # 9b. Agen yang saya handle (Skenario B): total + top-5 aktif berdasarkan
+    # jumlah jamaah yang mereka bawa lifetime (bukan cuma bulan ini) supaya sales
+    # tahu partner mana yang paling produktif untuk di-nurture.
+    if role == "sales":
+        total_my_agents = db.query_one(
+            "SELECT COUNT(*) c FROM agents WHERE handler_cs_id = ?", (user["id"],)
+        )["c"]
+        top_my_agents = db.query_all(
+            "SELECT a.id, a.name, a.province, a.city, "
+            "  COUNT(CASE WHEN j.status != 'Cancelled' THEN j.id END) total_jamaah, "
+            "  MAX(j.order_date) last_order "
+            "FROM agents a LEFT JOIN jamaah j ON j.agent_id = a.id "
+            "WHERE a.handler_cs_id = ? "
+            "GROUP BY a.id ORDER BY total_jamaah DESC, a.name ASC LIMIT 5",
+            (user["id"],),
+        )
+    else:
+        # Admin/mgmt preview: aggregate semua sales
+        total_my_agents = db.query_one(
+            "SELECT COUNT(*) c FROM agents WHERE handler_cs_id IS NOT NULL"
+        )["c"]
+        top_my_agents = db.query_all(
+            "SELECT a.id, a.name, a.province, a.city, "
+            "  COUNT(CASE WHEN j.status != 'Cancelled' THEN j.id END) total_jamaah, "
+            "  MAX(j.order_date) last_order "
+            "FROM agents a LEFT JOIN jamaah j ON j.agent_id = a.id "
+            "WHERE a.handler_cs_id IS NOT NULL "
+            "GROUP BY a.id ORDER BY total_jamaah DESC, a.name ASC LIMIT 5"
+        )
+
     # 9. Jamaah Perlu Dihubungi (stale contact): MY-scoped jamaah dengan
     # last_contact NULL atau > 3 hari, hanya status active (belum lunas/cancel).
     stale_contact = db.query_all(
@@ -3693,6 +3723,10 @@ async def sales_home(user=Depends(authenticate_token)):
         "leaderboard": leaderboard,
         "upcoming_packages": upcoming_packages,
         "stale_contact": stale_contact,
+        "my_agents": {
+            "total": total_my_agents,
+            "top": top_my_agents,
+        },
         "period": ym,
     }
 

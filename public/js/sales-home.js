@@ -62,6 +62,46 @@ function renderSalesHome(data) {
   renderLeaderboard(data.leaderboard || [], data.me?.id);
   renderStaleContact(data.stale_contact || []);
   renderUpcomingPackages(data.upcoming_packages || []);
+  renderMyAgents(data.my_agents || { total: 0, top: [] });
+}
+
+function renderMyAgents(m) {
+  const totalEl = document.getElementById('sh-agents-total');
+  const body = document.getElementById('sh-agents-body');
+  if (totalEl) totalEl.textContent = `${m.total || 0} agen`;
+  if (!body) return;
+
+  const top = m.top || [];
+  if (!top.length) {
+    body.innerHTML = `
+      <div class="py-6 text-center">
+        <p class="text-sm" style="color:${SH_COLORS.gray500};">Belum ada agen yang di-assign ke kamu. Hubungi admin untuk assignment.</p>
+      </div>`;
+    return;
+  }
+
+  body.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">` + top.map((a, i) => {
+    const rank = `#${i + 1}`;
+    const rankBg = i === 0 ? SH_COLORS.gold : i === 1 ? '#E5E7EB' : i === 2 ? '#FDE68A' : SH_COLORS.cream;
+    const loc = [a.city, a.province].filter(Boolean).join(', ') || '-';
+    const jamaah = a.total_jamaah || 0;
+    const jamaahLabel = jamaah > 0
+      ? `<b style="color:${SH_COLORS.darkGold};">${jamaah}</b> jamaah`
+      : `<span style="color:${SH_COLORS.gray500};">Belum ada closing</span>`;
+    const lastLabel = a.last_order
+      ? `terakhir order ${shFmtDate(a.last_order)}`
+      : '<span style="color:#9CA3AF;">belum ada order</span>';
+    return `
+      <div class="rounded-lg border p-3" style="background:${SH_COLORS.cream};border-color:#E8DFC8;">
+        <div class="flex justify-between items-start mb-1">
+          <b class="text-xs leading-tight flex-1 pr-2" style="color:${SH_COLORS.charcoal};">${a.name || '(tanpa nama)'}</b>
+          <span class="text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0" style="background:${rankBg};color:${SH_COLORS.charcoal};">${rank}</span>
+        </div>
+        <div class="text-[10px] mb-1" style="color:${SH_COLORS.gray500};">${loc}</div>
+        <div class="text-xs">${jamaahLabel}</div>
+        <div class="text-[10px] mt-1" style="color:${SH_COLORS.gray500};">${lastLabel}</div>
+      </div>`;
+  }).join('') + `</div>`;
 }
 
 function renderStaleContact(list) {
