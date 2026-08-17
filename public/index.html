@@ -137,6 +137,9 @@
                 <a href="#" id="nav-livechat" onclick="return false" class="hidden" data-removed="live-chat-module-removed-2026-08-17" style="display:none !important">
                     <i data-lucide="message-circle" class="w-4 h-4"></i> Live Chat WhatsApp
                 </a>
+                <a href="#" id="nav-sales-home" onclick="showPage('sales-home')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
+                    <i data-lucide="sun" class="w-4 h-4"></i> Home Sales
+                </a>
                 <a href="#" id="nav-marketing" onclick="showPage('marketing')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
                     <i data-lucide="map" class="w-4 h-4"></i> Marketing Analytics
                 </a>
@@ -217,7 +220,78 @@
         </header>
 
         <div class="flex-1 overflow-y-auto p-6 lg:p-8 relative custom-scrollbar">
-            
+
+            <!-- PAGE: HOME SALES (untuk role sales -- MY-scoped) -->
+            <div id="page-sales-home" class="page-content hidden space-y-6">
+                <div class="rounded-2xl shadow-sm p-6 relative overflow-hidden" style="background:linear-gradient(135deg,#1D1D1B 0%, #3D2D0B 100%);">
+                    <div class="absolute -right-8 -top-8 opacity-10"><i data-lucide="target" class="w-40 h-40" style="color:#F8BE20;"></i></div>
+                    <h2 class="text-2xl font-black tracking-tight flex items-center gap-3" style="color:#F8BE20;">
+                        <i data-lucide="sun" class="w-6 h-6"></i>
+                        <span>Selamat datang, <span id="sh-me-name">Sales</span></span>
+                    </h2>
+                    <p class="text-xs mt-1" style="color:#F4F1EA;opacity:0.8;">Halaman ini menampilkan pipeline, closing, dan tugas <b>khusus milikmu</b> bulan berjalan (<span id="sh-period">-</span>).</p>
+                </div>
+
+                <!-- KPI baris atas: 4 card MY-scoped -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="rounded-xl border shadow-sm p-4" style="background:#FFFDF7;border-color:#F4F1EA;">
+                        <p class="text-[10px] font-bold uppercase tracking-wider" style="color:#B8860B;">MY PIPELINE</p>
+                        <p class="text-2xl font-black mt-1" style="color:#1D1D1B;" id="sh-kpi-pipeline">0</p>
+                        <p class="text-[10px] mt-1" style="color:#6B7280;">Jamaah aktif yang saya kelola</p>
+                    </div>
+                    <div class="rounded-xl border shadow-sm p-4" style="background:#FFFDF7;border-color:#F4F1EA;">
+                        <p class="text-[10px] font-bold uppercase tracking-wider" style="color:#B8860B;">CLOSING BULAN INI</p>
+                        <p class="text-2xl font-black mt-1" style="color:#1D1D1B;" id="sh-kpi-closing">0</p>
+                        <p class="text-[10px] mt-1" style="color:#6B7280;" id="sh-kpi-omzet">Rp 0</p>
+                    </div>
+                    <div class="rounded-xl border shadow-sm p-4" style="background:#FFFDF7;border-color:#F4F1EA;">
+                        <p class="text-[10px] font-bold uppercase tracking-wider" style="color:#B8860B;">MY PIUTANG</p>
+                        <p class="text-2xl font-black mt-1" style="color:#B8860B;" id="sh-kpi-piutang">Rp 0</p>
+                        <p class="text-[10px] mt-1" style="color:#6B7280;">Sisa tagihan jamaah saya</p>
+                    </div>
+                    <div class="rounded-xl border shadow-sm p-4" style="background:#FFFDF7;border-color:#F4F1EA;">
+                        <p class="text-[10px] font-bold uppercase tracking-wider" style="color:#B8860B;">LEAD BARU (7 HARI)</p>
+                        <p class="text-2xl font-black mt-1" style="color:#1D1D1B;" id="sh-kpi-leads">0</p>
+                        <p class="text-[10px] mt-1" style="color:#6B7280;"><a href="#" onclick="showPage('inbox'); return false;" style="color:#B8860B;text-decoration:underline;">Buka Kotak Masuk &rarr;</a></p>
+                    </div>
+                </div>
+
+                <!-- Follow-up jatuh tempo (prioritas hari ini) -->
+                <div class="rounded-xl border shadow-sm overflow-hidden" style="background:#FFFDF7;border-color:#F4F1EA;">
+                    <div class="px-5 py-3 border-b flex justify-between items-center" style="background:#F4F1EA;border-color:#E8DFC8;">
+                        <h3 class="font-bold flex items-center gap-2 text-sm" style="color:#1D1D1B;">
+                            <i data-lucide="calendar-clock" class="w-4 h-4" style="color:#B8860B;"></i>
+                            Follow-up Jatuh Tempo
+                        </h3>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" style="background:#FEE2E2;color:#DC2626;" id="sh-followup-count">0</span>
+                    </div>
+                    <div id="sh-followup-body" class="max-h-72 overflow-y-auto"></div>
+                </div>
+
+                <!-- Payment reminder + leaderboard 2 kolom -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div class="lg:col-span-2 rounded-xl border shadow-sm overflow-hidden" style="background:#FFFDF7;border-color:#F4F1EA;">
+                        <div class="px-5 py-3 border-b flex justify-between items-center" style="background:#F4F1EA;border-color:#E8DFC8;">
+                            <h3 class="font-bold flex items-center gap-2 text-sm" style="color:#1D1D1B;">
+                                <i data-lucide="alert-circle" class="w-4 h-4" style="color:#B8860B;"></i>
+                                Payment Reminder <span class="text-[10px] font-normal" style="color:#6B7280;">(DP >14 hari)</span>
+                            </h3>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" style="background:#FEF3C7;color:#B45309;" id="sh-payment-count">0</span>
+                        </div>
+                        <div id="sh-payment-body" class="max-h-72 overflow-y-auto"></div>
+                    </div>
+                    <div class="rounded-xl border shadow-sm overflow-hidden" style="background:#FFFDF7;border-color:#F4F1EA;">
+                        <div class="px-5 py-3 border-b" style="background:#F4F1EA;border-color:#E8DFC8;">
+                            <h3 class="font-bold flex items-center gap-2 text-sm" style="color:#1D1D1B;">
+                                <i data-lucide="trophy" class="w-4 h-4" style="color:#B8860B;"></i>
+                                Ranking Sales Bulan Ini
+                            </h3>
+                        </div>
+                        <ol id="sh-leaderboard" class="p-4 space-y-2 list-none"></ol>
+                    </div>
+                </div>
+            </div>
+
             <!-- PAGE: DASHBOARD -->
             <div id="page-dashboard" class="page-content space-y-6">
                 <!-- SUPER COMMAND CENTER -->
@@ -2688,6 +2762,7 @@
                 document.getElementById('nav-operasional').classList.add('hidden');
                 document.getElementById('btn-add-agent').classList.remove('hidden');
                 document.getElementById('nav-followup').classList.remove('hidden');
+                document.getElementById('nav-sales-home').classList.remove('hidden');
             } else if (currentUser.role === 'finance') {
                 document.getElementById('nav-pendaftaran').classList.add('hidden');
                 document.getElementById('nav-inbox').classList.add('hidden');
@@ -2726,7 +2801,9 @@
 
             initNavGroups();
             updateNavGroupVisibility();
-            showPage('dashboard');
+            // Sales user default landing ke Home Sales (MY-scoped) supaya buka ERP
+            // langsung lihat prioritas kerja hari ini, bukan dashboard admin generik.
+            showPage(currentUser.role === 'sales' ? 'sales-home' : 'dashboard');
             refreshInboxBadge();
             fetchInventory(); // supaya badge stok menipis langsung terlihat tanpa perlu buka halaman Ops dulu
             handleAssetDeepLinkIfPresent(); // ?asset=AST-0001 dari scan QR kamera HP -> langsung buka detailnya
@@ -2760,7 +2837,7 @@
             return false;
         }
 
-        const pageTitles = { 'dashboard': 'Dashboard', 'pendaftaran': 'Pendaftaran Baru', 'jamaah': 'Master Data Jamaah', 'finance': 'Keuangan & P&L', 'operasional': 'Operasional & Logistik', 'whatsapp': 'Manajemen WA', 'livechat': 'Live Chat WhatsApp (Multi-Agent)', 'users': 'Master Data Karyawan', 'packages': 'Master Paket Umroh', 'agents': 'Manajemen Keagenan', 'tactical': 'Analitik Taktis & Audit', 'procurement': 'Manajemen Vendor / Procurement', 'settings': 'Pengaturan Aplikasi', 'followup': 'Follow-up Lead (CRM Sales)', 'expense': 'Expense Report', 'inbox': 'Kotak Masuk Pendaftaran Publik', 'leave': 'Ajukan Izin', 'marketing': 'Marketing Analytics' };
+        const pageTitles = { 'dashboard': 'Dashboard', 'pendaftaran': 'Pendaftaran Baru', 'jamaah': 'Master Data Jamaah', 'finance': 'Keuangan & P&L', 'operasional': 'Operasional & Logistik', 'whatsapp': 'Manajemen WA', 'users': 'Master Data Karyawan', 'packages': 'Master Paket Umroh', 'agents': 'Manajemen Keagenan', 'tactical': 'Kesiapan Operasional & Audit', 'procurement': 'Manajemen Vendor / Procurement', 'settings': 'Pengaturan Aplikasi', 'followup': 'Follow-up Lead (CRM Sales)', 'expense': 'Expense Report', 'inbox': 'Kotak Masuk Pendaftaran Publik', 'leave': 'Ajukan Izin', 'marketing': 'Marketing Analytics', 'sales-home': 'Home Sales' };
 
         // --- SIDEBAR: kategori yang bisa dilipat (accordion), status tersimpan per browser ---
         const NAV_GROUPS = ['crm', 'finance', 'ops', 'tools'];
@@ -2852,6 +2929,7 @@
             if(id === 'inbox') fetchInbox();
             if(id === 'livechat') loadConversations(true);
             if(id === 'marketing' && typeof initMarketingPage === 'function') initMarketingPage();
+            if(id === 'sales-home' && typeof initSalesHome === 'function') initSalesHome();
 
             clearInterval(waPollInterval);
             if(id === 'whatsapp') { checkWaStatus(); waPollInterval = setInterval(checkWaStatus, 3000); } 
@@ -6507,5 +6585,6 @@
     </script>
     <!-- Marketing Analytics: heatmap + chart (dimuat setelah inline JS supaya authFetch sudah terdefinisi). -->
     <script src="js/marketing.js?v=20260817b"></script>
+    <script src="js/sales-home.js?v=20260817b"></script>
 </body>
 </html>

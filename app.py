@@ -3562,6 +3562,110 @@ async def marketing_rows(
 
 
 # ===========================================================================
+# HOME SALES (dashboard role-aware untuk LINA/TITIN/FARAH -- data MY-scoped)
+# ===========================================================================
+@app.get("/api/sales/home")
+async def sales_home(user=Depends(authenticate_token)):
+    """Data dashboard sales -- MY-scoped: cuma jamaah/lead yang di-handle user login.
+    Admin & management dapat scope 'admin' (agregasi semua sales) untuk preview
+    tanpa perlu login sebagai sales tertentu."""
+    role = user.get("role")
+    if role not in ("sales", "admin", "management"):
+        raise HTTPException(status_code=403, detail="Halaman Home Sales hanya untuk role sales.")
+
+    if role == "sales":
+        sales_filter = "j.sales_id = ?"
+        params = (user["id"],)
+        scope = "self"
+    else:
+        # Admin/mgmt: preview aggregate (semua sales), pass sales_id=0 utk noop
+        sales_filter = "j.sales_id IS NOT NULL"
+        params = ()
+        scope = "all_sales"
+
+    # 1. My Pipeline: jamaah aktif (bukan Cancelled)
+    pipeline = db.query_one(
+        f"SELECT COUNT(*) c FROM jamaah j WHERE {sales_filter} AND j.status != 'Cancelled'",
+        params,
+    )["c"]
+
+    # 2. My Closing Bulan Ini: pakai order_date supaya akurat (created_at semua =
+    # tanggal migrasi historis). Falls back ke created_at kalau order_date NULL.
+    ym = datetime.datetime.now().strftime("%Y-%m")
+    this_month = db.query_one(
+        f"SELECT COUNT(*) c, COALESCE(SUM(j.total_price),0) omzet FROM jamaah j "
+        f"WHERE {sales_filter} AND j.status != 'Cancelled' "
+        f"AND SUBSTR(COALESCE(j.order_date, j.created_at), 1, 7) = ?",
+        params + (ym,),
+    )
+
+    # 3. My Piutang
+    piutang = db.query_one(
+        f"SELECT COALESCE(SUM(j.total_price - j.paid_amount), 0) s FROM jamaah j "
+        f"WHERE {sales_filter} AND j.status NOT IN ('Cancelled', 'Lead - Follow Up') "
+        f"AND j.total_price > j.paid_amount",
+        params,
+    )["s"]
+
+    # 4. My Lead Baru (dari pendaftaran publik yang belum di-review admin)
+    new_leads = db.query_one(
+        "SELECT COUNT(*) c FROM pendaftaran_publik WHERE status = 'Pending' "
+        "AND date(created_at) >= date('now', '-7 days')"
+    )["c"]
+
+    # 5. Follow-up jatuh tempo (today/overdue) -- MY jamaah
+    followup_due = db.query_all(
+        f"SELECT j.id, j.name, j.phone, j.status, j.next_follow_up, "
+        f"j.last_contact, j.package_type "
+        f"FROM jamaah j WHERE {sales_filter} "
+        f"AND j.next_follow_up IS NOT NULL AND j.next_follow_up != '' "
+        f"AND date(j.next_follow_up) <= date('now') "
+        f"AND j.status NOT IN ('Cancelled', 'On Trip', 'Lunas') "
+        f"ORDER BY j.next_follow_up ASC LIMIT 30",
+        params,
+    )
+
+    # 6. Payment Reminder: jamaah DP tapi belum lunas > 14 hari sejak order
+    payment_stale = db.query_all(
+        f"SELECT j.id, j.name, j.phone, j.total_price, j.paid_amount, "
+        f"(j.total_price - j.paid_amount) sisa, j.order_date, j.package_type "
+        f"FROM jamaah j WHERE {sales_filter} "
+        f"AND j.status NOT IN ('Cancelled', 'Lunas') "
+        f"AND j.paid_amount > 0 AND j.total_price > j.paid_amount "
+        f"AND j.order_date IS NOT NULL "
+        f"AND date(j.order_date) <= date('now', '-14 days') "
+        f"ORDER BY j.order_date ASC LIMIT 20",
+        params,
+    )
+
+    # 7. Leaderboard sales bulan ini (mini) -- semua sales, biar sales tahu posisinya
+    leaderboard = db.query_all(
+        "SELECT u.id, u.name, COUNT(j.id) closing, COALESCE(SUM(j.total_price),0) omzet "
+        "FROM users u LEFT JOIN jamaah j ON j.sales_id = u.id "
+        "AND j.status != 'Cancelled' "
+        "AND SUBSTR(COALESCE(j.order_date, j.created_at), 1, 7) = ? "
+        "WHERE u.role = 'sales' GROUP BY u.id ORDER BY closing DESC",
+        (ym,),
+    )
+
+    return {
+        "scope": scope,
+        "me": {"id": user["id"], "name": user["name"]},
+        "kpi": {
+            "pipeline": pipeline,
+            "closing_this_month": this_month["c"] if this_month else 0,
+            "omzet_this_month": (this_month["omzet"] or 0) if this_month else 0,
+            "piutang": piutang or 0,
+            "new_leads_7d": new_leads,
+        },
+        "followup_due": followup_due,
+        "payment_stale": payment_stale,
+        "leaderboard": leaderboard,
+        "period": ym,
+    }
+
+
+# ===========================================================================
 # HALAMAN STATIS & PANDUAN
 # ===========================================================================
 @app.get("/panduan")
