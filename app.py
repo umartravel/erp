@@ -375,140 +375,6 @@ async def wa_remind_payment(user=Depends(authenticate_token)):
 # ===========================================================================
 # LIVE CHAT WA (MULTI-AGENT)
 # ===========================================================================
-@app.get("/api/wa/conversations")
-async def wa_conversations(user=Depends(authenticate_token)):
-    return db.query_all(
-        "SELECT * FROM wa_conversations ORDER BY last_updated DESC", ()
-    )
-
-
-@app.get("/api/wa/conversations/{phone}")
-async def wa_conversation_messages(phone: str, user=Depends(authenticate_token)):
-    return db.query_all(
-        "SELECT * FROM wa_messages WHERE phone = ? ORDER BY created_at ASC", (phone,)
-    )
-
-
-@app.put("/api/wa/conversations/{phone}/read")
-async def wa_conversation_read(phone: str, user=Depends(authenticate_token)):
-    db.execute("UPDATE wa_conversations SET unread_count = 0 WHERE phone = ?", (phone,))
-    return {"success": True}
-
-
-@app.put("/api/wa/conversations/{phone}/assign")
-async def wa_conversation_assign(
-    phone: str, body: dict = Depends(json_body), user=Depends(authenticate_token)
-):
-    assigned_to = body.get("assigned_to")
-    db.execute(
-        "UPDATE wa_conversations SET assigned_to = ? WHERE phone = ?", (assigned_to, phone)
-    )
-    return {"success": True, "message": f"Obrolan WA telah diteruskan ke {assigned_to}"}
-
-
-@app.post("/api/wa/conversations/{phone}/send")
-async def wa_conversation_send(
-    phone: str, body: dict = Depends(json_body), user=Depends(authenticate_token)
-):
-    message = body.get("message")
-    success = await wa.send_message(phone, message)
-    if not success:
-        raise HTTPException(status_code=500, detail="Gagal mengirim pesan dari sistem.")
-
-    db.execute(
-        "INSERT INTO wa_messages (phone, sender, message) VALUES (?, 'system', ?)",
-        (phone, message),
-    )
-    notify(
-        "wa_new_message",
-        {"phone": phone, "sender": "system", "message": message, "created_at": wa._now_iso()},
-    )
-    conv = db.query_one("SELECT id, name, unread_count FROM wa_conversations WHERE phone = ?", (phone,))
-    if conv:
-        db.execute(
-            "UPDATE wa_conversations SET last_message = ?, last_updated = CURRENT_TIMESTAMP WHERE phone = ?",
-            (message, phone),
-        )
-        notify("wa_conversation_updated", {
-            "phone": phone, "name": conv["name"], "last_message": message,
-            "unread_count": conv["unread_count"], "last_updated": wa._now_iso(),
-        })
-    else:
-        db.execute(
-            "INSERT INTO wa_conversations (phone, name, last_message, unread_count, last_updated) "
-            "VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP)",
-            (phone, phone, message),
-        )
-        notify("wa_conversation_updated", {
-            "phone": phone, "name": phone, "last_message": message,
-            "unread_count": 0, "last_updated": wa._now_iso(),
-        })
-    return {"success": True}
-
-
-@app.post("/api/wa/conversations/{phone}/send-media")
-async def wa_conversation_send_media(
-    phone: str, body: dict = Depends(json_body), user=Depends(authenticate_token)
-):
-    message = body.get("message")
-    file_base64 = body.get("fileBase64", "")
-    file_name = body.get("fileName", "file")
-    mime_type = body.get("mimeType")
-    media_type = body.get("mediaType")
-    try:
-        ext = file_name.split(".")[-1]
-        safe_name = f"send_{int(asyncio.get_event_loop().time()*1000)}.{ext}"
-        os.makedirs(UPLOAD_DIR, exist_ok=True)
-        b64 = file_base64.split(",")[1] if "," in file_base64 else file_base64
-        with open(os.path.join(UPLOAD_DIR, safe_name), "wb") as f:
-            f.write(base64.b64decode(b64))
-        media_url = f"/uploads/{safe_name}"
-
-        success = await wa.send_message(
-            phone,
-            message or "",
-            {"url": media_url, "type": media_type, "mimetype": mime_type, "fileName": file_name},
-        )
-        if not success:
-            raise HTTPException(status_code=500, detail="Gagal mengirim media.")
-
-        db.execute(
-            "INSERT INTO wa_messages (phone, sender, message, media_url, media_type) "
-            "VALUES (?, 'system', ?, ?, ?)",
-            (phone, message or "", media_url, media_type),
-        )
-        notify("wa_new_message", {
-            "phone": phone, "sender": "system", "message": message or "",
-            "media_url": media_url, "media_type": media_type, "created_at": wa._now_iso(),
-        })
-        preview = f"[Lampiran {media_type}] {message or ''}"
-        conv = db.query_one("SELECT id, name, unread_count FROM wa_conversations WHERE phone = ?", (phone,))
-        if conv:
-            db.execute(
-                "UPDATE wa_conversations SET last_message = ?, last_updated = CURRENT_TIMESTAMP WHERE phone = ?",
-                (preview, phone),
-            )
-            notify("wa_conversation_updated", {
-                "phone": phone, "name": conv["name"], "last_message": preview,
-                "unread_count": conv["unread_count"], "last_updated": wa._now_iso(),
-            })
-        else:
-            db.execute(
-                "INSERT INTO wa_conversations (phone, name, last_message, unread_count, last_updated) "
-                "VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP)",
-                (phone, phone, preview),
-            )
-            notify("wa_conversation_updated", {
-                "phone": phone, "name": phone, "last_message": preview,
-                "unread_count": 0, "last_updated": wa._now_iso(),
-            })
-        return {"success": True, "media_url": media_url}
-    except HTTPException:
-        raise
-    except Exception as e:  # noqa: BLE001
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 @app.get("/api/wa/templates")
 async def wa_templates(user=Depends(authenticate_token)):
     return db.query_all("SELECT * FROM wa_templates", ()) or []
@@ -529,18 +395,21 @@ async def wa_template_delete(tid: int, user=Depends(authenticate_token)):
     return {"success": True}
 
 
-@app.put("/api/wa/conversations/{phone}/name")
-async def wa_conversation_name(
-    phone: str, body: dict = Depends(json_body), user=Depends(authenticate_token)
-):
-    name = body.get("name")
-    db.execute("UPDATE wa_conversations SET name = ? WHERE phone = ?", (name, phone))
-    return {"success": True, "message": f"Kontak berhasil disimpan sebagai {name}"}
-
-
 # ===========================================================================
 # DASHBOARD & LAPORAN
 # ===========================================================================
+def _total_piutang():
+    """Total tagihan jamaah yang belum lunas (kecuali Cancelled/Lead). Satu source
+    of truth -- dipakai dashboard.finance.piutang + tactical.piutang, jangan copas
+    query yang sama di banyak tempat (sering out-of-sync antara halaman)."""
+    row = db.query_one(
+        "SELECT SUM(total_price - paid_amount) as s FROM jamaah "
+        "WHERE status NOT IN ('Lead - Follow Up', 'Cancelled') "
+        "AND total_price > paid_amount"
+    )
+    return (row["s"] or 0) if row else 0
+
+
 @app.get("/api/dashboard/super")
 async def dashboard_super(user=Depends(authenticate_token)):
     funnel = db.query_all("SELECT status, COUNT(*) as count FROM jamaah GROUP BY status")
@@ -558,10 +427,7 @@ async def dashboard_super(user=Depends(authenticate_token)):
     )
     inc = db.query_one("SELECT SUM(amount) as s FROM transactions WHERE type = 'income'")
     exp = db.query_one("SELECT SUM(amount) as s FROM transactions WHERE type = 'expense'")
-    piutang = db.query_one(
-        "SELECT SUM(total_price - paid_amount) as s FROM jamaah "
-        "WHERE status NOT IN ('Lead - Follow Up', 'Cancelled') AND total_price > paid_amount"
-    )
+    piutang = _total_piutang()
     recent_exp = db.query_all(
         "SELECT category, amount, description, created_at FROM transactions "
         "WHERE type = 'expense' ORDER BY created_at DESC LIMIT 8"
@@ -591,7 +457,7 @@ async def dashboard_super(user=Depends(authenticate_token)):
         "lowStock": low_stock,
         "finance": {
             "balance": inc_s - exp_s,
-            "piutang": (piutang["s"] or 0) if piutang else 0,
+            "piutang": piutang,
             "income": inc_s,
             "expense": exp_s,
         },
@@ -606,45 +472,10 @@ async def dashboard_super(user=Depends(authenticate_token)):
     }
 
 
-@app.get("/api/stats")
-async def stats(user=Depends(authenticate_token)):
-    t = db.query_one("SELECT COUNT(*) as c FROM jamaah")
-    l = db.query_one("SELECT COUNT(*) as c FROM jamaah WHERE status = 'Lunas'")
-    v = db.query_one("SELECT COUNT(*) as c FROM jamaah WHERE status LIKE 'Lead%'")
-    inc = db.query_one("SELECT SUM(amount) as s FROM transactions WHERE type = 'income'")
-    exp = db.query_one("SELECT SUM(amount) as s FROM transactions WHERE type = 'expense'")
-    pkgs = db.query_all(
-        "SELECT name, departure_date, price FROM packages ORDER BY departure_date DESC LIMIT 5"
-    )
-    inc_s = inc["s"] or 0 if inc else 0
-    exp_s = exp["s"] or 0 if exp else 0
-    return {
-        "jamaah": {"total": t["c"] or 0, "lunas": l["c"] or 0, "lead": v["c"] or 0},
-        "finance": {"income": inc_s, "expense": exp_s, "balance": inc_s - exp_s},
-        "upcomingPackages": pkgs,
-    }
-
-
-@app.get("/api/reports/executive")
-async def reports_executive(user=Depends(authenticate_token)):
-    cities = db.query_all(
-        "SELECT city, COUNT(*) as total FROM jamaah WHERE city IS NOT NULL AND city != '' "
-        "GROUP BY city ORDER BY total DESC LIMIT 5"
-    )
-    annual = db.query_all(
-        "SELECT strftime('%Y', created_at) as year, COUNT(*) as total FROM jamaah "
-        "GROUP BY year ORDER BY year DESC LIMIT 5"
-    )
-    return {"topCities": cities, "annualDepartures": annual}
-
-
 @app.get("/api/tactical-stats")
 async def tactical_stats(user=Depends(authenticate_token)):
     require_role(user, "admin", "management")
-    piutang = db.query_one(
-        "SELECT SUM(total_price - paid_amount) as piutang FROM jamaah "
-        "WHERE status NOT IN ('Lead - Follow Up', 'Cancelled') AND total_price > paid_amount"
-    )
+    piutang = _total_piutang()
     payroll = db.query_one("SELECT SUM(base_salary) as payroll FROM users")
     readiness = db.query_all(
         "SELECT p.name, p.departure_date, COUNT(j.id) as total_jamaah, "
@@ -659,7 +490,7 @@ async def tactical_stats(user=Depends(authenticate_token)):
         "AND visa_status = 'Belum Proses' AND created_at < datetime('now', '-7 days')"
     )
     return {
-        "piutang": (piutang["piutang"] or 0) if piutang else 0,
+        "piutang": piutang,
         "payroll": (payroll["payroll"] or 0) if payroll else 0,
         "readiness": readiness or [],
         "bottlenecks": bottleneck["count"] if bottleneck else 0,

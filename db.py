@@ -241,27 +241,6 @@ SCHEMA = [
         status TEXT DEFAULT 'Open',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )""",
-    # Tabel WA Conversations (Live Chat)
-    """CREATE TABLE IF NOT EXISTS wa_conversations (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        phone TEXT UNIQUE,
-        name TEXT,
-        assigned_to TEXT,
-        status TEXT DEFAULT 'open',
-        unread_count INTEGER DEFAULT 0,
-        last_message TEXT,
-        last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
-    )""",
-    # Tabel WA Messages (Live Chat)
-    """CREATE TABLE IF NOT EXISTS wa_messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        phone TEXT,
-        sender TEXT,
-        message TEXT,
-        media_url TEXT,
-        media_type TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )""",
     # Tabel WA Templates (Quick Replies)
     """CREATE TABLE IF NOT EXISTS wa_templates (
         id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, content TEXT
@@ -472,8 +451,10 @@ ALTER_QUERIES = [
     "ALTER TABLE jamaah ADD COLUMN bus_group TEXT",
     "ALTER TABLE jamaah ADD COLUMN cancel_reason TEXT",
     "ALTER TABLE packages ADD COLUMN quota INTEGER DEFAULT 45",
-    "ALTER TABLE wa_messages ADD COLUMN media_url TEXT",
-    "ALTER TABLE wa_messages ADD COLUMN media_type TEXT",
+    # Cleanup modul Live Chat WhatsApp -- dihapus 2026-08-17 (tim UMAR chat via WA
+    # HP masing-masing; ERP hanya untuk broadcast+auto-remind via wa_templates).
+    "DROP TABLE IF EXISTS wa_conversations",
+    "DROP TABLE IF EXISTS wa_messages",
     "ALTER TABLE jamaah ADD COLUMN orderer_name TEXT",
     "ALTER TABLE jamaah ADD COLUMN gender TEXT",
     "ALTER TABLE jamaah ADD COLUMN birth_place_date TEXT",

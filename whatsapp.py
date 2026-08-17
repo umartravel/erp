@@ -61,80 +61,6 @@ def get_status():
     return {"status": _status, "qr": _qr_data_url}
 
 
-# ---------------------------------------------------------------------------
-# Persistensi pesan masuk/keluar (port langsung dari logika whatsapp.js)
-# ---------------------------------------------------------------------------
-def record_message(remote_jid, text, is_from_me, media_url=None, media_type=None):
-    """
-    Simpan satu pesan + perbarui ringkasan percakapan, lalu emit event realtime.
-    Meniru handler messages.upsert pada whatsapp.js (termasuk lookup nama jamaah).
-    """
-    clean_phone = remote_jid.split("@")[0].split(":")[0]
-    text = text or "[Media/Attachment]"
-
-    jamaah = db.query_one(
-        "SELECT name FROM jamaah WHERE phone LIKE ? OR phone LIKE ?",
-        (f"%{clean_phone}%", f"%{clean_phone[2:]}%"),
-    )
-    name = jamaah["name"] if jamaah else clean_phone
-
-    conv = db.query_one(
-        "SELECT id, name as saved_name, unread_count FROM wa_conversations WHERE phone = ?",
-        (remote_jid,),
-    )
-    unread_inc = 0 if is_from_me else 1
-    preview = f"[Lampiran {media_type}] {text}" if media_type else text
-
-    if conv and conv["saved_name"] == clean_phone and jamaah:
-        final_name = jamaah["name"]
-    elif conv:
-        final_name = conv["saved_name"]
-    else:
-        final_name = name
-
-    if conv:
-        db.execute(
-            "UPDATE wa_conversations SET name = ?, last_message = ?, "
-            "unread_count = unread_count + ?, last_updated = CURRENT_TIMESTAMP WHERE phone = ?",
-            (final_name, preview, unread_inc, remote_jid),
-        )
-    else:
-        db.execute(
-            "INSERT INTO wa_conversations (phone, name, last_message, unread_count, last_updated) "
-            "VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)",
-            (remote_jid, final_name, preview, unread_inc),
-        )
-
-    sender = "system" if is_from_me else "jamaah"
-    db.execute(
-        "INSERT INTO wa_messages (phone, sender, message, media_url, media_type) VALUES (?, ?, ?, ?, ?)",
-        (remote_jid, sender, text, media_url, media_type),
-    )
-
-    realtime.notify(
-        "wa_new_message",
-        {
-            "phone": remote_jid,
-            "sender": sender,
-            "message": text,
-            "media_url": media_url,
-            "media_type": media_type,
-            "created_at": _now_iso(),
-        },
-    )
-    base_unread = conv["unread_count"] if conv else 0
-    realtime.notify(
-        "wa_conversation_updated",
-        {
-            "phone": remote_jid,
-            "name": final_name,
-            "last_message": preview,
-            "unread_count": base_unread + unread_inc,
-            "last_updated": _now_iso(),
-        },
-    )
-
-
 def _format_jid(jid_or_phone: str) -> str:
     if any(s in jid_or_phone for s in ("@lid", "@g.us", "@s.whatsapp.net")):
         return jid_or_phone
@@ -310,7 +236,9 @@ class NeonizeBackend:
                         text = text or "[Gagal memuat media]"
                     break
 
-        record_message(remote_jid, text, is_from_me, media_url, media_type)
+        # Pesan masuk/keluar tidak lagi disimpan ke DB -- tim UMAR chat via WA HP
+        # masing-masing, ERP hanya untuk broadcast/auto-remind via /api/wa/send.
+        # (Modul Live Chat WhatsApp dihapus 2026-08-17.)
 
     async def logout(self):
         try:

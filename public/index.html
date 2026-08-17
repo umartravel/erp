@@ -134,7 +134,7 @@
                 <a href="#" id="nav-agents" onclick="showPage('agents')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150">
                     <i data-lucide="network" class="w-4 h-4"></i> Keagenan (Mitra)
                 </a>
-                <a href="#" id="nav-livechat" onclick="showPage('livechat')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 shadow-sm">
+                <a href="#" id="nav-livechat" onclick="return false" class="hidden" data-removed="live-chat-module-removed-2026-08-17" style="display:none !important">
                     <i data-lucide="message-circle" class="w-4 h-4"></i> Live Chat WhatsApp
                 </a>
                 <a href="#" id="nav-marketing" onclick="showPage('marketing')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
@@ -178,7 +178,7 @@
                     <i data-lucide="calendar-off" class="w-4 h-4"></i> Ajukan Izin
                 </a>
                 <a href="#" id="nav-tactical" onclick="showPage('tactical')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
-                    <i data-lucide="radar" class="w-4 h-4"></i> Tactical & Audit
+                    <i data-lucide="clipboard-check" class="w-4 h-4"></i> Kesiapan & Audit
                 </a>
                 <a href="#" id="nav-whatsapp" onclick="showPage('whatsapp')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150">
                     <i data-lucide="message-square" class="w-4 h-4"></i> WhatsApp Gateway
@@ -291,19 +291,6 @@
                     </div>
                 </div>
             
-                <div class="mt-8 border-t pt-6 opacity-60 hover:opacity-100 transition-opacity">
-                    <h3 class="text-xs font-bold text-gray-400 mb-4 uppercase tracking-widest">Metrik Klasik (Grafik)</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-                            <h4 class="font-semibold text-gray-800 mb-2 border-b pb-1 text-sm">Pemasukan vs Pengeluaran</h4>
-                            <div class="h-48 flex items-center justify-center w-full relative"><canvas id="financeChart"></canvas></div>
-                        </div>
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-                            <h4 class="font-semibold text-gray-800 mb-2 border-b pb-1 text-sm">Demografi Asal Kota Jamaah</h4>
-                            <ul id="dash-top-cities" class="space-y-2 text-sm max-h-48 overflow-y-auto custom-scrollbar"></ul>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <!-- PAGE: AJUKAN IZIN (SEMUA ROLE) -->
@@ -367,25 +354,17 @@
             <!-- PAGE: TACTICAL ANALYTICS & AUDIT -->
             <div id="page-tactical" class="page-content hidden space-y-6 max-w-7xl mx-auto pb-10">
                 <div class="flex items-center justify-between border-b pb-3 mb-4">
-                    <h2 class="text-2xl font-black text-gray-800 tracking-tight flex items-center gap-2"><i data-lucide="radar" class="w-6 h-6 text-indigo-600"></i> Analitik Taktis & Audit</h2>
+                    <h2 class="text-2xl font-black text-gray-800 tracking-tight flex items-center gap-2"><i data-lucide="clipboard-check" class="w-6 h-6 text-indigo-600"></i> Kesiapan Operasional & Audit</h2>
                     <span class="bg-indigo-100 text-indigo-800 text-xs px-3 py-1 rounded-full font-bold shadow-sm flex items-center gap-1"><i data-lucide="shield-alert" class="w-3 h-3"></i> MANAGEMENT ONLY</span>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:shadow-md transition relative overflow-hidden group">
-                        <div class="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity"><i data-lucide="trending-up" class="w-24 h-24 text-orange-500"></i></div>
-                        <h4 class="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1 flex items-center gap-1"><i data-lucide="coins" class="w-3 h-3 text-orange-500"></i> Proyeksi Dana Masuk</h4><p class="text-2xl font-black text-gray-800 truncate" id="tac-piutang">Rp 0</p><p class="text-[10px] text-gray-500 mt-1">Sisa tagihan jamaah belum lunas.</p>
+                        <div class="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity"><i data-lucide="piggy-bank" class="w-24 h-24 text-emerald-500"></i></div>
+                        <h4 class="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1 flex items-center gap-1"><i data-lucide="activity" class="w-3 h-3 text-emerald-500"></i> Proyeksi Likuiditas</h4><p class="text-2xl font-black text-emerald-600 truncate" id="tac-likuiditas">Rp 0</p><p class="text-[10px] text-gray-500 mt-1">Estimasi dana tersisa (Piutang - Beban gaji tetap). Piutang &amp; bottleneck detail ada di Dashboard.</p>
                     </div>
                     <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:shadow-md transition relative overflow-hidden group">
                         <div class="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity"><i data-lucide="users" class="w-24 h-24 text-red-500"></i></div>
                         <h4 class="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1 flex items-center gap-1"><i data-lucide="wallet" class="w-3 h-3 text-red-500"></i> Estimasi Beban Tetap</h4><p class="text-2xl font-black text-gray-800 truncate" id="tac-payroll">Rp 0</p><p class="text-[10px] text-gray-500 mt-1">Total beban gaji pokok karyawan.</p>
-                    </div>
-                    <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:shadow-md transition relative overflow-hidden group">
-                        <div class="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity"><i data-lucide="piggy-bank" class="w-24 h-24 text-emerald-500"></i></div>
-                        <h4 class="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1 flex items-center gap-1"><i data-lucide="activity" class="w-3 h-3 text-emerald-500"></i> Proyeksi Likuiditas</h4><p class="text-2xl font-black text-emerald-600 truncate" id="tac-likuiditas">Rp 0</p><p class="text-[10px] text-gray-500 mt-1">Estimasi dana tersisa (Piutang - Beban).</p>
-                    </div>
-                    <div class="bg-rose-50 border border-rose-200 rounded-xl p-5 shadow-sm hover:shadow-md transition relative overflow-hidden group">
-                        <div class="absolute -right-4 -top-4 opacity-10 group-hover:opacity-20 transition-opacity"><i data-lucide="siren" class="w-24 h-24 text-rose-500"></i></div>
-                        <h4 class="text-[10px] text-rose-700 font-bold uppercase tracking-wider mb-1 flex items-center gap-1"><i data-lucide="alert-octagon" class="w-3 h-3 text-rose-600"></i> Bottleneck Operasional</h4><p class="text-2xl font-black text-rose-600 truncate" id="tac-bottleneck">0 <span class="text-sm font-medium">Pax</span></p><p class="text-[10px] text-rose-600 mt-1 leading-tight">Lunas &gt;7 hari, visa belum diproses.</p>
                     </div>
                 </div>
 
@@ -833,7 +812,9 @@
                 </div>
             </div>
 
-            <!-- PAGE: LIVE CHAT WA MULTI-AGENT -->
+            <!-- PAGE: LIVE CHAT WA (module dihapus 2026-08-17 -- nav & JS references dicabut,
+                 HTML placeholder ini tetap ada supaya struktur DOM utuh; showPage('livechat')
+                 tidak lagi bisa dipanggil karena nav-livechat link sudah dihapus.) -->
             <div id="page-livechat" class="page-content hidden h-[calc(100vh-130px)]">
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 flex h-full overflow-hidden">
                     <!-- Sidebar Chat List -->
@@ -998,7 +979,13 @@
                         <thead class="text-xs text-gray-500 uppercase bg-gray-50"><tr><th class="px-4 py-3">Nama</th><th class="px-4 py-3">Paket</th><th class="px-4 py-3">Status</th><th class="px-4 py-3">Follow-up</th><th class="px-4 py-3">Kontak Terakhir</th><th class="px-4 py-3">Aksi</th></tr></thead>
                         <tbody id="table-followup" class="divide-y"></tbody>
                     </table>
-                    <div id="followup-empty" class="text-center text-gray-400 py-8 hidden">Belum ada lead yang dijadwalkan follow-up. Catat aktivitas dari halaman ini atau Master Jamaah.</div>
+                    <div id="followup-empty" class="hidden py-10 px-6 text-center">
+                        <div class="inline-flex w-14 h-14 rounded-full items-center justify-center mb-3" style="background:#F4F1EA;">
+                            <i data-lucide="calendar-clock" class="w-7 h-7" style="color:#B8860B;"></i>
+                        </div>
+                        <p class="font-semibold text-gray-700 mb-1">Belum ada lead yang dijadwalkan follow-up.</p>
+                        <p class="text-xs text-gray-500 max-w-md mx-auto leading-relaxed">Buka <b>Database Jamaah</b> &rarr; pilih jamaah/lead &rarr; tombol <b>Riwayat Aktivitas</b> untuk catat aktivitas &amp; jadwalkan follow-up. Semua lead yang jatuh tempo hari ini + overdue akan otomatis muncul di sini.</p>
+                    </div>
                 </div>
             </div>
 
@@ -2390,7 +2377,6 @@
         let currentUser = null;
         let allJamaah = [];
         let waPollInterval = null;
-        let financeChart = null;
         let activeDocId = null;
         let auditLogsCache = [];
 
@@ -2672,7 +2658,7 @@
             document.getElementById('nav-packages').classList.add('hidden');
             document.getElementById('nav-users').classList.add('hidden');
             document.getElementById('nav-tactical').classList.add('hidden');
-            document.getElementById('nav-livechat').classList.remove('hidden');
+            // nav-livechat dihapus 2026-08-17 (modul Live Chat WA removed)
             document.getElementById('btn-add-agent').classList.add('hidden');
             document.getElementById('btn-add-pkg').classList.add('hidden');
             document.getElementById('nav-procurement').classList.add('hidden');
@@ -2917,26 +2903,6 @@
                     document.getElementById('super-expenses').innerHTML = '<li class="text-center text-gray-400 italic p-4 text-xs">Restricted Access</li>';
                 }
 
-                // Render Classic Chart
-                if (currentUser.role === 'admin' || currentUser.role === 'finance') {
-                    const ctx = document.getElementById('financeChart');
-                    if(ctx) {
-                        if(financeChart) financeChart.destroy();
-                        financeChart = new Chart(ctx, {
-                            type: 'doughnut',
-                            data: {
-                                labels: ['Total Pemasukan', 'Total Pengeluaran'],
-                                datasets: [{ data: [data.finance.income, data.finance.expense], backgroundColor: ['#10b981', '#ef4444'], hoverOffset: 4 }]
-                            },
-                            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
-                        });
-                    }
-                }
-
-                // Executive Reports
-                const resExec = await authFetch('/reports/executive'); const execData = await resExec.json();
-                document.getElementById('dash-top-cities').innerHTML = execData.topCities.length ? execData.topCities.map(c => `<li class="flex justify-between items-center bg-gray-50 px-3 py-1.5 rounded border"><span class="font-medium text-gray-700">${c.city}</span><span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full">${c.total} Pax</span></li>`).join('') : '<li class="text-sm text-gray-500">Belum ada data demografi.</li>';
-                
                 if (typeof lucide !== 'undefined') lucide.createIcons();
 
             } catch(e) {}
@@ -3522,10 +3488,8 @@
             try {
                 await loadUsersDirectory();
                 const res = await authFetch('/tactical-stats'); const data = await res.json();
-                document.getElementById('tac-piutang').innerText = formatRp(data.piutang);
                 document.getElementById('tac-payroll').innerText = formatRp(data.payroll);
                 document.getElementById('tac-likuiditas').innerText = formatRp(data.piutang - data.payroll);
-                document.getElementById('tac-bottleneck').innerHTML = `${data.bottlenecks} <span class="text-sm font-medium">Pax</span>`;
                 
                 document.getElementById('tac-readiness').innerHTML = data.readiness.map(p => {
                     const pctPay = p.total_jamaah > 0 ? Math.round((p.lunas_count / p.total_jamaah) * 100) : 0;
