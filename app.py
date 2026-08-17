@@ -3468,6 +3468,7 @@ _MKT_SELECT = """
         j.province, j.city, j.package_type,
         j.total_price, j.paid_amount,
         j.payment_status, j.lead_source, j.created_at, j.order_date,
+        j.gender, j.age, j.education, j.job,
         j.agent_id, j.sales_id,
         a.name AS agent_name, a.legacy_code AS agent_code,
         a.province AS agent_province, a.city AS agent_city,
@@ -3478,6 +3479,23 @@ _MKT_SELECT = """
     LEFT JOIN users u ON j.sales_id = u.id
     LEFT JOIN packages p ON j.package_type = p.name
 """
+
+
+def _age_bucket(age):
+    if age is None:
+        return None
+    try:
+        a = int(age)
+    except (ValueError, TypeError):
+        return None
+    if a < 30: return "<30"
+    if a < 40: return "30-39"
+    if a < 50: return "40-49"
+    if a < 60: return "50-59"
+    return "60+"
+
+
+_AGE_BUCKET_ORDER = ["<30", "30-39", "40-49", "50-59", "60+"]
 
 
 def _txn_month(r):
@@ -3615,6 +3633,22 @@ async def marketing_summary(
     # 8. Distribusi paket per agen (top-5)
     paket_agen = _bucket(agen_rows, lambda r: r.get("package_type"))[:5]
 
+    # 9. Demografi jamaah (gender, age, education, job).
+    demo_gender = _bucket(filtered, lambda r: r.get("gender"))
+    age_dict = {b: 0 for b in _AGE_BUCKET_ORDER}
+    age_null = 0
+    for r in filtered:
+        b = _age_bucket(r.get("age"))
+        if b is None:
+            age_null += 1
+        else:
+            age_dict[b] += 1
+    demo_age = [{"name": b, "count": age_dict[b]} for b in _AGE_BUCKET_ORDER]
+    if age_null:
+        demo_age.append({"name": "(kosong)", "count": age_null})
+    demo_education = _bucket(filtered, lambda r: r.get("education"))[:8]
+    demo_job = _bucket(filtered, lambda r: r.get("job"))[:8]
+
     return {
         "kpi": {
             "total_jamaah": total_jamaah,
@@ -3634,6 +3668,10 @@ async def marketing_summary(
         "map_agen": map_agen_list,
         "leaderboard_agen": [{"name": k, "count": v} for k, v in leaderboard_agen],
         "paket_agen": [{"name": k, "count": v} for k, v in paket_agen],
+        "demo_gender": [{"name": k, "count": v} for k, v in demo_gender],
+        "demo_age": demo_age,
+        "demo_education": [{"name": k, "count": v} for k, v in demo_education],
+        "demo_job": [{"name": k, "count": v} for k, v in demo_job],
     }
 
 

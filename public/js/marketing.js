@@ -330,6 +330,10 @@ async function refreshMarketing() {
     renderChartChannel(data.channel || [], data.subchannel || []);
     renderChartAgenLeaderboard(data.leaderboard_agen || []);
     renderChartAgenPaket(data.paket_agen || []);
+    renderChartGender(data.demo_gender || []);
+    renderChartAge(data.demo_age || []);
+    renderChartEducation(data.demo_education || []);
+    renderChartJob(data.demo_job || []);
   } catch (e) {
     console.error('[marketing] gagal fetch summary', e);
   }
@@ -588,6 +592,113 @@ function renderChartAgenPaket(rows) {
       datasets: [{ data: rows.map(r => r.count), backgroundColor: rows.map((_, i) => palette[i % palette.length]) }],
     },
     options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } } },
+  });
+}
+
+// -------- Demografi Charts --------
+function renderChartGender(rows) {
+  const el = document.getElementById('mkt-chart-gender');
+  if (!el || typeof Chart === 'undefined') return;
+  destroyChart('gender');
+  // Warna: perempuan gold soft (mayoritas historis), laki-laki dark gold, kosong abu.
+  const colorFor = (name) => {
+    const n = (name || '').toUpperCase();
+    if (n.includes('PEREMPUAN') || n === 'P' || n === 'F') return MKT_COLORS.gold;
+    if (n.includes('LAKI'))                                return MKT_COLORS.darkGold;
+    return '#9CA3AF';
+  };
+  MKT.charts.gender = new Chart(el, {
+    type: 'doughnut',
+    data: {
+      labels: rows.map(r => r.name),
+      datasets: [{
+        data: rows.map(r => r.count),
+        backgroundColor: rows.map(r => colorFor(r.name)),
+        borderColor: MKT_COLORS.charcoal, borderWidth: 1,
+      }],
+    },
+    options: {
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+              const pct = total ? Math.round(ctx.parsed / total * 100) : 0;
+              return `${ctx.label}: ${ctx.parsed} (${pct}%)`;
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
+function renderChartAge(rows) {
+  const el = document.getElementById('mkt-chart-age');
+  if (!el || typeof Chart === 'undefined') return;
+  destroyChart('age');
+  MKT.charts.age = new Chart(el, {
+    type: 'bar',
+    data: {
+      labels: rows.map(r => r.name),
+      datasets: [{
+        label: 'Jumlah Jamaah',
+        data: rows.map(r => r.count),
+        backgroundColor: rows.map(r => r.name === '(kosong)' ? '#9CA3AF' : MKT_COLORS.gold),
+        borderColor: MKT_COLORS.charcoal, borderWidth: 1,
+      }],
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+    },
+  });
+}
+
+function renderChartEducation(rows) {
+  const el = document.getElementById('mkt-chart-education');
+  if (!el || typeof Chart === 'undefined') return;
+  destroyChart('education');
+  MKT.charts.education = new Chart(el, {
+    type: 'bar',
+    data: {
+      labels: rows.map(r => r.name),
+      datasets: [{
+        label: 'Jamaah',
+        data: rows.map(r => r.count),
+        backgroundColor: rows.map((_, i) => i === 0 ? MKT_COLORS.darkGold : i === 1 ? MKT_COLORS.gold : MKT_COLORS.goldSoft),
+        borderColor: MKT_COLORS.charcoal, borderWidth: 1,
+      }],
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
+    },
+  });
+}
+
+function renderChartJob(rows) {
+  const el = document.getElementById('mkt-chart-job');
+  if (!el || typeof Chart === 'undefined') return;
+  destroyChart('job');
+  MKT.charts.job = new Chart(el, {
+    type: 'bar',
+    data: {
+      labels: rows.map(r => r.name),
+      datasets: [{
+        label: 'Jamaah',
+        data: rows.map(r => r.count),
+        backgroundColor: rows.map((_, i) => i === 0 ? MKT_COLORS.darkGold : i === 1 ? MKT_COLORS.gold : MKT_COLORS.goldSoft),
+        borderColor: MKT_COLORS.charcoal, borderWidth: 1,
+      }],
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
+    },
   });
 }
 

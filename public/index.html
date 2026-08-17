@@ -1258,6 +1258,35 @@
                         <div style="height:280px;"><canvas id="mkt-chart-agen-paket"></canvas></div>
                     </div>
                 </div>
+
+                <!-- Section Demografi Jamaah -->
+                <div class="mb-4 pt-4 border-t" style="border-color:#F4F1EA;">
+                    <h3 class="text-lg font-bold flex items-center gap-2" style="color:#1D1D1B;">
+                        <i data-lucide="users-round" class="w-5 h-5" style="color:#B8860B;"></i>
+                        Demografi Jamaah
+                    </h3>
+                    <p class="text-xs mt-1" style="color:#6B7280;">Sebaran profil jamaah untuk pemetaan segmen pasar (gender, usia, pendidikan, pekerjaan).</p>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                    <div class="rounded-xl border shadow-sm p-4" style="background:#FFFDF7;">
+                        <h4 class="font-bold text-sm mb-3 pb-2 border-b flex items-center gap-2" style="color:#1D1D1B;border-color:#F4F1EA;"><i data-lucide="user-round" class="w-4 h-4" style="color:#B8860B;"></i>Distribusi Gender</h4>
+                        <div style="height:240px;"><canvas id="mkt-chart-gender"></canvas></div>
+                    </div>
+                    <div class="rounded-xl border shadow-sm p-4" style="background:#FFFDF7;">
+                        <h4 class="font-bold text-sm mb-3 pb-2 border-b flex items-center gap-2" style="color:#1D1D1B;border-color:#F4F1EA;"><i data-lucide="cake" class="w-4 h-4" style="color:#B8860B;"></i>Distribusi Usia</h4>
+                        <div style="height:240px;"><canvas id="mkt-chart-age"></canvas></div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+                    <div class="rounded-xl border shadow-sm p-4" style="background:#FFFDF7;">
+                        <h4 class="font-bold text-sm mb-3 pb-2 border-b flex items-center gap-2" style="color:#1D1D1B;border-color:#F4F1EA;"><i data-lucide="graduation-cap" class="w-4 h-4" style="color:#B8860B;"></i>Pendidikan (Top 8)</h4>
+                        <div style="height:260px;"><canvas id="mkt-chart-education"></canvas></div>
+                    </div>
+                    <div class="rounded-xl border shadow-sm p-4" style="background:#FFFDF7;">
+                        <h4 class="font-bold text-sm mb-3 pb-2 border-b flex items-center gap-2" style="color:#1D1D1B;border-color:#F4F1EA;"><i data-lucide="briefcase" class="w-4 h-4" style="color:#B8860B;"></i>Pekerjaan (Top 8)</h4>
+                        <div style="height:260px;"><canvas id="mkt-chart-job"></canvas></div>
+                    </div>
+                </div>
             </div>
 
         </div>
@@ -6513,6 +6542,6 @@
 
     </script>
     <!-- Marketing Analytics: heatmap + chart (dimuat setelah inline JS supaya authFetch sudah terdefinisi). -->
-    <script src="js/marketing.js"></script>
+    <script src="js/marketing.js?v=20260817b"></script>
 </body>
 </html>
