@@ -1164,7 +1164,10 @@
                 </div>
             </div>
 
-            <!-- PAGE: MASTER PACKAGES (ADMIN ONLY) -->
+            <!-- PAGE: MASTER PAKET
+                 admin: full CRUD | ops: assign TL/mutawwif | management/sales: view-only.
+                 Tombol per-role di-render kondisional di fetchPackagesList(). -->
+
             <div id="page-packages" class="page-content hidden">
                 <div class="bg-white rounded-xl shadow-sm border p-6">
                     <div class="flex justify-between items-center mb-6 border-b pb-4 gap-4">
@@ -2763,6 +2766,13 @@
                 document.getElementById('btn-add-agent').classList.remove('hidden');
                 document.getElementById('nav-followup').classList.remove('hidden');
                 document.getElementById('nav-sales-home').classList.remove('hidden');
+                // Dashboard admin generik disembunyikan -- sales pakai Home Sales sebagai
+                // landing personal (MY-scoped). Dashboard generic tetap ada untuk role lain.
+                document.getElementById('nav-dashboard').classList.add('hidden');
+                // Master Paket dibuka view-only untuk sales supaya bisa jawab pertanyaan
+                // customer (harga, kursi, hotel, maskapai). Tombol Tambah/Edit/Hapus/Staff
+                // di halaman Master Paket akan disembunyikan per-role (lihat fetchPackagesList).
+                document.getElementById('nav-packages').classList.remove('hidden');
             } else if (currentUser.role === 'finance') {
                 document.getElementById('nav-pendaftaran').classList.add('hidden');
                 document.getElementById('nav-inbox').classList.add('hidden');
