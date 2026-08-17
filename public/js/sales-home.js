@@ -60,6 +60,94 @@ function renderSalesHome(data) {
   renderFollowupDue(data.followup_due || []);
   renderPaymentStale(data.payment_stale || []);
   renderLeaderboard(data.leaderboard || [], data.me?.id);
+  renderStaleContact(data.stale_contact || []);
+  renderUpcomingPackages(data.upcoming_packages || []);
+}
+
+function renderStaleContact(list) {
+  const body = document.getElementById('sh-stale-body');
+  const cnt = document.getElementById('sh-stale-count');
+  if (!body) return;
+  if (cnt) cnt.textContent = list.length;
+
+  if (!list.length) {
+    body.innerHTML = `
+      <div class="py-8 px-6 text-center">
+        <i data-lucide="check-circle-2" class="w-10 h-10 mx-auto mb-2" style="color:#10B981;"></i>
+        <p class="text-sm font-medium" style="color:#374151;">Semua jamaah aktif kamu masih dalam masa 3 hari kontak.</p>
+      </div>`;
+    return;
+  }
+
+  body.innerHTML = list.map(r => {
+    const daysNoContact = r.last_contact
+      ? shDaysDiff(r.last_contact)
+      : (r.order_date ? shDaysDiff(r.order_date) : null);
+    const label = r.last_contact
+      ? `${daysNoContact} hari sejak kontak terakhir`
+      : (r.order_date ? `Belum pernah dikontak (order ${daysNoContact} hari lalu)` : 'Belum pernah dikontak');
+    const sisa = (r.total_price || 0) - (r.paid_amount || 0);
+    const waHref = r.phone
+      ? `https://wa.me/${String(r.phone).replace(/\D/g, '').replace(/^0/, '62')}`
+      : null;
+    const waBtn = waHref
+      ? `<a href="${waHref}" target="_blank" class="text-xs px-2 py-1 rounded font-medium ml-2" style="background:#DCFCE7;color:#166534;"><i data-lucide="message-circle" class="w-3 h-3 inline"></i> WA</a>`
+      : '';
+    return `
+      <div class="px-5 py-3 border-b hover:bg-gray-50" style="border-color:#F4F1EA;">
+        <div class="flex justify-between items-start gap-3">
+          <div class="flex-1 min-w-0">
+            <b class="text-sm block truncate" style="color:${SH_COLORS.charcoal};">${r.name || '(tanpa nama)'}</b>
+            <div class="text-[11px] mt-0.5" style="color:${SH_COLORS.gray500};">
+              ${r.package_type || '-'} &middot; status <b style="color:${SH_COLORS.charcoal};">${r.status || '-'}</b>
+            </div>
+            <div class="text-[11px] mt-0.5" style="color:${SH_COLORS.red};">${label}</div>
+          </div>
+          <div class="text-right shrink-0">
+            ${sisa > 0 ? `<div class="text-[11px] font-bold" style="color:${SH_COLORS.darkGold};">${shFmtRp(sisa)}</div><div class="text-[10px]" style="color:${SH_COLORS.gray500};">sisa</div>` : ''}
+            <div class="flex justify-end mt-1">
+              <button onclick="openActivityModal(${r.id}, ${JSON.stringify(r.name || '').replace(/"/g, '&quot;')})" class="text-xs px-2 py-1 rounded font-medium" style="background:${SH_COLORS.gold};color:${SH_COLORS.charcoal};">Catat</button>
+              ${waBtn}
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderUpcomingPackages(list) {
+  const body = document.getElementById('sh-upcoming-body');
+  if (!body) return;
+  if (!list.length) {
+    body.innerHTML = `
+      <div class="py-6 text-center">
+        <p class="text-sm" style="color:${SH_COLORS.gray500};">Tidak ada paket dengan tanggal keberangkatan mendatang.</p>
+      </div>`;
+    return;
+  }
+  const today = new Date();
+  body.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">` + list.map(p => {
+    const sisa = (p.quota || 0) - (p.filled || 0);
+    const kritis = sisa <= 5;
+    const dep = new Date(p.departure_date);
+    const daysToGo = Math.round((dep - today) / (1000 * 60 * 60 * 24));
+    const seatColor = kritis ? SH_COLORS.red : (sisa <= 15 ? SH_COLORS.darkGold : '#10B981');
+    return `
+      <div class="rounded-lg border p-3" style="background:${SH_COLORS.cream};border-color:#E8DFC8;">
+        <div class="flex justify-between items-start mb-2">
+          <b class="text-xs leading-tight flex-1 pr-2" style="color:${SH_COLORS.charcoal};">${p.name}</b>
+          <span class="text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0" style="background:${seatColor};color:white;">${sisa} kursi</span>
+        </div>
+        <div class="text-[10px]" style="color:${SH_COLORS.gray500};">
+          ${shFmtDate(p.departure_date)} &middot; <b>${daysToGo}</b> hari lagi &middot; ${p.duration || 9}D
+        </div>
+        <div class="text-sm font-bold mt-1" style="color:${SH_COLORS.darkGold};">${shFmtRp(p.price)}</div>
+        <div class="text-[10px] mt-1 space-y-0.5" style="color:${SH_COLORS.gray500};">
+          ${p.hotel_mekkah ? `<div>Mekkah: <b style="color:${SH_COLORS.charcoal};">${p.hotel_mekkah}</b></div>` : ''}
+          ${p.airline_depart ? `<div>Maskapai: <b style="color:${SH_COLORS.charcoal};">${p.airline_depart}</b></div>` : ''}
+        </div>
+      </div>`;
+  }).join('') + `</div>`;
 }
 
 function renderFollowupDue(list) {

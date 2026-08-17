@@ -3648,6 +3648,32 @@ async def sales_home(user=Depends(authenticate_token)):
         (ym,),
     )
 
+    # 8. Paket Terjadwal: 5 paket berangkat ke depan -- quick reference untuk sales
+    # supaya bisa langsung push closing tanpa buka Master Paket.
+    upcoming_packages = db.query_all(
+        "SELECT p.id, p.name, p.departure_date, p.duration, p.quota, "
+        "  COALESCE(p.price_quad, p.price) AS price, "
+        "  p.hotel_mekkah, p.hotel_madinah, p.airline_depart, "
+        "  (SELECT COUNT(*) FROM jamaah j2 WHERE j2.package_type = p.name "
+        "   AND j2.status NOT IN ('Cancelled')) AS filled "
+        "FROM packages p "
+        "WHERE p.departure_date IS NOT NULL AND date(p.departure_date) >= date('now') "
+        "ORDER BY p.departure_date ASC LIMIT 5"
+    )
+
+    # 9. Jamaah Perlu Dihubungi (stale contact): MY-scoped jamaah dengan
+    # last_contact NULL atau > 3 hari, hanya status active (belum lunas/cancel).
+    stale_contact = db.query_all(
+        f"SELECT j.id, j.name, j.phone, j.status, j.total_price, j.paid_amount, "
+        f"(j.total_price - j.paid_amount) sisa, j.last_contact, j.package_type, "
+        f"j.order_date "
+        f"FROM jamaah j WHERE {sales_filter} "
+        f"AND j.status IN ('Terdaftar', 'DP Masuk', 'Lead - Follow Up') "
+        f"AND (j.last_contact IS NULL OR datetime(j.last_contact) < datetime('now', '-3 days')) "
+        f"ORDER BY COALESCE(j.last_contact, '1970-01-01') ASC LIMIT 10",
+        params,
+    )
+
     return {
         "scope": scope,
         "me": {"id": user["id"], "name": user["name"]},
@@ -3661,6 +3687,8 @@ async def sales_home(user=Depends(authenticate_token)):
         "followup_due": followup_due,
         "payment_stale": payment_stale,
         "leaderboard": leaderboard,
+        "upcoming_packages": upcoming_packages,
+        "stale_contact": stale_contact,
         "period": ym,
     }
 

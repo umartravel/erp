@@ -290,6 +290,30 @@
                         <ol id="sh-leaderboard" class="p-4 space-y-2 list-none"></ol>
                     </div>
                 </div>
+
+                <!-- L2: Jamaah Perlu Dihubungi (stale contact >3 hari) -->
+                <div class="rounded-xl border shadow-sm overflow-hidden" style="background:#FFFDF7;border-color:#F4F1EA;">
+                    <div class="px-5 py-3 border-b flex justify-between items-center" style="background:#F4F1EA;border-color:#E8DFC8;">
+                        <h3 class="font-bold flex items-center gap-2 text-sm" style="color:#1D1D1B;">
+                            <i data-lucide="phone-off" class="w-4 h-4" style="color:#B8860B;"></i>
+                            Jamaah Perlu Dihubungi <span class="text-[10px] font-normal" style="color:#6B7280;">(>3 hari tanpa kontak, status aktif)</span>
+                        </h3>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" style="background:#FFEDD5;color:#C2410C;" id="sh-stale-count">0</span>
+                    </div>
+                    <div id="sh-stale-body" class="max-h-80 overflow-y-auto"></div>
+                </div>
+
+                <!-- L1: Paket Terjadwal (5 keberangkatan berikutnya) -->
+                <div class="rounded-xl border shadow-sm overflow-hidden" style="background:#FFFDF7;border-color:#F4F1EA;">
+                    <div class="px-5 py-3 border-b flex justify-between items-center" style="background:#F4F1EA;border-color:#E8DFC8;">
+                        <h3 class="font-bold flex items-center gap-2 text-sm" style="color:#1D1D1B;">
+                            <i data-lucide="plane-takeoff" class="w-4 h-4" style="color:#B8860B;"></i>
+                            Paket Terjadwal <span class="text-[10px] font-normal" style="color:#6B7280;">(5 keberangkatan berikutnya)</span>
+                        </h3>
+                        <a href="#" onclick="showPage('packages'); return false;" class="text-[10px] font-bold" style="color:#B8860B;text-decoration:underline;">Lihat semua &rarr;</a>
+                    </div>
+                    <div id="sh-upcoming-body" class="p-4"></div>
+                </div>
             </div>
 
             <!-- PAGE: DASHBOARD -->
@@ -6594,7 +6618,7 @@
 
     </script>
     <!-- Marketing Analytics: heatmap + chart (dimuat setelah inline JS supaya authFetch sudah terdefinisi). -->
-    <script src="js/marketing.js?v=20260817b"></script>
-    <script src="js/sales-home.js?v=20260817b"></script>
+    <script src="js/marketing.js?v=20260817c"></script>
+    <script src="js/sales-home.js?v=20260817c"></script>
 </body>
 </html>
