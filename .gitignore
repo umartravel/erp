@@ -16,6 +16,7 @@ public/branding/
 
 # ===== Arsip/cadangan lama =====
 *.zip
+.backup/
 
 # ===== Variabel rahasia =====
 .env

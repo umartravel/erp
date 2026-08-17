@@ -1131,9 +1131,6 @@
                             </h3>
                             <p class="text-xs mt-1" style="color:#F4F1EA;opacity:0.75;">Dashboard analisis marketing berbasis data historis UMAR Travel (peta demografi + tren + performa admin/agen).</p>
                         </div>
-                        <button id="mkt-btn-import" class="px-3 py-2 text-xs font-semibold rounded-lg hidden" style="background:#F8BE20;color:#1D1D1B;">
-                            <i data-lucide="refresh-cw" class="inline w-3 h-3 mr-1"></i>Re-import CSV
-                        </button>
                     </div>
                     <div class="grid grid-cols-2 md:grid-cols-6 gap-3 mt-4">
                         <div>
@@ -2671,9 +2668,6 @@
                 document.getElementById('nav-followup').classList.remove('hidden');
                 document.getElementById('finance-write-panel').classList.remove('hidden');
                 document.getElementById('btn-save-ops').classList.remove('hidden');
-                // Re-import CSV Marketing hanya untuk admin.
-                const mktImportBtn = document.getElementById('mkt-btn-import');
-                if (mktImportBtn) mktImportBtn.classList.remove('hidden');
             } else if (currentUser.role === 'sales') {
                 document.getElementById('nav-finance').classList.add('hidden');
                 document.getElementById('nav-operasional').classList.add('hidden');

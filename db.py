@@ -448,77 +448,6 @@ SCHEMA = [
         preferred_cs_id INTEGER,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )""",
-    # Data historis marketing (impor dari CSV web-umar) -- terpisah dari tabel `jamaah`
-    # operasional supaya tidak mencemari pipeline internal. Sumbernya bisa di-refresh
-    # ulang tanpa mengubah data jamaah aktif. Dipakai halaman Marketing Analytics
-    # (heatmap Indonesia + chart tren/channel/paket).
-    """CREATE TABLE IF NOT EXISTS marketing_closings (
-        id_jamaah TEXT PRIMARY KEY,
-        nama_pemesan TEXT,
-        tanggal_order TEXT,
-        paket TEXT,
-        admin_marketing TEXT,
-        channel TEXT,
-        sub_channel TEXT,
-        nama_jamaah TEXT NOT NULL,
-        jenis_kelamin TEXT,
-        tempat_lahir TEXT,
-        tanggal_lahir TEXT,
-        usia INTEGER,
-        no_telp_jamaah TEXT,
-        no_telp_keluarga TEXT,
-        email_jamaah TEXT,
-        nama_ayah TEXT,
-        kewarganegaraan TEXT,
-        jenis_identitas TEXT,
-        nomor_identitas TEXT,
-        pendidikan TEXT,
-        pekerjaan TEXT,
-        status_pernikahan TEXT,
-        hubungan TEXT,
-        alamat TEXT,
-        provinsi TEXT,
-        kab_kota TEXT,
-        kecamatan TEXT,
-        kelurahan TEXT,
-        no_paspor TEXT,
-        issued TEXT,
-        expiry TEXT,
-        kantor_imigrasi TEXT,
-        perlengkapan TEXT,
-        req_kamar TEXT,
-        harga INTEGER DEFAULT 0,
-        total_bayar INTEGER DEFAULT 0,
-        kurang INTEGER DEFAULT 0,
-        statpay TEXT DEFAULT 'LUNAS',
-        dp INTEGER DEFAULT 0,
-        is_transaksi_agen TEXT DEFAULT 'TIDAK',
-        nama_agen TEXT,
-        id_agen TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        imported_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )""",
-    # Direktori agen historis untuk verifikasi & analitik peta agen. Terpisah dari
-    # `agents` operasional (yang punya kolom kit_*, handler_cs_id, fee komisi dsb).
-    """CREATE TABLE IF NOT EXISTS marketing_agents (
-        id_agen TEXT PRIMARY KEY,
-        no INTEGER,
-        tanggal_pendaftaran TEXT,
-        date_day INTEGER,
-        month_name TEXT,
-        year_val INTEGER,
-        nama_agen TEXT,
-        provinsi TEXT,
-        kab_kota TEXT,
-        kecamatan TEXT,
-        kelurahan TEXT,
-        detail_alamat TEXT,
-        nomor_wa TEXT,
-        akun_ig TEXT,
-        email TEXT,
-        nomor_surat TEXT,
-        imported_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )""",
 ]
 
 # Migrasi kolom untuk DB lama (abaikan error bila kolom sudah ada)
@@ -670,18 +599,18 @@ ALTER_QUERIES = [
     # penerbangan malam, dll). Bandara Transit mendampingi transit_city yang sudah ada.
     "ALTER TABLE packages ADD COLUMN return_date TEXT",
     "ALTER TABLE packages ADD COLUMN transit_airport TEXT",
-    # Indexes untuk halaman Marketing Analytics -- filter agregat sering by
-    # provinsi/kabkota (heatmap), admin_marketing (leaderboard), paket, dan periode.
-    "CREATE INDEX IF NOT EXISTS idx_mkt_closings_prov ON marketing_closings(provinsi)",
-    "CREATE INDEX IF NOT EXISTS idx_mkt_closings_kab ON marketing_closings(kab_kota)",
-    "CREATE INDEX IF NOT EXISTS idx_mkt_closings_admin ON marketing_closings(admin_marketing)",
-    "CREATE INDEX IF NOT EXISTS idx_mkt_closings_paket ON marketing_closings(paket)",
-    "CREATE INDEX IF NOT EXISTS idx_mkt_closings_channel ON marketing_closings(channel)",
-    "CREATE INDEX IF NOT EXISTS idx_mkt_closings_agen ON marketing_closings(is_transaksi_agen)",
-    "CREATE INDEX IF NOT EXISTS idx_mkt_closings_id_agen ON marketing_closings(id_agen)",
-    "CREATE INDEX IF NOT EXISTS idx_mkt_closings_tgl ON marketing_closings(tanggal_order)",
-    "CREATE INDEX IF NOT EXISTS idx_mkt_agents_prov ON marketing_agents(provinsi)",
-    "CREATE INDEX IF NOT EXISTS idx_mkt_agents_kab ON marketing_agents(kab_kota)",
+    # Cleanup obsolete marketing tables (data sekarang dari jamaah/agents/users/packages).
+    "DROP TABLE IF EXISTS marketing_closings",
+    "DROP TABLE IF EXISTS marketing_agents",
+    # Cleanup tabel reimbursements lama (pra-Expense Report, sudah tidak direferensikan kode).
+    "DROP TABLE IF EXISTS reimbursements",
+    # Index tambahan untuk halaman Marketing Analytics yang sekarang query jamaah+agents.
+    "CREATE INDEX IF NOT EXISTS idx_jamaah_province ON jamaah(province)",
+    "CREATE INDEX IF NOT EXISTS idx_jamaah_city ON jamaah(city)",
+    "CREATE INDEX IF NOT EXISTS idx_jamaah_sales_id ON jamaah(sales_id)",
+    "CREATE INDEX IF NOT EXISTS idx_jamaah_agent_id ON jamaah(agent_id)",
+    "CREATE INDEX IF NOT EXISTS idx_jamaah_package_type ON jamaah(package_type)",
+    "CREATE INDEX IF NOT EXISTS idx_jamaah_lead_source ON jamaah(lead_source)",
 ]
 
 
@@ -705,13 +634,6 @@ def init_db():
     _backfill_status_dimensions()
     _backfill_procurement_status()
     _backfill_asset_codes()
-    # Auto-import CSV marketing HANYA kalau tabel kosong. Aman dijalankan tiap startup:
-    # kalau data sudah masuk, blok ini no-op. Impor manual pakai endpoint /api/marketing/import.
-    try:
-        import marketing_importer
-        marketing_importer.import_all_if_empty()
-    except Exception as e:  # noqa: BLE001
-        print(f"[db.init_db] auto-import marketing dilewati: {e}")
     print("Berhasil terhubung ke SQLite database Umar CRM.")
 
 

@@ -299,25 +299,6 @@ function wireFilterHandlers() {
       .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     refreshMarketing();
   });
-  const importBtn = document.getElementById('mkt-btn-import');
-  if (importBtn) importBtn.addEventListener('click', async () => {
-    if (!confirm('Re-import CSV marketing? Data existing akan ditimpa nilai dari CSV.')) return;
-    importBtn.disabled = true; importBtn.textContent = 'Mengimpor...';
-    try {
-      const res = await mktFetch('/api/marketing/import', { method: 'POST' });
-      const data = await res.json();
-      if (data.ok) {
-        alert(`Import selesai. Closings: ${data.result.closings.upserted} row, Agents: ${data.result.agents.upserted} row.`);
-        await refreshMarketing();
-      } else {
-        alert('Import gagal: ' + (data.error || 'unknown'));
-      }
-    } catch (e) {
-      alert('Import gagal: ' + e.message);
-    } finally {
-      importBtn.disabled = false; importBtn.textContent = 'Re-import CSV';
-    }
-  });
 }
 
 function readFilters() {
