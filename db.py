@@ -604,6 +604,10 @@ ALTER_QUERIES = [
     "DROP TABLE IF EXISTS marketing_agents",
     # Cleanup tabel reimbursements lama (pra-Expense Report, sudah tidak direferensikan kode).
     "DROP TABLE IF EXISTS reimbursements",
+    # Tanggal transaksi asli dari migrasi web-umar (TANGGAL ORDER CSV). Dipakai halaman
+    # Marketing Analytics untuk tren bulanan yang akurat -- created_at hanya menandai
+    # waktu row masuk ke ERP (import batch), bukan waktu closing sebenarnya.
+    "ALTER TABLE jamaah ADD COLUMN order_date TEXT",
     # Index tambahan untuk halaman Marketing Analytics yang sekarang query jamaah+agents.
     "CREATE INDEX IF NOT EXISTS idx_jamaah_province ON jamaah(province)",
     "CREATE INDEX IF NOT EXISTS idx_jamaah_city ON jamaah(city)",
@@ -611,6 +615,7 @@ ALTER_QUERIES = [
     "CREATE INDEX IF NOT EXISTS idx_jamaah_agent_id ON jamaah(agent_id)",
     "CREATE INDEX IF NOT EXISTS idx_jamaah_package_type ON jamaah(package_type)",
     "CREATE INDEX IF NOT EXISTS idx_jamaah_lead_source ON jamaah(lead_source)",
+    "CREATE INDEX IF NOT EXISTS idx_jamaah_order_date ON jamaah(order_date)",
 ]
 
 

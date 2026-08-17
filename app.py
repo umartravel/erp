@@ -3467,7 +3467,7 @@ _MKT_SELECT = """
         j.id, j.name, j.orderer_name, j.external_id,
         j.province, j.city, j.package_type,
         j.total_price, j.paid_amount,
-        j.payment_status, j.lead_source, j.created_at,
+        j.payment_status, j.lead_source, j.created_at, j.order_date,
         j.agent_id, j.sales_id,
         a.name AS agent_name, a.legacy_code AS agent_code,
         a.province AS agent_province, a.city AS agent_city,
@@ -3478,6 +3478,16 @@ _MKT_SELECT = """
     LEFT JOIN users u ON j.sales_id = u.id
     LEFT JOIN packages p ON j.package_type = p.name
 """
+
+
+def _txn_month(r):
+    """Bulan transaksi (YYYY-MM). Prefer order_date real dari CSV; fallback ke
+    package.departure_date; return None kalau dua-duanya kosong."""
+    for key in ("order_date", "package_departure_date"):
+        s = r.get(key) or ""
+        if len(s) >= 7:
+            return s[:7]
+    return None
 
 
 def _split_lead_source(src):
@@ -3519,8 +3529,7 @@ async def marketing_summary(
         if statpay and _statpay_bucket(r.get("payment_status")) != statpay:
             return False
         if period:
-            dep = r.get("package_departure_date") or ""
-            if dep[:7] != period:
+            if _txn_month(r) != period:
                 return False
         return True
 
@@ -3557,13 +3566,12 @@ async def marketing_summary(
         map_jamaah[key]["omzet"] += r.get("total_price") or 0
     map_jamaah_list = sorted(map_jamaah.values(), key=lambda x: -x["count"])
 
-    # 2. Tren bulanan -- pakai packages.departure_date sebagai proxy tanggal transaksi
-    # (jamaah.created_at semua = tanggal migrasi, tidak berguna untuk time-series).
+    # 2. Tren bulanan -- pakai jamaah.order_date (tanggal closing asli dari CSV),
+    # fallback packages.departure_date kalau order_date kosong.
     tren = {}
     for r in filtered:
-        dep = r.get("package_departure_date") or ""
-        if len(dep) >= 7:
-            ym = dep[:7]
+        ym = _txn_month(r)
+        if ym:
             tren[ym] = tren.get(ym, 0) + 1
     tren_sorted = sorted(tren.items())
 
@@ -3640,9 +3648,9 @@ async def marketing_filters(user=Depends(authenticate_token)):
         ch, _s = _split_lead_source(r.get("lead_source"))
         if ch:
             channels.add(ch)
-        dep = r.get("package_departure_date") or ""
-        if len(dep) >= 7:
-            periods.add(dep[:7])
+        ym = _txn_month(r)
+        if ym:
+            periods.add(ym)
     return {
         "period": sorted(periods),
         "paket": paket,
