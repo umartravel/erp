@@ -44,6 +44,26 @@ async function initSalesHome() {
   }
 }
 
+// Judul tab dinamis: (N) UMAR ketika ada aksi urgen -- disimpan supaya bisa restore
+const SH_BASE_TITLE = document.title.replace(/^\(\d+\)\s*/, '');
+function shUpdateTabBadge(n) {
+  document.title = n > 0 ? `(${n}) ${SH_BASE_TITLE}` : SH_BASE_TITLE;
+}
+
+// Auto-refresh: dengar socket 'data_updated' untuk event yang mengubah tampilan Home Sales
+function shWireSocketAutoRefresh() {
+  if (window.__shSocketWired) return;
+  window.__shSocketWired = true;
+  const s = window.socket;
+  if (!s || typeof s.on !== 'function') return;
+  const refreshEvents = new Set(['jamaah', 'transaction', 'refund_request', 'sales_target', 'agent']);
+  s.on('data_updated', (evt) => {
+    if (!refreshEvents.has(evt)) return;
+    const page = document.getElementById('page-sales-home');
+    if (page && !page.classList.contains('hidden')) initSalesHome();
+  });
+}
+
 function renderSalesHome(data) {
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
 
@@ -57,12 +77,79 @@ function renderSalesHome(data) {
   set('sh-kpi-piutang', shFmtRp(k.piutang));
   set('sh-kpi-leads', (k.new_leads_7d || 0).toLocaleString('id-ID'));
 
+  renderAttention(data.attention || {}, data.me?.id);
+  renderTarget(data.target_this_month, k);
   renderFollowupDue(data.followup_due || []);
   renderPaymentStale(data.payment_stale || []);
   renderLeaderboard(data.leaderboard || [], data.me?.id);
   renderStaleContact(data.stale_contact || []);
   renderUpcomingPackages(data.upcoming_packages || []);
   renderMyAgents(data.my_agents || { total: 0, top: [] });
+  shWireSocketAutoRefresh();
+}
+
+function renderAttention(a, myId) {
+  const box = document.getElementById('sh-attention');
+  const chips = document.getElementById('sh-attention-chips');
+  if (!box || !chips) return;
+  const total = a.total || 0;
+  document.getElementById('sh-attention-total').textContent = total;
+  shUpdateTabBadge(total);
+  if (total <= 0) { box.classList.add('hidden'); chips.innerHTML = ''; return; }
+  box.classList.remove('hidden');
+  const chip = (label, count, color, onclick) => count > 0
+    ? `<button onclick="${onclick}" class="px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5" style="background:${color};color:#1D1D1B;">
+         <span class="px-1.5 py-0.5 rounded" style="background:#1D1D1B;color:#F8BE20;font-size:10px;">${count}</span>
+         ${label}
+       </button>`
+    : '';
+  chips.innerHTML = [
+    chip('Follow-up jatuh tempo', a.followup_today, '#FEE2E2', "document.getElementById('sh-followup-body')?.scrollIntoView({behavior:'smooth',block:'start'})"),
+    chip('Payment stale', a.payment_stale, '#FEF3C7', "document.getElementById('sh-payment-body')?.scrollIntoView({behavior:'smooth',block:'start'})"),
+    chip('Belum dikontak >3 hari', a.stale_contact, '#FFEDD5', "document.getElementById('sh-stale-body')?.scrollIntoView({behavior:'smooth',block:'start'})"),
+    chip('Lead baru menunggu', a.new_leads, '#DBEAFE', "showPage('inbox')"),
+  ].filter(Boolean).join('');
+}
+
+function renderTarget(t, k) {
+  const box = document.getElementById('sh-target');
+  const body = document.getElementById('sh-target-body');
+  if (!box || !body) return;
+  if (!t) { box.classList.add('hidden'); return; }
+  const tc = t.target_closing || 0;
+  const to = t.target_omzet || 0;
+  if (tc <= 0 && to <= 0) {
+    box.classList.remove('hidden');
+    document.getElementById('sh-target-note').textContent = 'Belum ada target -- minta admin/manager set target bulan ini.';
+    body.innerHTML = `<div class="col-span-2 text-center py-4 text-xs" style="color:#6B7280;">Target closing dan omzet belum di-set untuk bulan ini.</div>`;
+    return;
+  }
+  box.classList.remove('hidden');
+  document.getElementById('sh-target-note').textContent = 'Target di-set oleh admin/management';
+  const actualClose = k.closing_this_month || 0;
+  const actualOmzet = k.omzet_this_month || 0;
+  body.innerHTML =
+    shProgressCard('Closing (jamaah)', actualClose, tc, v => v.toLocaleString('id-ID')) +
+    shProgressCard('Omzet', actualOmzet, to, shFmtRp);
+}
+
+function shProgressCard(label, actual, target, fmt) {
+  const pct = target > 0 ? Math.min(200, Math.round((actual / target) * 100)) : 0;
+  const barPct = Math.min(100, pct);
+  const barColor = pct >= 100 ? '#059669' : pct >= 70 ? SH_COLORS.gold : pct >= 40 ? SH_COLORS.darkGold : SH_COLORS.red;
+  const pctColor = pct >= 100 ? '#059669' : SH_COLORS.charcoal;
+  return `
+    <div>
+      <div class="flex items-baseline justify-between mb-1.5">
+        <span class="text-xs font-bold uppercase tracking-wider" style="color:${SH_COLORS.darkGold};">${label}</span>
+        <span class="text-xs font-black" style="color:${pctColor};">${pct}%</span>
+      </div>
+      <div class="text-sm font-bold" style="color:${SH_COLORS.charcoal};">${fmt(actual)} <span class="text-xs font-normal" style="color:${SH_COLORS.gray500};">dari target ${fmt(target)}</span></div>
+      <div class="mt-2 h-2 w-full rounded-full overflow-hidden" style="background:#E8DFC8;">
+        <div style="width:${barPct}%;height:100%;background:${barColor};transition:width 0.4s ease;"></div>
+      </div>
+    </div>
+  `;
 }
 
 function renderMyAgents(m) {

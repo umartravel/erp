@@ -232,6 +232,32 @@
                     <p class="text-xs mt-1" style="color:#F4F1EA;opacity:0.8;">Halaman ini menampilkan pipeline, closing, dan tugas <b>khusus milikmu</b> bulan berjalan (<span id="sh-period">-</span>).</p>
                 </div>
 
+                <!-- Butuh Perhatian Hari Ini (hero): quick-scan aksi urgen -->
+                <div id="sh-attention" class="rounded-xl border shadow-sm p-4 hidden" style="background:linear-gradient(135deg,#FEF3C7 0%, #FFFDF7 100%);border-color:#F8BE20;">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-9 h-9 rounded-full flex items-center justify-center" style="background:#F8BE20;">
+                            <i data-lucide="bell-ring" class="w-5 h-5" style="color:#1D1D1B;"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-sm font-black" style="color:#1D1D1B;">Butuh Perhatian Hari Ini</p>
+                            <p class="text-[11px]" style="color:#6B7280;"><span id="sh-attention-total" class="font-bold" style="color:#B8860B;">0</span> aksi menunggu -- klik untuk buka.</p>
+                        </div>
+                    </div>
+                    <div id="sh-attention-chips" class="flex flex-wrap gap-2"></div>
+                </div>
+
+                <!-- Target vs Aktual bulan ini (progress bar 2 metric) -->
+                <div id="sh-target" class="rounded-xl border shadow-sm overflow-hidden hidden" style="background:#FFFDF7;border-color:#F4F1EA;">
+                    <div class="px-5 py-3 border-b flex justify-between items-center" style="background:#F4F1EA;border-color:#E8DFC8;">
+                        <h3 class="font-bold flex items-center gap-2 text-sm" style="color:#1D1D1B;">
+                            <i data-lucide="target" class="w-4 h-4" style="color:#B8860B;"></i>
+                            Target Bulan Ini
+                        </h3>
+                        <span class="text-[10px]" style="color:#6B7280;" id="sh-target-note">-</span>
+                    </div>
+                    <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-5" id="sh-target-body"></div>
+                </div>
+
                 <!-- KPI baris atas: 4 card MY-scoped -->
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div class="rounded-xl border shadow-sm p-4" style="background:#FFFDF7;border-color:#F4F1EA;">
@@ -1076,6 +1102,34 @@
                             <button onclick="uploadLogo()" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 font-medium w-full"><i data-lucide="upload" class="inline w-4 h-4 mr-1"></i>Unggah & Pasang Logo</button>
                             <p class="text-xs text-gray-400 text-center">Logo tampil di layar login, sidebar, dan kop kuitansi. Format gambar (PNG/JPG/WebP/SVG).</p>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Target Sales Bulanan (admin & management) -->
+                <div id="section-sales-targets" class="bg-white rounded-xl shadow-sm border p-6 mt-6 hidden">
+                    <div class="flex flex-wrap items-center justify-between gap-3 border-b pb-4 mb-4">
+                        <h3 class="font-semibold text-gray-800 flex items-center gap-2"><i data-lucide="target" class="w-5 h-5" style="color:#B8860B;"></i>Target Sales Bulanan</h3>
+                        <div class="flex items-center gap-2">
+                            <label class="text-xs text-gray-500">Bulan:</label>
+                            <input type="month" id="target-month-picker" class="border rounded-lg px-2 py-1.5 text-sm">
+                            <button onclick="loadSalesTargets()" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-bold">Muat</button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 mb-3">Target closing (jumlah jamaah) dan omzet (Rp) per sales, per bulan. Aktual dihitung otomatis dari jamaah non-Cancelled dengan <code>order_date</code> di bulan tsb. Sales melihat progress mereka di Home Sales.</p>
+                    <div class="overflow-auto rounded-lg border">
+                        <table class="w-full text-sm">
+                            <thead class="text-xs uppercase bg-gray-50 text-gray-500">
+                                <tr>
+                                    <th class="px-3 py-2 text-left">Sales</th>
+                                    <th class="px-3 py-2 text-right">Target Closing</th>
+                                    <th class="px-3 py-2 text-right">Aktual Closing</th>
+                                    <th class="px-3 py-2 text-right">Target Omzet (Rp)</th>
+                                    <th class="px-3 py-2 text-right">Aktual Omzet</th>
+                                    <th class="px-3 py-2 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-sales-targets" class="divide-y"></tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -2393,6 +2447,52 @@
                 document.getElementById('set-logo-preview').src = publicAsset(s.logo_url || 'umar-Logo.png');
                 if (typeof lucide !== 'undefined') lucide.createIcons();
             } catch (e) { showToast('Gagal memuat pengaturan', 'error'); }
+            // Target Sales section: hanya admin/management yg lihat, auto-load bulan berjalan
+            if (currentUser && ['admin', 'management'].includes(currentUser.role)) {
+                document.getElementById('section-sales-targets').classList.remove('hidden');
+                const picker = document.getElementById('target-month-picker');
+                if (!picker.value) picker.value = new Date().toISOString().slice(0, 7);
+                loadSalesTargets();
+            }
+        }
+
+        async function loadSalesTargets() {
+            const month = document.getElementById('target-month-picker').value || new Date().toISOString().slice(0, 7);
+            try {
+                const res = await authFetch(`/api/sales/targets?month=${month}`);
+                if (!res.ok) throw new Error('Gagal muat target');
+                const d = await res.json();
+                const tbody = document.getElementById('table-sales-targets');
+                const rpFmt = n => 'Rp ' + (n | 0).toLocaleString('id-ID');
+                tbody.innerHTML = (d.rows || []).map(r => {
+                    const closingPct = r.target_closing > 0 ? Math.round((r.actual_closing / r.target_closing) * 100) : 0;
+                    const omzetPct = r.target_omzet > 0 ? Math.round((r.actual_omzet / r.target_omzet) * 100) : 0;
+                    const pctBadge = pct => pct >= 100 ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded ml-1" style="background:#D1FAE5;color:#059669;">${pct}%</span>` :
+                                            pct >= 70 ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded ml-1" style="background:#FEF3C7;color:#B45309;">${pct}%</span>` :
+                                                        `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded ml-1" style="background:#FEE2E2;color:#DC2626;">${pct}%</span>`;
+                    return `<tr>
+                        <td class="px-3 py-2 font-medium text-gray-800">${r.name}</td>
+                        <td class="px-3 py-2 text-right"><input type="number" min="0" step="1" value="${r.target_closing}" id="tc-${r.user_id}" class="w-24 border rounded px-2 py-1 text-right text-sm"></td>
+                        <td class="px-3 py-2 text-right text-gray-700">${r.actual_closing || 0}${r.target_closing > 0 ? pctBadge(closingPct) : ''}</td>
+                        <td class="px-3 py-2 text-right"><input type="number" min="0" step="100000" value="${r.target_omzet}" id="to-${r.user_id}" class="w-32 border rounded px-2 py-1 text-right text-sm"></td>
+                        <td class="px-3 py-2 text-right text-gray-700">${rpFmt(r.actual_omzet)}${r.target_omzet > 0 ? pctBadge(omzetPct) : ''}</td>
+                        <td class="px-3 py-2 text-center"><button onclick="saveSalesTarget(${r.user_id})" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold">Simpan</button></td>
+                    </tr>`;
+                }).join('') || '<tr><td colspan="6" class="text-center py-6 text-gray-400 text-xs">Belum ada sales terdaftar.</td></tr>';
+            } catch (e) { showToast(e.message || 'Gagal muat target', 'error'); }
+        }
+
+        async function saveSalesTarget(userId) {
+            const month = document.getElementById('target-month-picker').value;
+            const tc = parseInt(document.getElementById(`tc-${userId}`).value) || 0;
+            const to = parseInt(document.getElementById(`to-${userId}`).value) || 0;
+            try {
+                const res = await authFetch('/api/sales/targets', { method: 'POST', body: JSON.stringify({ user_id: userId, month, target_closing: tc, target_omzet: to }) });
+                const payload = await res.json();
+                if (!res.ok) throw new Error(payload.detail || 'Gagal simpan');
+                showToast(payload.message || 'Target tersimpan');
+                loadSalesTargets();
+            } catch (e) { showToast(e.message, 'error'); }
         }
         async function saveSettings() {
             const payload = {
@@ -6644,6 +6744,6 @@
     </script>
     <!-- Marketing Analytics: heatmap + chart (dimuat setelah inline JS supaya authFetch sudah terdefinisi). -->
     <script src="js/marketing.js?v=20260817d"></script>
-    <script src="js/sales-home.js?v=20260817d"></script>
+    <script src="js/sales-home.js?v=20260819a"></script>
 </body>
 </html>

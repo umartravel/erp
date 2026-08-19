@@ -3727,8 +3727,99 @@ async def sales_home(user=Depends(authenticate_token)):
             "total": total_my_agents,
             "top": top_my_agents,
         },
+        "target_this_month": _load_target_row(user["id"] if role == "sales" else None, ym),
+        "attention": _compute_attention(followup_due, payment_stale, stale_contact, new_leads),
         "period": ym,
     }
+
+
+def _load_target_row(user_id, ym):
+    """Ambil target closing + omzet untuk user+bulan. Return None untuk aggregate view."""
+    if not user_id:
+        return None
+    row = db.query_one(
+        "SELECT target_closing, target_omzet FROM sales_targets WHERE user_id = ? AND month = ?",
+        (user_id, ym),
+    )
+    return {
+        "target_closing": row["target_closing"] if row else 0,
+        "target_omzet": row["target_omzet"] if row else 0,
+    }
+
+
+def _compute_attention(followup_due, payment_stale, stale_contact, new_leads):
+    """Hitung count aksi urgen hari ini untuk hero widget + tab-title badge."""
+    today = datetime.datetime.now().strftime("%Y-%m-%d")
+    followup_today = sum(
+        1 for r in followup_due
+        if r.get("next_follow_up") and str(r["next_follow_up"])[:10] <= today
+    )
+    return {
+        "followup_today": followup_today,
+        "payment_stale": len(payment_stale),
+        "stale_contact": len(stale_contact),
+        "new_leads": new_leads,
+        "total": followup_today + len(payment_stale) + len(stale_contact) + new_leads,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Target Sales (admin/management set, sales lihat sendiri)
+# ---------------------------------------------------------------------------
+@app.get("/api/sales/targets/me")
+async def sales_target_me(month: str | None = None, user=Depends(authenticate_token)):
+    require_role(user, "sales", "admin", "management")
+    ym = month or datetime.datetime.now().strftime("%Y-%m")
+    return _load_target_row(user["id"], ym) or {"target_closing": 0, "target_omzet": 0}
+
+
+@app.get("/api/sales/targets")
+async def sales_targets_list(month: str | None = None, user=Depends(authenticate_token)):
+    require_role(user, "admin", "management")
+    ym = month or datetime.datetime.now().strftime("%Y-%m")
+    rows = db.query_all(
+        "SELECT u.id AS user_id, u.name, "
+        "  COALESCE(t.target_closing, 0) AS target_closing, "
+        "  COALESCE(t.target_omzet, 0) AS target_omzet, "
+        "  t.updated_at, t.set_by, "
+        "  COUNT(CASE WHEN j.status != 'Cancelled' "
+        "    AND SUBSTR(COALESCE(j.order_date, j.created_at), 1, 7) = ? THEN j.id END) AS actual_closing, "
+        "  COALESCE(SUM(CASE WHEN j.status != 'Cancelled' "
+        "    AND SUBSTR(COALESCE(j.order_date, j.created_at), 1, 7) = ? THEN j.total_price END), 0) AS actual_omzet "
+        "FROM users u "
+        "LEFT JOIN sales_targets t ON t.user_id = u.id AND t.month = ? "
+        "LEFT JOIN jamaah j ON j.sales_id = u.id "
+        "WHERE u.role = 'sales' GROUP BY u.id ORDER BY u.name",
+        (ym, ym, ym),
+    )
+    return {"month": ym, "rows": rows}
+
+
+@app.post("/api/sales/targets")
+async def sales_target_upsert(body: dict = Depends(json_body), user=Depends(authenticate_token)):
+    require_role(user, "admin", "management")
+    user_id = body.get("user_id")
+    month = body.get("month")
+    target_closing = int(body.get("target_closing") or 0)
+    target_omzet = int(body.get("target_omzet") or 0)
+    if not user_id or not month:
+        raise HTTPException(status_code=400, detail="user_id & month wajib diisi.")
+    urow = db.query_one("SELECT role FROM users WHERE id = ?", (user_id,))
+    if not urow or urow["role"] != "sales":
+        raise HTTPException(status_code=400, detail="user_id bukan sales.")
+    db.execute(
+        "INSERT INTO sales_targets (user_id, month, target_closing, target_omzet, set_by) "
+        "VALUES (?, ?, ?, ?, ?) "
+        "ON CONFLICT(user_id, month) DO UPDATE SET "
+        "  target_closing = excluded.target_closing, "
+        "  target_omzet = excluded.target_omzet, "
+        "  set_by = excluded.set_by, "
+        "  updated_at = CURRENT_TIMESTAMP",
+        (user_id, month, target_closing, target_omzet, user["name"]),
+    )
+    log_action(user, "SALES_TARGET_SET", f"user={user_id} {month} closing={target_closing} omzet={target_omzet}")
+    notify("data_updated", "sales_target")
+    return {"message": "Target sales tersimpan."}
 
 
 # ===========================================================================

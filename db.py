@@ -427,6 +427,17 @@ SCHEMA = [
         preferred_cs_id INTEGER,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )""",
+    # Target bulanan per sales -- di-set oleh admin/management, dilihat sales sendiri
+    # untuk gauge Home Sales. Satu baris per (user, bulan) -- UNIQUE via index di ALTER.
+    """CREATE TABLE IF NOT EXISTS sales_targets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        month TEXT NOT NULL,
+        target_closing INTEGER DEFAULT 0,
+        target_omzet INTEGER DEFAULT 0,
+        set_by TEXT,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )""",
 ]
 
 # Migrasi kolom untuk DB lama (abaikan error bila kolom sudah ada)
@@ -602,6 +613,7 @@ ALTER_QUERIES = [
     "CREATE INDEX IF NOT EXISTS idx_jamaah_lead_source ON jamaah(lead_source)",
     "CREATE INDEX IF NOT EXISTS idx_jamaah_order_date ON jamaah(order_date)",
     "CREATE INDEX IF NOT EXISTS idx_jamaah_age ON jamaah(age)",
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_sales_targets_user_month ON sales_targets(user_id, month)",
 ]
 
 
