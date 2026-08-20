@@ -605,7 +605,10 @@ async def ops_home(user=Depends(authenticate_token)):
         "  (SELECT COUNT(*) FROM package_checklist_progress pc WHERE pc.package_id = p.id AND pc.status IN ('done','na')) AS checklist_done, "
         "  ? AS checklist_total, "
         "  (SELECT COUNT(*) FROM vendor_bookings v WHERE v.package_id = p.id AND v.status != 'Cancelled') AS vendor_total, "
-        "  (SELECT COUNT(*) FROM vendor_bookings v WHERE v.package_id = p.id AND v.status = 'Confirmed') AS vendor_confirmed "
+        "  (SELECT COUNT(*) FROM vendor_bookings v WHERE v.package_id = p.id AND v.status = 'Confirmed') AS vendor_confirmed, "
+        "  (SELECT COUNT(*) FROM jamaah_checkins c "
+        "    JOIN jamaah j ON j.id = c.jamaah_id "
+        "    WHERE c.package_id = p.id AND j.status NOT IN ('Cancelled')) AS checked_in "
         "FROM packages p "
         "WHERE p.departure_date IS NOT NULL AND date(p.departure_date) BETWEEN date('now') AND date('now', '+30 days') "
         "ORDER BY p.departure_date ASC LIMIT 5",
@@ -614,6 +617,7 @@ async def ops_home(user=Depends(authenticate_token)):
     for p in upcoming_packages:
         p["checklist_pct"] = round((p["checklist_done"] / p["checklist_total"]) * 100) if p["checklist_total"] else 0
         p["vendor_pending"] = (p["vendor_total"] or 0) - (p["vendor_confirmed"] or 0)
+        p["attendance_pct"] = round(((p["checked_in"] or 0) / p["filled"]) * 100) if p["filled"] else 0
 
     incidents_open = db.query_all(
         "SELECT i.id, i.package_name, i.incident_text, i.severity, i.assigned_to, i.reported_by, i.created_at "
@@ -647,19 +651,25 @@ async def ops_home(user=Depends(authenticate_token)):
         1 for p in upcoming_packages
         if (p.get("days_to_go") or 999) <= 14 and (p.get("vendor_pending") or 0) > 0
     )
+    # Attendance gap: paket berangkat <= 1 hari lagi tapi attendance < 90%
+    attendance_gap = sum(
+        1 for p in upcoming_packages
+        if (p.get("days_to_go") or 999) <= 1 and (p.get("attendance_pct") or 0) < 90 and (p.get("filled") or 0) > 0
+    )
     attention = {
         "upcoming_H7": sum(1 for p in upcoming_packages if (p.get("days_to_go") or 999) <= 7),
         "upcoming_H14": sum(1 for p in upcoming_packages if (p.get("days_to_go") or 999) <= 14),
         "paket_not_ready": paket_not_ready,
         "vendor_at_risk": vendor_at_risk,
+        "attendance_gap": attendance_gap,
         "incidents_open": len(incidents_open),
         "low_stock": low_stock_count,
         "passport_expiring": len(passport_expiring),
         "handover_pending": len(handover_pending),
     }
     attention["total"] = (
-        paket_not_ready + vendor_at_risk + attention["incidents_open"] + attention["low_stock"]
-        + attention["passport_expiring"] + attention["handover_pending"]
+        paket_not_ready + vendor_at_risk + attendance_gap + attention["incidents_open"]
+        + attention["low_stock"] + attention["passport_expiring"] + attention["handover_pending"]
     )
 
     return {
@@ -678,6 +688,101 @@ async def ops_home(user=Depends(authenticate_token)):
         "passport_expiring": passport_expiring,
         "handover_pending": handover_pending,
     }
+
+
+# ---------------------------------------------------------------------------
+# Boarding Check-in (QR/manual) per (jamaah, paket)
+# ---------------------------------------------------------------------------
+import re as _re_checkin
+
+
+def _parse_jamaah_id(raw):
+    """Terima 'JMH-000045' atau '45' atau plain int, return int atau None."""
+    if raw is None:
+        return None
+    s = str(raw).strip().upper()
+    m = _re_checkin.match(r"^(?:UMAR[:\-])?(?:JMH[:\-])?(\d+)$", s)
+    return int(m.group(1)) if m else None
+
+
+@app.get("/api/packages/{pid}/attendance")
+async def package_attendance(pid: int, user=Depends(authenticate_token)):
+    require_role(user, "admin", "ops", "management")
+    pkg = db.query_one(
+        "SELECT id, name, departure_date FROM packages WHERE id = ?", (pid,)
+    )
+    if not pkg:
+        raise HTTPException(status_code=404, detail="Paket tidak ditemukan.")
+    rows = db.query_all(
+        "SELECT j.id, j.name, j.phone, j.passport_number, j.bus_group, j.room_number, "
+        "  c.checkin_at, c.checkin_by, c.method, c.location, c.note "
+        "FROM jamaah j "
+        "LEFT JOIN jamaah_checkins c ON c.jamaah_id = j.id AND c.package_id = ? "
+        "WHERE j.package_type = ? AND j.status NOT IN ('Cancelled') "
+        "ORDER BY j.bus_group ASC, j.name ASC",
+        (pid, pkg["name"]),
+    )
+    checked = sum(1 for r in rows if r["checkin_at"])
+    total = len(rows)
+    return {
+        "package": pkg,
+        "jamaah": rows,
+        "summary": {"checked": checked, "total": total, "pct": round((checked/total)*100) if total else 0},
+    }
+
+
+@app.post("/api/packages/{pid}/checkin")
+async def package_checkin(pid: int, body: dict = Depends(json_body), user=Depends(authenticate_token)):
+    require_role(user, "admin", "ops", "management")
+    pkg = db.query_one("SELECT id, name FROM packages WHERE id = ?", (pid,))
+    if not pkg:
+        raise HTTPException(status_code=404, detail="Paket tidak ditemukan.")
+    jid = _parse_jamaah_id(body.get("qr") or body.get("jamaah_id"))
+    if not jid:
+        raise HTTPException(status_code=400, detail="QR / jamaah_id tidak valid.")
+    j = db.query_one("SELECT id, name, package_type, status FROM jamaah WHERE id = ?", (jid,))
+    if not j:
+        raise HTTPException(status_code=404, detail=f"Jamaah #{jid} tidak ditemukan.")
+    if j["package_type"] != pkg["name"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Jamaah '{j['name']}' terdaftar di paket lain ('{j['package_type']}'), bukan '{pkg['name']}'.",
+        )
+    if j["status"] == "Cancelled":
+        raise HTTPException(status_code=400, detail=f"Jamaah '{j['name']}' status Cancelled, tidak bisa check-in.")
+    existing = db.query_one(
+        "SELECT id, checkin_at FROM jamaah_checkins WHERE jamaah_id = ? AND package_id = ?",
+        (jid, pid),
+    )
+    if existing:
+        return {
+            "message": f"Jamaah '{j['name']}' sudah check-in sebelumnya.",
+            "duplicate": True,
+            "jamaah": {"id": j["id"], "name": j["name"]},
+            "checkin_at": existing["checkin_at"],
+        }
+    method = body.get("method") or "qr"
+    if method not in ("qr", "manual"):
+        method = "manual"
+    db.execute(
+        "INSERT INTO jamaah_checkins (jamaah_id, package_id, checkin_by, method, location, note) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        (jid, pid, user["name"], method, body.get("location"), body.get("note")),
+    )
+    log_action(user, "BOARDING_CHECKIN", f"pkg={pid} jamaah={jid} method={method}")
+    notify("data_updated", "checkin")
+    return {"message": f"Check-in {j['name']} berhasil.", "jamaah": {"id": j["id"], "name": j["name"]}}
+
+
+@app.delete("/api/checkins/{jid}/{pid}")
+async def package_checkin_undo(jid: int, pid: int, user=Depends(authenticate_token)):
+    require_role(user, "admin", "ops", "management")
+    if not db.query_one("SELECT id FROM jamaah_checkins WHERE jamaah_id = ? AND package_id = ?", (jid, pid)):
+        raise HTTPException(status_code=404, detail="Check-in tidak ditemukan.")
+    db.execute("DELETE FROM jamaah_checkins WHERE jamaah_id = ? AND package_id = ?", (jid, pid))
+    log_action(user, "BOARDING_CHECKIN_UNDO", f"pkg={pid} jamaah={jid}")
+    notify("data_updated", "checkin")
+    return {"message": "Check-in dibatalkan."}
 
 
 # ---------------------------------------------------------------------------

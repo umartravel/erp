@@ -82,6 +82,7 @@ function renderOhAttention(a) {
   chips.innerHTML = [
     chip('Paket H-7 belum siap (<70%)', a.paket_not_ready, '#FEE2E2', "document.getElementById('oh-upcoming-body')?.scrollIntoView({behavior:'smooth',block:'start'})"),
     chip('Vendor belum confirmed H-14', a.vendor_at_risk, '#FCE7F3', "document.getElementById('oh-upcoming-body')?.scrollIntoView({behavior:'smooth',block:'start'})"),
+    chip('Attendance <90% berangkat besok', a.attendance_gap, '#FEE2E2', "document.getElementById('oh-upcoming-body')?.scrollIntoView({behavior:'smooth',block:'start'})"),
     chip('Insiden terbuka', a.incidents_open, '#FEF3C7', "showPage('incidents')"),
     chip('Stok kritis', a.low_stock, '#FFEDD5', "document.getElementById('oh-stock-body')?.scrollIntoView({behavior:'smooth',block:'start'})"),
     chip('Paspor expiring', a.passport_expiring, '#DBEAFE', "document.getElementById('oh-passport-body')?.scrollIntoView({behavior:'smooth',block:'start'})"),
@@ -136,15 +137,17 @@ function renderOhUpcoming(list) {
       <div class="text-[10px] mt-1.5" style="color:${OH_COLORS.gray500};">
         Vendor: <b style="color:${(p.vendor_pending||0)>0 && (days!==null&&days<=14) ? OH_COLORS.red : OH_COLORS.charcoal};">${p.vendor_confirmed||0}/${p.vendor_total||0} confirmed</b>
         ${(p.vendor_pending||0)>0 ? `&middot; <span style="color:${OH_COLORS.red};">${p.vendor_pending} pending</span>` : ''}
+        &middot; Attendance: <b style="color:${(p.attendance_pct||0)>=90 ? OH_COLORS.green : (days!==null&&days<=1)?OH_COLORS.red:OH_COLORS.charcoal};">${p.checked_in||0}/${p.filled||0} (${p.attendance_pct||0}%)</b>
       </div>
       <div class="flex items-center justify-between text-[11px] mt-2">
         <span style="color:${OH_COLORS.gray500};">
           Terisi: <b style="color:${seatColor};">${p.filled || 0} / ${p.quota || 45}</b>
           ${p.airline_depart ? '&middot; ' + p.airline_depart : ''}
         </span>
-        <div class="flex gap-1">
+        <div class="flex flex-wrap gap-1 justify-end">
           <button onclick="openChecklistModal(${p.id}, ${JSON.stringify(p.name).replace(/"/g,'&quot;')})" class="text-xs px-2 py-1 rounded font-medium" style="background:${OH_COLORS.gold};color:${OH_COLORS.charcoal};">Checklist</button>
           <button onclick="openVendorModal(${p.id}, ${JSON.stringify(p.name).replace(/"/g,'&quot;')})" class="text-xs px-2 py-1 rounded font-medium border" style="border-color:#E8DFC8;color:${OH_COLORS.charcoal};background:#FCE7F3;">Vendor</button>
+          <button onclick="openCheckinModal(${p.id}, ${JSON.stringify(p.name).replace(/"/g,'&quot;')})" class="text-xs px-2 py-1 rounded font-medium" style="background:${OH_COLORS.charcoal};color:${OH_COLORS.gold};">Check-in</button>
           <button onclick="showPage('operasional')" class="text-xs px-2 py-1 rounded font-medium border" style="border-color:#E8DFC8;color:${OH_COLORS.charcoal};">Manifest</button>
         </div>
       </div>
@@ -417,6 +420,194 @@ async function deleteVendor() {
     await renderVendorList();
     const homePage = document.getElementById('page-ops-home');
     if (homePage && !homePage.classList.contains('hidden')) initOpsHome();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+// ============================================================================
+// BOARDING CHECK-IN (QR + Manual)
+// ============================================================================
+let __chkinPkgId = null;
+let __chkinPkgName = '';
+let __chkinFilter = '';
+
+function openCheckinModal(pkgId, pkgName) {
+  __chkinPkgId = pkgId;
+  __chkinPkgName = pkgName;
+  __chkinFilter = '';
+  document.getElementById('chkin-title').textContent = 'Boarding Check-in: ' + pkgName;
+  document.getElementById('chkin-body').innerHTML = '<p class="text-xs text-gray-400 py-4 text-center">Memuat...</p>';
+  document.getElementById('chkin-scan-input').value = '';
+  document.getElementById('chkin-search').value = '';
+  openModal('modal-checkin');
+  renderCheckinList();
+  setTimeout(() => document.getElementById('chkin-scan-input')?.focus(), 200);
+}
+
+async function renderCheckinList() {
+  try {
+    const res = await ohFetch(`/api/packages/${__chkinPkgId}/attendance`);
+    if (!res.ok) throw new Error('Gagal muat attendance');
+    const d = await res.json();
+    const s = d.summary || { checked: 0, total: 0, pct: 0 };
+    const barColor = s.pct >= 90 ? OH_COLORS.green : s.pct >= 60 ? OH_COLORS.gold : OH_COLORS.red;
+    const filter = (__chkinFilter || '').toLowerCase();
+    const rows = (d.jamaah || []).filter(j =>
+      !filter || (j.name || '').toLowerCase().includes(filter) ||
+      (j.passport_number || '').toLowerCase().includes(filter) ||
+      String(j.id).includes(filter)
+    );
+    const body = document.getElementById('chkin-body');
+    body.innerHTML = `
+      <div class="rounded-lg p-3 mb-3 border" style="background:#F4F1EA;border-color:#E8DFC8;">
+        <div class="flex items-baseline justify-between mb-1">
+          <span class="text-xs font-bold" style="color:${OH_COLORS.charcoal};">Progress Boarding</span>
+          <span class="text-lg font-black" style="color:${barColor};">${s.checked}/${s.total} &middot; ${s.pct}%</span>
+        </div>
+        <div class="h-2 w-full rounded-full overflow-hidden" style="background:#E8DFC8;">
+          <div style="width:${Math.min(100,s.pct)}%;height:100%;background:${barColor};transition:width 0.4s ease;"></div>
+        </div>
+      </div>
+      <div class="overflow-auto max-h-96 border rounded-lg">
+        <table class="w-full text-sm">
+          <thead class="text-[10px] uppercase bg-gray-50 text-gray-500 sticky top-0">
+            <tr>
+              <th class="px-2 py-2 text-left">Jamaah</th>
+              <th class="px-2 py-2 text-left">Paspor</th>
+              <th class="px-2 py-2 text-center">Bus/Room</th>
+              <th class="px-2 py-2 text-center">Status</th>
+              <th class="px-2 py-2 text-center">Aksi</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y">
+            ${rows.map(j => {
+              const checked = !!j.checkin_at;
+              const label = checked
+                ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:#D1FAE5;color:${OH_COLORS.green};">CHECKED IN</span>
+                   <div class="text-[9px] mt-0.5" style="color:${OH_COLORS.gray500};">${ohFmtDate(j.checkin_at)} oleh ${j.checkin_by||'-'}</div>`
+                : `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:#FEE2E2;color:${OH_COLORS.red};">BELUM</span>`;
+              const action = checked
+                ? `<button onclick="undoCheckin(${j.id})" class="text-[10px] px-2 py-1 rounded font-bold border" style="border-color:${OH_COLORS.red};color:${OH_COLORS.red};">Undo</button>`
+                : `<button onclick="checkinManual(${j.id})" class="text-[10px] px-2 py-1 rounded font-bold" style="background:${OH_COLORS.green};color:#fff;">Check-in</button>`;
+              return `<tr class="${checked?'bg-emerald-50/40':''}">
+                <td class="px-2 py-2"><b style="color:${OH_COLORS.charcoal};">${j.name || '-'}</b><div class="text-[10px]" style="color:${OH_COLORS.gray500};">#JMH-${String(j.id).padStart(6,'0')}</div></td>
+                <td class="px-2 py-2 text-xs">${j.passport_number || '<span style="color:'+OH_COLORS.gray500+';">-</span>'}</td>
+                <td class="px-2 py-2 text-center text-xs">${j.bus_group || '-'} / ${j.room_number || '-'}</td>
+                <td class="px-2 py-2 text-center">${label}</td>
+                <td class="px-2 py-2 text-center">${action}</td>
+              </tr>`;
+            }).join('') || '<tr><td colspan="5" class="text-center py-4 text-xs text-gray-400">Tidak ada jamaah cocok dengan pencarian.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+async function handleScanInput(e) {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const raw = e.target.value.trim();
+  if (!raw) return;
+  e.target.value = '';
+  try {
+    const res = await ohFetch(`/api/packages/${__chkinPkgId}/checkin`, {
+      method: 'POST',
+      body: JSON.stringify({ qr: raw, method: 'qr' }),
+    });
+    const d = await res.json();
+    if (!res.ok) {
+      showToast(d.detail || 'Check-in gagal', 'error');
+      return;
+    }
+    if (d.duplicate) {
+      showToast(d.message, 'error');
+    } else {
+      showToast(d.message);
+    }
+    await renderCheckinList();
+    const homePage = document.getElementById('page-ops-home');
+    if (homePage && !homePage.classList.contains('hidden')) initOpsHome();
+  } catch (e) { showToast(e.message, 'error'); }
+  setTimeout(() => document.getElementById('chkin-scan-input')?.focus(), 100);
+}
+
+async function checkinManual(jid) {
+  try {
+    const res = await ohFetch(`/api/packages/${__chkinPkgId}/checkin`, {
+      method: 'POST',
+      body: JSON.stringify({ jamaah_id: jid, method: 'manual' }),
+    });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.detail || 'Gagal check-in');
+    if (d.duplicate) { showToast(d.message, 'error'); return; }
+    showToast(d.message);
+    await renderCheckinList();
+    const homePage = document.getElementById('page-ops-home');
+    if (homePage && !homePage.classList.contains('hidden')) initOpsHome();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+async function undoCheckin(jid) {
+  if (!confirm('Batalkan check-in jamaah ini?')) return;
+  try {
+    const res = await ohFetch(`/api/checkins/${jid}/${__chkinPkgId}`, { method: 'DELETE' });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.detail || 'Gagal undo');
+    showToast(d.message);
+    await renderCheckinList();
+    const homePage = document.getElementById('page-ops-home');
+    if (homePage && !homePage.classList.contains('hidden')) initOpsHome();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+function applyCheckinSearch(v) {
+  __chkinFilter = v;
+  renderCheckinList();
+}
+
+async function printQrLabels() {
+  // Buka window baru berisi label grid + QR (pakai qrserver via query params -- ringan, no lib).
+  try {
+    const res = await ohFetch(`/api/packages/${__chkinPkgId}/attendance`);
+    const d = await res.json();
+    const jamaahList = (d.jamaah || []);
+    if (!jamaahList.length) return showToast('Tidak ada jamaah untuk di-print', 'error');
+    // Generate QR via Google Chart API dependency-free: use local library? Fallback: use qrcode.js from CDN? Belum ideal offline.
+    // Alternatif: HTML dgn text besar berformat "JMH-000045" -- scannable via barcode 2D scanner yg juga baca text? Tidak.
+    // Solusi realistis: prompt user pakai text-only fallback + minta browser cetak dgn zoom font besar; label akan berisi ID sebagai barcode Code128 via lib? Tetap butuh lib.
+    // Untuk MVP: buka window dengan text card besar berisi ID + nama + paspor -- ops dapat scan input manual atau bawa scanner yg baca 1D barcode text (Code128). Karena kita tidak host asset barcode lib, tampil sebagai text besar dan ID besar (font Barlow monospace) supaya bisa diketik manual/scan visual.
+    const html = `<!doctype html><html><head><title>QR Labels ${d.package.name}</title>
+      <style>
+        @page { size:A4; margin:1cm; }
+        body { font-family: Arial, sans-serif; margin:0; }
+        h1 { font-size:16pt; margin:0 0 12pt; }
+        .grid { display:grid; grid-template-columns:1fr 1fr; gap:12pt; }
+        .card { border:2px solid #1D1D1B; border-radius:8pt; padding:10pt; page-break-inside:avoid; }
+        .name { font-weight:bold; font-size:13pt; }
+        .id { font-family:'Courier New',monospace; font-size:22pt; font-weight:bold; margin:6pt 0; background:#F8BE20; padding:4pt 8pt; border-radius:4pt; text-align:center; }
+        .meta { font-size:10pt; color:#555; }
+        img.qr { display:block; margin:6pt auto; }
+      </style></head><body>
+      <h1>Boarding Labels: ${d.package.name}</h1>
+      <div class="grid">
+        ${jamaahList.map(j => {
+          const idText = 'JMH-' + String(j.id).padStart(6,'0');
+          const qrData = encodeURIComponent(idText);
+          const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${qrData}`;
+          return `<div class="card">
+            <div class="name">${j.name || '-'}</div>
+            <div class="meta">Paspor: ${j.passport_number || '-'} &middot; Bus: ${j.bus_group || '-'} / Room: ${j.room_number || '-'}</div>
+            <img class="qr" src="${qrUrl}" width="120" height="120" alt="QR">
+            <div class="id">${idText}</div>
+          </div>`;
+        }).join('')}
+      </div>
+      <script>window.onload = () => setTimeout(() => window.print(), 500);<\/script>
+      </body></html>`;
+    const w = window.open('', '_blank');
+    if (!w) return showToast('Popup diblokir browser', 'error');
+    w.document.write(html);
+    w.document.close();
   } catch (e) { showToast(e.message, 'error'); }
 }
 
