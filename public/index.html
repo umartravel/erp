@@ -161,12 +161,18 @@
                 <i data-lucide="chevron-right" class="w-3.5 h-3.5 nav-group-chevron transition-transform duration-150 shrink-0" id="chevron-ops"></i> Ops
             </button>
             <div id="navgroup-ops" class="space-y-1">
+                <a href="#" id="nav-ops-home" onclick="showPage('ops-home')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
+                    <i data-lucide="sun" class="w-4 h-4"></i> Home Ops
+                </a>
                 <a href="#" id="nav-operasional" onclick="showPage('operasional')" class="nav-btn flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150">
                     <span class="flex items-center gap-3"><i data-lucide="box" class="w-4 h-4"></i> Logistik & Ops</span>
                     <span class="flex items-center gap-1">
                         <span id="ops-lowstock-badge" class="hidden bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center" title="Stok barang menipis"></span>
                         <span id="ops-passport-badge" class="hidden bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center" title="Paspor mau habis masa berlaku (<6 bulan)"></span>
                     </span>
+                </a>
+                <a href="#" id="nav-incidents" onclick="showPage('incidents')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
+                    <i data-lucide="alert-triangle" class="w-4 h-4"></i> Insiden Lapangan
                 </a>
                 <a href="#" id="nav-procurement" onclick="showPage('procurement')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
                     <i data-lucide="building-2" class="w-4 h-4"></i> Manajemen Vendor
@@ -354,6 +360,160 @@
                         <a href="#" onclick="showPage('packages'); return false;" class="text-[10px] font-bold" style="color:#B8860B;text-decoration:underline;">Lihat semua &rarr;</a>
                     </div>
                     <div id="sh-upcoming-body" class="p-4"></div>
+                </div>
+            </div>
+
+            <!-- PAGE: HOME OPS (untuk role ops -- KPI + attention hero) -->
+            <div id="page-ops-home" class="page-content hidden space-y-6">
+                <div class="rounded-2xl shadow-sm p-6 relative overflow-hidden" style="background:linear-gradient(135deg,#1D1D1B 0%, #3D2D0B 100%);">
+                    <div class="absolute -right-8 -top-8 opacity-10"><i data-lucide="box" class="w-40 h-40" style="color:#F8BE20;"></i></div>
+                    <h2 class="text-2xl font-black tracking-tight flex items-center gap-3" style="color:#F8BE20;">
+                        <i data-lucide="sun" class="w-6 h-6"></i>
+                        <span>Selamat datang, <span id="oh-me-name">Tim Ops</span></span>
+                    </h2>
+                    <p class="text-xs mt-1" style="color:#F4F1EA;opacity:0.8;">Ringkasan operasional lintas paket: keberangkatan mendatang, insiden, stok, paspor, handover.</p>
+                </div>
+
+                <!-- Butuh Perhatian Hari Ini (hero) -->
+                <div id="oh-attention" class="rounded-xl border shadow-sm p-4 hidden" style="background:linear-gradient(135deg,#FEF3C7 0%, #FFFDF7 100%);border-color:#F8BE20;">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-9 h-9 rounded-full flex items-center justify-center" style="background:#F8BE20;">
+                            <i data-lucide="bell-ring" class="w-5 h-5" style="color:#1D1D1B;"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-sm font-black" style="color:#1D1D1B;">Butuh Perhatian Hari Ini</p>
+                            <p class="text-[11px]" style="color:#6B7280;"><span id="oh-attention-total" class="font-bold" style="color:#B8860B;">0</span> aksi menunggu -- klik untuk buka.</p>
+                        </div>
+                    </div>
+                    <div id="oh-attention-chips" class="flex flex-wrap gap-2"></div>
+                </div>
+
+                <!-- KPI baris atas: 5 card ops -->
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <div class="rounded-xl border shadow-sm p-4" style="background:#FFFDF7;border-color:#F4F1EA;">
+                        <p class="text-[10px] font-bold uppercase tracking-wider" style="color:#B8860B;">PAKET AKTIF</p>
+                        <p class="text-2xl font-black mt-1" style="color:#1D1D1B;" id="oh-kpi-packages">0</p>
+                        <p class="text-[10px] mt-1" style="color:#6B7280;">Paket dengan tanggal berangkat mendatang</p>
+                    </div>
+                    <div class="rounded-xl border shadow-sm p-4" style="background:#FFFDF7;border-color:#F4F1EA;">
+                        <p class="text-[10px] font-bold uppercase tracking-wider" style="color:#B8860B;">JAMAAH AKTIF</p>
+                        <p class="text-2xl font-black mt-1" style="color:#1D1D1B;" id="oh-kpi-jamaah">0</p>
+                        <p class="text-[10px] mt-1" style="color:#6B7280;">Terdaftar (non-Cancelled)</p>
+                    </div>
+                    <div class="rounded-xl border shadow-sm p-4" style="background:#FFFDF7;border-color:#F4F1EA;">
+                        <p class="text-[10px] font-bold uppercase tracking-wider" style="color:#B8860B;">STOK KRITIS</p>
+                        <p class="text-2xl font-black mt-1" style="color:#DC2626;" id="oh-kpi-stock">0</p>
+                        <p class="text-[10px] mt-1" style="color:#6B7280;">Item &le; ambang minimum</p>
+                    </div>
+                    <div class="rounded-xl border shadow-sm p-4" style="background:#FFFDF7;border-color:#F4F1EA;">
+                        <p class="text-[10px] font-bold uppercase tracking-wider" style="color:#B8860B;">ASET DIPINJAM</p>
+                        <p class="text-2xl font-black mt-1" style="color:#1D1D1B;" id="oh-kpi-asset">0</p>
+                        <p class="text-[10px] mt-1" style="color:#6B7280;">Aset perusahaan checkout</p>
+                    </div>
+                    <div class="rounded-xl border shadow-sm p-4" style="background:#FFFDF7;border-color:#F4F1EA;">
+                        <p class="text-[10px] font-bold uppercase tracking-wider" style="color:#B8860B;">PASPOR EXPIRING</p>
+                        <p class="text-2xl font-black mt-1" style="color:#B45309;" id="oh-kpi-passport">0</p>
+                        <p class="text-[10px] mt-1" style="color:#6B7280;">Kadaluwarsa &le; 6 bulan</p>
+                    </div>
+                </div>
+
+                <!-- Upcoming Departures + Incidents Open -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div class="rounded-xl border shadow-sm overflow-hidden" style="background:#FFFDF7;border-color:#F4F1EA;">
+                        <div class="px-5 py-3 border-b" style="background:#F4F1EA;border-color:#E8DFC8;">
+                            <h3 class="font-bold flex items-center gap-2 text-sm" style="color:#1D1D1B;">
+                                <i data-lucide="plane-takeoff" class="w-4 h-4" style="color:#B8860B;"></i>
+                                Keberangkatan 30 Hari ke Depan
+                            </h3>
+                        </div>
+                        <div id="oh-upcoming-body" class="max-h-96 overflow-y-auto"></div>
+                    </div>
+                    <div class="rounded-xl border shadow-sm overflow-hidden" style="background:#FFFDF7;border-color:#F4F1EA;">
+                        <div class="px-5 py-3 border-b flex justify-between items-center" style="background:#F4F1EA;border-color:#E8DFC8;">
+                            <h3 class="font-bold flex items-center gap-2 text-sm" style="color:#1D1D1B;">
+                                <i data-lucide="alert-triangle" class="w-4 h-4" style="color:#DC2626;"></i>
+                                Insiden Terbuka
+                            </h3>
+                            <button onclick="openCreateIncident()" class="text-[10px] px-2 py-1 rounded font-bold" style="background:#F8BE20;color:#1D1D1B;"><i data-lucide="plus" class="inline w-3 h-3"></i> Laporkan</button>
+                        </div>
+                        <div id="oh-incidents-body" class="max-h-96 overflow-y-auto"></div>
+                    </div>
+                </div>
+
+                <!-- Stok Kritis + Paspor Expiring -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div class="rounded-xl border shadow-sm overflow-hidden" style="background:#FFFDF7;border-color:#F4F1EA;">
+                        <div class="px-5 py-3 border-b" style="background:#F4F1EA;border-color:#E8DFC8;">
+                            <h3 class="font-bold flex items-center gap-2 text-sm" style="color:#1D1D1B;">
+                                <i data-lucide="archive" class="w-4 h-4" style="color:#DC2626;"></i>
+                                Stok Kritis (Top 10)
+                            </h3>
+                        </div>
+                        <div id="oh-stock-body" class="max-h-80 overflow-y-auto py-2"></div>
+                    </div>
+                    <div class="rounded-xl border shadow-sm overflow-hidden" style="background:#FFFDF7;border-color:#F4F1EA;">
+                        <div class="px-5 py-3 border-b" style="background:#F4F1EA;border-color:#E8DFC8;">
+                            <h3 class="font-bold flex items-center gap-2 text-sm" style="color:#1D1D1B;">
+                                <i data-lucide="book-user" class="w-4 h-4" style="color:#B45309;"></i>
+                                Paspor Akan Expire (&le; 6 bulan)
+                            </h3>
+                        </div>
+                        <div id="oh-passport-body" class="max-h-80 overflow-y-auto"></div>
+                    </div>
+                </div>
+
+                <!-- Handover Pending -->
+                <div class="rounded-xl border shadow-sm overflow-hidden" style="background:#FFFDF7;border-color:#F4F1EA;">
+                    <div class="px-5 py-3 border-b" style="background:#F4F1EA;border-color:#E8DFC8;">
+                        <h3 class="font-bold flex items-center gap-2 text-sm" style="color:#1D1D1B;">
+                            <i data-lucide="package-check" class="w-4 h-4" style="color:#B8860B;"></i>
+                            Handover Pending <span class="text-[10px] font-normal" style="color:#6B7280;">(jamaah DP&ge;75% berangkat &le;30 hari, belum terima perlengkapan)</span>
+                        </h3>
+                    </div>
+                    <div id="oh-handover-body" class="max-h-80 overflow-y-auto py-2"></div>
+                </div>
+            </div>
+
+            <!-- PAGE: INSIDEN LAPANGAN (page-incidents) -->
+            <div id="page-incidents" class="page-content hidden space-y-4">
+                <div class="bg-white rounded-xl shadow-sm border p-6">
+                    <div class="flex flex-wrap justify-between items-center gap-3 border-b pb-4 mb-4">
+                        <h3 class="font-semibold text-gray-800 flex items-center gap-2"><i data-lucide="alert-triangle" class="w-5 h-5 text-red-600"></i>Manajemen Insiden Lapangan</h3>
+                        <div class="flex items-center gap-2">
+                            <label class="text-xs text-gray-500">Status:</label>
+                            <select id="inc-filter-status" onchange="__incFilterStatus=this.value; fetchIncidents()" class="border rounded-lg px-2 py-1.5 text-sm">
+                                <option value="Open" selected>Open</option>
+                                <option value="InProgress">In Progress</option>
+                                <option value="Resolved">Resolved</option>
+                                <option value="">Semua</option>
+                            </select>
+                            <label class="text-xs text-gray-500">Severity:</label>
+                            <select id="inc-filter-severity" onchange="__incFilterSev=this.value; fetchIncidents()" class="border rounded-lg px-2 py-1.5 text-sm">
+                                <option value="">Semua</option>
+                                <option value="Critical">Critical</option>
+                                <option value="High">High</option>
+                                <option value="Medium">Medium</option>
+                                <option value="Low">Low</option>
+                            </select>
+                            <button onclick="openCreateIncident()" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold flex items-center gap-1"><i data-lucide="plus" class="w-3.5 h-3.5"></i>Laporkan Insiden</button>
+                        </div>
+                    </div>
+                    <div class="overflow-auto rounded-lg border">
+                        <table class="w-full text-sm">
+                            <thead class="text-xs uppercase bg-gray-50 text-gray-500">
+                                <tr>
+                                    <th class="px-3 py-2 text-left">Tanggal</th>
+                                    <th class="px-3 py-2 text-left">Severity</th>
+                                    <th class="px-3 py-2 text-left">Status</th>
+                                    <th class="px-3 py-2 text-left">Paket</th>
+                                    <th class="px-3 py-2 text-left">Deskripsi</th>
+                                    <th class="px-3 py-2 text-left">Reporter / PIC</th>
+                                    <th class="px-3 py-2 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-incidents" class="divide-y"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -1593,15 +1753,47 @@
     </div>
 
     <!-- MODAL LAPOR INSIDEN -->
-    <div id="modal-incident" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
-            <h3 class="font-bold text-lg mb-4 border-b pb-2 text-red-600 flex items-center gap-2"><i data-lucide="alert-triangle" class="w-5 h-5"></i>Lapor Insiden Darurat</h3>
-            <form id="form-incident" class="space-y-4">
-                <div><label class="text-xs font-medium">Pilih Paket Terkait</label><select id="inc-pkg" class="w-full border p-2 rounded text-sm bg-gray-50"></select></div>
-                <div><label class="text-xs font-medium">Detail Kejadian</label><textarea id="inc-text" rows="4" class="w-full border p-2 rounded text-sm bg-gray-50" placeholder="Cth: Jamaah Bpk X tertinggal bus di Madinah" required></textarea></div>
-                <div class="flex justify-end gap-2 mt-4">
+    <div id="modal-incident" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
+            <h3 id="inc-modal-title" class="font-bold text-lg mb-4 border-b pb-2 text-red-600 flex items-center gap-2"><i data-lucide="alert-triangle" class="w-5 h-5"></i>Laporkan Insiden Baru</h3>
+            <form onsubmit="saveIncident(event)" class="space-y-3">
+                <input type="hidden" id="inc-form-id" value="">
+                <div>
+                    <label class="text-xs font-medium">Paket Terkait</label>
+                    <input type="text" id="inc-form-package" placeholder="Nama paket (kosongkan untuk Umum)" class="w-full border p-2 rounded text-sm bg-gray-50">
+                </div>
+                <div>
+                    <label class="text-xs font-medium">Severity <span class="text-red-500">*</span></label>
+                    <select id="inc-form-severity" class="w-full border p-2 rounded text-sm bg-gray-50" required>
+                        <option value="Critical">Critical -- bahaya jiwa / trip terhenti</option>
+                        <option value="High">High -- signifikan, butuh aksi &lt; 24 jam</option>
+                        <option value="Medium" selected>Medium -- perlu ditangani beberapa hari</option>
+                        <option value="Low">Low -- catatan/keluhan ringan</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs font-medium">Detail Kejadian <span class="text-red-500">*</span></label>
+                    <textarea id="inc-form-text" rows="4" class="w-full border p-2 rounded text-sm bg-gray-50" placeholder="Cth: Jamaah Bpk X tertinggal bus di Madinah, sudah dijemput vendor lokal. Menunggu update jam 22:00." required></textarea>
+                </div>
+                <div id="inc-status-block" class="hidden">
+                    <label class="text-xs font-medium">Status</label>
+                    <select id="inc-form-status" class="w-full border p-2 rounded text-sm bg-gray-50">
+                        <option value="Open">Open -- baru dilaporkan</option>
+                        <option value="InProgress">In Progress -- sedang ditangani</option>
+                        <option value="Resolved">Resolved -- selesai</option>
+                    </select>
+                </div>
+                <div id="inc-assigned-block" class="hidden">
+                    <label class="text-xs font-medium">PIC (Assignee)</label>
+                    <input type="text" id="inc-form-assigned" placeholder="Nama tim yang menangani" class="w-full border p-2 rounded text-sm bg-gray-50">
+                </div>
+                <div id="inc-resolve-block" class="hidden">
+                    <label class="text-xs font-medium">Catatan Resolusi</label>
+                    <textarea id="inc-form-resolution" rows="3" class="w-full border p-2 rounded text-sm bg-gray-50" placeholder="Cth: Jamaah sudah kembali ke rombongan pukul 22:30 dengan bantuan vendor Al-Faisal."></textarea>
+                </div>
+                <div class="flex justify-end gap-2 mt-4 pt-3 border-t">
                     <button type="button" onclick="closeModal('modal-incident')" class="px-4 py-2 border rounded-lg text-sm font-medium">Batal</button>
-                    <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold shadow-sm">Kirim Laporan</button>
+                    <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-bold shadow-sm">Simpan</button>
                 </div>
             </form>
         </div>
@@ -2899,6 +3091,10 @@
                 document.getElementById('nav-followup').classList.remove('hidden');
                 document.getElementById('finance-write-panel').classList.remove('hidden');
                 document.getElementById('btn-save-ops').classList.remove('hidden');
+                // Admin bisa lihat semua landing personal untuk audit + support
+                document.getElementById('nav-ops-home').classList.remove('hidden');
+                document.getElementById('nav-incidents').classList.remove('hidden');
+                document.getElementById('nav-sales-home').classList.remove('hidden');
             } else if (currentUser.role === 'sales') {
                 document.getElementById('nav-finance').classList.add('hidden');
                 document.getElementById('nav-operasional').classList.add('hidden');
@@ -2934,6 +3130,10 @@
                 // yang memotong Buku Kas) tetap wewenang admin/finance -- btn-add-procurement
                 // sengaja dibiarkan hidden untuk role ini.
                 document.getElementById('nav-procurement').classList.remove('hidden');
+                // Home Ops + Insiden Lapangan -- landing kerja + tracking incident
+                document.getElementById('nav-ops-home').classList.remove('hidden');
+                document.getElementById('nav-incidents').classList.remove('hidden');
+                document.getElementById('nav-dashboard').classList.add('hidden');
             } else if (currentUser.role === 'management') {
                 document.getElementById('nav-tactical').classList.remove('hidden');
                 document.getElementById('nav-procurement').classList.remove('hidden');
@@ -2946,13 +3146,20 @@
                 // di backend memang dibatasi khusus admin+sales, jadi Management akan selalu 403
                 // bila mencoba mereview -- konsisten untuk tidak menampilkan nav yang pasti gagal.
                 document.getElementById('nav-inbox').classList.add('hidden');
+                // Management lihat Home Ops + Insiden untuk oversight
+                document.getElementById('nav-ops-home').classList.remove('hidden');
+                document.getElementById('nav-incidents').classList.remove('hidden');
             }
 
             initNavGroups();
             updateNavGroupVisibility();
             // Sales user default landing ke Home Sales (MY-scoped) supaya buka ERP
             // langsung lihat prioritas kerja hari ini, bukan dashboard admin generik.
-            showPage(currentUser.role === 'sales' ? 'sales-home' : 'dashboard');
+            showPage(
+                currentUser.role === 'sales' ? 'sales-home' :
+                currentUser.role === 'ops' ? 'ops-home' :
+                'dashboard'
+            );
             refreshInboxBadge();
             fetchInventory(); // supaya badge stok menipis langsung terlihat tanpa perlu buka halaman Ops dulu
             handleAssetDeepLinkIfPresent(); // ?asset=AST-0001 dari scan QR kamera HP -> langsung buka detailnya
@@ -2986,7 +3193,7 @@
             return false;
         }
 
-        const pageTitles = { 'dashboard': 'Dashboard', 'pendaftaran': 'Pendaftaran Baru', 'jamaah': 'Master Data Jamaah', 'finance': 'Keuangan & P&L', 'operasional': 'Operasional & Logistik', 'whatsapp': 'Manajemen WA', 'users': 'Master Data Karyawan', 'packages': 'Master Paket Umroh', 'agents': 'Manajemen Keagenan', 'tactical': 'Kesiapan Operasional & Audit', 'procurement': 'Manajemen Vendor / Procurement', 'settings': 'Pengaturan Aplikasi', 'followup': 'Follow-up Lead (CRM Sales)', 'expense': 'Expense Report', 'inbox': 'Kotak Masuk Pendaftaran Publik', 'leave': 'Ajukan Izin', 'marketing': 'Marketing Analytics', 'sales-home': 'Home Sales' };
+        const pageTitles = { 'dashboard': 'Dashboard', 'pendaftaran': 'Pendaftaran Baru', 'jamaah': 'Master Data Jamaah', 'finance': 'Keuangan & P&L', 'operasional': 'Operasional & Logistik', 'whatsapp': 'Manajemen WA', 'users': 'Master Data Karyawan', 'packages': 'Master Paket Umroh', 'agents': 'Manajemen Keagenan', 'tactical': 'Kesiapan Operasional & Audit', 'procurement': 'Manajemen Vendor / Procurement', 'settings': 'Pengaturan Aplikasi', 'followup': 'Follow-up Lead (CRM Sales)', 'expense': 'Expense Report', 'inbox': 'Kotak Masuk Pendaftaran Publik', 'leave': 'Ajukan Izin', 'marketing': 'Marketing Analytics', 'sales-home': 'Home Sales', 'ops-home': 'Home Ops', 'incidents': 'Insiden Lapangan' };
 
         // --- SIDEBAR: kategori yang bisa dilipat (accordion), status tersimpan per browser ---
         const NAV_GROUPS = ['crm', 'finance', 'ops', 'tools'];
@@ -3070,6 +3277,8 @@
             if(id === 'agents') { fetchAgents(); fetchExpandReport(); fetchAgentInbox(); }
             if(id === 'leave') fetchLeaveRequests();
             if(id === 'operasional') { fetchInventory(); fetchCompanyAssets(); }
+            if(id === 'ops-home' && typeof initOpsHome === 'function') initOpsHome();
+            if(id === 'incidents' && typeof initIncidentsPage === 'function') initIncidentsPage();
             if(id === 'tactical') fetchTactical();
             if(id === 'procurement') fetchProcurement();
             if(id === 'settings') loadSettings();
@@ -6745,5 +6954,6 @@
     <!-- Marketing Analytics: heatmap + chart (dimuat setelah inline JS supaya authFetch sudah terdefinisi). -->
     <script src="js/marketing.js?v=20260817d"></script>
     <script src="js/sales-home.js?v=20260819a"></script>
+    <script src="js/ops-home.js?v=20260820a"></script>
 </body>
 </html>

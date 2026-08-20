@@ -501,18 +501,164 @@ async def tactical_stats(user=Depends(authenticate_token)):
 # INSIDEN & AUDIT
 # ===========================================================================
 @app.get("/api/incidents")
-async def incidents_list(user=Depends(authenticate_token)):
-    return db.query_all("SELECT * FROM incidents ORDER BY created_at DESC", ()) or []
+async def incidents_list(
+    status: str | None = None,
+    severity: str | None = None,
+    package: str | None = None,
+    user=Depends(authenticate_token),
+):
+    where = []
+    params = []
+    if status:
+        where.append("i.status = ?"); params.append(status)
+    if severity:
+        where.append("i.severity = ?"); params.append(severity)
+    if package:
+        where.append("i.package_name = ?"); params.append(package)
+    where_sql = ("WHERE " + " AND ".join(where)) if where else ""
+    return db.query_all(
+        f"SELECT i.*, j.name AS jamaah_name FROM incidents i "
+        f"LEFT JOIN jamaah j ON j.id = i.jamaah_id "
+        f"{where_sql} ORDER BY "
+        "  CASE i.status WHEN 'Open' THEN 0 WHEN 'InProgress' THEN 1 ELSE 2 END, "
+        "  CASE i.severity WHEN 'Critical' THEN 0 WHEN 'High' THEN 1 WHEN 'Medium' THEN 2 ELSE 3 END, "
+        "  i.created_at DESC",
+        tuple(params),
+    ) or []
 
 
 @app.post("/api/incidents")
 async def incidents_create(body: dict = Depends(json_body), user=Depends(authenticate_token)):
     db.execute(
-        "INSERT INTO incidents (package_name, reported_by, incident_text) VALUES (?, ?, ?)",
-        (body.get("package_name") or "Umum", user["name"], body.get("incident_text")),
+        "INSERT INTO incidents (package_name, reported_by, incident_text, severity, jamaah_id) "
+        "VALUES (?, ?, ?, ?, ?)",
+        (
+            body.get("package_name") or "Umum",
+            user["name"],
+            body.get("incident_text"),
+            body.get("severity") or "Medium",
+            body.get("jamaah_id") or None,
+        ),
     )
+    log_action(user, "INCIDENT_CREATE", f"pkg={body.get('package_name')} sev={body.get('severity')}")
     notify("data_updated", "incident")
     return {"message": "Laporan insiden berhasil dikirim ke Pusat."}
+
+
+@app.patch("/api/incidents/{iid}")
+async def incidents_update(iid: int, body: dict = Depends(json_body), user=Depends(authenticate_token)):
+    require_role(user, "admin", "ops", "management")
+    row = db.query_one("SELECT * FROM incidents WHERE id = ?", (iid,))
+    if not row:
+        raise HTTPException(status_code=404, detail="Insiden tidak ditemukan.")
+    status = body.get("status") or row["status"]
+    severity = body.get("severity") or row["severity"] or "Medium"
+    assigned_to = body.get("assigned_to") if "assigned_to" in body else row["assigned_to"]
+    resolution_note = body.get("resolution_note") if "resolution_note" in body else row["resolution_note"]
+    resolved_at = row["resolved_at"]
+    if status == "Resolved" and not resolved_at:
+        resolved_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    elif status != "Resolved":
+        resolved_at = None
+    db.execute(
+        "UPDATE incidents SET status=?, severity=?, assigned_to=?, resolution_note=?, resolved_at=? WHERE id=?",
+        (status, severity, assigned_to, resolution_note, resolved_at, iid),
+    )
+    log_action(user, "INCIDENT_UPDATE", f"id={iid} status={status} sev={severity}")
+    notify("data_updated", "incident")
+    return {"message": "Insiden diperbarui."}
+
+
+# ---------------------------------------------------------------------------
+# Home Ops -- landing dashboard untuk role ops (mirror Home Sales)
+# ---------------------------------------------------------------------------
+@app.get("/api/ops/home")
+async def ops_home(user=Depends(authenticate_token)):
+    require_role(user, "admin", "ops", "management")
+    active_pkg = db.query_one(
+        "SELECT COUNT(*) c FROM packages WHERE departure_date IS NOT NULL AND date(departure_date) >= date('now')"
+    )["c"]
+    active_jamaah = db.query_one(
+        "SELECT COUNT(*) c FROM jamaah WHERE status NOT IN ('Cancelled', 'Lead - Follow Up')"
+    )["c"]
+    low_stock_count = db.query_one(
+        "SELECT COUNT(*) c FROM inventory WHERE COALESCE(stock, 0) <= COALESCE(min_stock_threshold, 20)"
+    )["c"]
+    passport_expiring = db.query_all(
+        "SELECT j.id, j.name, j.phone, j.passport_number, j.passport_expiry, j.package_type "
+        "FROM jamaah j "
+        "WHERE j.passport_expiry IS NOT NULL AND j.passport_expiry != '' "
+        "  AND date(j.passport_expiry) BETWEEN date('now', '-12 months') AND date('now', '+6 months') "
+        "  AND j.status NOT IN ('Cancelled') "
+        "ORDER BY j.passport_expiry ASC LIMIT 20"
+    )
+    asset_checkout = db.query_one(
+        "SELECT COUNT(*) c FROM company_assets WHERE assigned_to IS NOT NULL AND assigned_to != ''"
+    )
+    asset_checkout_count = (asset_checkout or {}).get("c", 0)
+
+    upcoming_packages = db.query_all(
+        "SELECT p.id, p.name, p.departure_date, p.duration, p.quota, p.hotel_mekkah, p.airline_depart, "
+        "  (SELECT COUNT(*) FROM jamaah j WHERE j.package_type = p.name AND j.status NOT IN ('Cancelled')) AS filled, "
+        "  CAST(julianday(p.departure_date) - julianday('now') AS INTEGER) AS days_to_go "
+        "FROM packages p "
+        "WHERE p.departure_date IS NOT NULL AND date(p.departure_date) BETWEEN date('now') AND date('now', '+30 days') "
+        "ORDER BY p.departure_date ASC LIMIT 5"
+    )
+
+    incidents_open = db.query_all(
+        "SELECT i.id, i.package_name, i.incident_text, i.severity, i.assigned_to, i.reported_by, i.created_at "
+        "FROM incidents i WHERE i.status IN ('Open', 'InProgress') "
+        "ORDER BY CASE i.severity WHEN 'Critical' THEN 0 WHEN 'High' THEN 1 ELSE 2 END, i.created_at DESC LIMIT 10"
+    )
+
+    low_stock_items = db.query_all(
+        "SELECT item_name AS name, stock, min_stock_threshold FROM inventory "
+        "WHERE COALESCE(stock, 0) <= COALESCE(min_stock_threshold, 20) "
+        "ORDER BY (COALESCE(stock,0) - COALESCE(min_stock_threshold,20)) ASC LIMIT 10"
+    )
+
+    handover_pending = db.query_all(
+        "SELECT j.id, j.name, j.phone, j.package_type, j.total_price, j.paid_amount "
+        "FROM jamaah j "
+        "LEFT JOIN packages p ON p.name = j.package_type "
+        "WHERE j.paid_amount >= (j.total_price * 0.75) "
+        "  AND j.status NOT IN ('Cancelled', 'On Trip') "
+        "  AND p.departure_date IS NOT NULL "
+        "  AND date(p.departure_date) BETWEEN date('now') AND date('now', '+30 days') "
+        "  AND NOT EXISTS (SELECT 1 FROM jamaah_inventory ji WHERE ji.jamaah_id = j.id) "
+        "ORDER BY p.departure_date ASC LIMIT 15"
+    )
+
+    attention = {
+        "upcoming_H7": sum(1 for p in upcoming_packages if (p.get("days_to_go") or 999) <= 7),
+        "upcoming_H14": sum(1 for p in upcoming_packages if (p.get("days_to_go") or 999) <= 14),
+        "incidents_open": len(incidents_open),
+        "low_stock": low_stock_count,
+        "passport_expiring": len(passport_expiring),
+        "handover_pending": len(handover_pending),
+    }
+    attention["total"] = (
+        attention["upcoming_H7"] + attention["incidents_open"] + attention["low_stock"]
+        + attention["passport_expiring"] + attention["handover_pending"]
+    )
+
+    return {
+        "me": {"id": user["id"], "name": user["name"], "role": user["role"]},
+        "kpi": {
+            "active_packages": active_pkg,
+            "active_jamaah": active_jamaah,
+            "low_stock_count": low_stock_count,
+            "asset_checkout_count": asset_checkout_count,
+            "passport_expiring_count": len(passport_expiring),
+        },
+        "attention": attention,
+        "upcoming_packages": upcoming_packages,
+        "incidents_open": incidents_open,
+        "low_stock_items": low_stock_items,
+        "passport_expiring": passport_expiring,
+        "handover_pending": handover_pending,
+    }
 
 
 @app.get("/api/audit-logs")

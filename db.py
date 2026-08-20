@@ -614,6 +614,15 @@ ALTER_QUERIES = [
     "CREATE INDEX IF NOT EXISTS idx_jamaah_order_date ON jamaah(order_date)",
     "CREATE INDEX IF NOT EXISTS idx_jamaah_age ON jamaah(age)",
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_sales_targets_user_month ON sales_targets(user_id, month)",
+    # Perluasan tabel incidents (schema dasar cuma package_name/reported_by/text) --
+    # untuk manajemen ops butuh severity + assignee + resolution + link ke jamaah.
+    "ALTER TABLE incidents ADD COLUMN severity TEXT DEFAULT 'Medium'",
+    "ALTER TABLE incidents ADD COLUMN assigned_to TEXT",
+    "ALTER TABLE incidents ADD COLUMN resolved_at DATETIME",
+    "ALTER TABLE incidents ADD COLUMN resolution_note TEXT",
+    "ALTER TABLE incidents ADD COLUMN jamaah_id INTEGER",
+    "CREATE INDEX IF NOT EXISTS idx_incidents_status ON incidents(status)",
+    "CREATE INDEX IF NOT EXISTS idx_incidents_package ON incidents(package_name)",
 ]
 
 
