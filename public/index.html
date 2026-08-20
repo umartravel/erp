@@ -1753,6 +1753,20 @@
     </div>
 
     <!-- MODAL LAPOR INSIDEN -->
+    <!-- Modal Checklist Pra-Keberangkatan -->
+    <div id="modal-checklist" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 id="chk-title" class="font-bold text-lg flex items-center gap-2" style="color:#1D1D1B;"><i data-lucide="clipboard-check" class="w-5 h-5" style="color:#B8860B;"></i>Checklist Paket</h3>
+                <button onclick="closeModal('modal-checklist')" class="text-gray-400 hover:text-red-500"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div id="chk-body"></div>
+            <div class="flex justify-end mt-4 pt-3 border-t">
+                <button type="button" onclick="closeModal('modal-checklist')" class="px-4 py-2 border rounded-lg text-sm font-medium">Tutup</button>
+            </div>
+        </div>
+    </div>
+
     <div id="modal-incident" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
             <h3 id="inc-modal-title" class="font-bold text-lg mb-4 border-b pb-2 text-red-600 flex items-center gap-2"><i data-lucide="alert-triangle" class="w-5 h-5"></i>Laporkan Insiden Baru</h3>
@@ -6954,6 +6968,6 @@
     <!-- Marketing Analytics: heatmap + chart (dimuat setelah inline JS supaya authFetch sudah terdefinisi). -->
     <script src="js/marketing.js?v=20260817d"></script>
     <script src="js/sales-home.js?v=20260819a"></script>
-    <script src="js/ops-home.js?v=20260820a"></script>
+    <script src="js/ops-home.js?v=20260820d"></script>
 </body>
 </html>

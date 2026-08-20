@@ -438,6 +438,27 @@ SCHEMA = [
         set_by TEXT,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )""",
+    # Template checklist pra-keberangkatan (master item ops standar) -- 1 baris per
+    # item universal. Progress tersimpan terpisah per paket di package_checklist_progress.
+    """CREATE TABLE IF NOT EXISTS checklist_templates (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        item_key TEXT UNIQUE NOT NULL,
+        label TEXT NOT NULL,
+        category TEXT DEFAULT 'Umum',
+        default_offset_days INTEGER DEFAULT 14,
+        sort_order INTEGER DEFAULT 100
+    )""",
+    # Progress checklist per (paket, item). Satu row baru dibuat saat pertama kali
+    # di-toggle. Status: pending (default kalau tidak ada row) / done / na.
+    """CREATE TABLE IF NOT EXISTS package_checklist_progress (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        package_id INTEGER NOT NULL,
+        item_key TEXT NOT NULL,
+        status TEXT DEFAULT 'pending',
+        completed_by TEXT,
+        completed_at DATETIME,
+        note TEXT
+    )""",
 ]
 
 # Migrasi kolom untuk DB lama (abaikan error bila kolom sudah ada)
@@ -614,6 +635,8 @@ ALTER_QUERIES = [
     "CREATE INDEX IF NOT EXISTS idx_jamaah_order_date ON jamaah(order_date)",
     "CREATE INDEX IF NOT EXISTS idx_jamaah_age ON jamaah(age)",
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_sales_targets_user_month ON sales_targets(user_id, month)",
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_checklist_progress_pkg_item ON package_checklist_progress(package_id, item_key)",
+    "CREATE INDEX IF NOT EXISTS idx_checklist_progress_package ON package_checklist_progress(package_id)",
     # Perluasan tabel incidents (schema dasar cuma package_name/reported_by/text) --
     # untuk manajemen ops butuh severity + assignee + resolution + link ke jamaah.
     "ALTER TABLE incidents ADD COLUMN severity TEXT DEFAULT 'Medium'",
@@ -643,10 +666,32 @@ def init_db():
     _seed_inventory()
     _seed_agents()
     _seed_settings()
+    _seed_checklist_templates()
     _backfill_status_dimensions()
     _backfill_procurement_status()
     _backfill_asset_codes()
     print("Berhasil terhubung ke SQLite database Umar CRM.")
+
+
+def _seed_checklist_templates():
+    """Seed 8 item checklist pra-keberangkatan standard. Idempotent via UNIQUE(item_key).
+    default_offset_days = H-N kapan item ini biasanya sudah harus selesai."""
+    items = [
+        ("paspor_terkumpul",   "Paspor jamaah terkumpul semua",            "Dokumen", 30, 10),
+        ("visa_issued",        "Visa jamaah issued semua",                 "Dokumen", 14, 20),
+        ("rooming_final",      "Rooming list final",                       "Logistik", 14, 30),
+        ("manifest_cetak",     "Manifest & absensi tercetak",              "Logistik", 3, 40),
+        ("hotel_confirmed",    "Hotel Mekkah + Madinah confirmed",         "Vendor",  30, 50),
+        ("tiket_issued",       "Tiket maskapai issued",                    "Vendor",  14, 60),
+        ("bus_booked",         "Bus lokal booked (Jakarta/Madinah/Mekkah)","Vendor",   7, 70),
+        ("briefing_handover",  "Briefing jamaah + perlengkapan handover",  "Logistik", 3, 80),
+    ]
+    for key, label, cat, off, order in items:
+        execute(
+            "INSERT OR IGNORE INTO checklist_templates (item_key, label, category, default_offset_days, sort_order) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (key, label, cat, off, order),
+        )
 
 
 def next_asset_code():

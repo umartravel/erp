@@ -12,7 +12,7 @@ function ohUpdateTabBadge(n) {
   document.title = n > 0 ? `(${n}) ${OH_BASE_TITLE}` : OH_BASE_TITLE;
 }
 
-function ohFetch(url) { return (window.authFetch || fetch)(url); }
+function ohFetch(url, opts) { return (window.authFetch || fetch)(url, opts); }
 function ohFmtRp(n) { if (!n && n !== 0) return 'Rp 0'; return 'Rp ' + (n | 0).toLocaleString('id-ID'); }
 function ohFmtDate(iso) {
   if (!iso) return '-';
@@ -80,7 +80,7 @@ function renderOhAttention(a) {
        </button>`
     : '';
   chips.innerHTML = [
-    chip('Paket berangkat H-7', a.upcoming_H7, '#FEE2E2', "document.getElementById('oh-upcoming-body')?.scrollIntoView({behavior:'smooth',block:'start'})"),
+    chip('Paket H-7 belum siap (<70%)', a.paket_not_ready, '#FEE2E2', "document.getElementById('oh-upcoming-body')?.scrollIntoView({behavior:'smooth',block:'start'})"),
     chip('Insiden terbuka', a.incidents_open, '#FEF3C7', "showPage('incidents')"),
     chip('Stok kritis', a.low_stock, '#FFEDD5', "document.getElementById('oh-stock-body')?.scrollIntoView({behavior:'smooth',block:'start'})"),
     chip('Paspor expiring', a.passport_expiring, '#DBEAFE', "document.getElementById('oh-passport-body')?.scrollIntoView({behavior:'smooth',block:'start'})"),
@@ -108,6 +108,9 @@ function renderOhUpcoming(list) {
       ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded" style="background:${isUrgent?'#FEE2E2':'#FEF3C7'};color:${isUrgent?OH_COLORS.red:OH_COLORS.amber};">H-${days}</span>`
       : '';
     const seatColor = (p.filled || 0) >= (p.quota || 45) ? OH_COLORS.red : OH_COLORS.darkGold;
+    const pct = p.checklist_pct || 0;
+    const barColor = pct >= 100 ? OH_COLORS.green : pct >= 70 ? OH_COLORS.gold : pct >= 40 ? OH_COLORS.darkGold : OH_COLORS.red;
+    const pctBadgeColor = pct >= 70 ? OH_COLORS.green : OH_COLORS.red;
     return `<div class="p-4 border-b last:border-b-0" style="border-color:#F4F1EA;">
       <div class="flex justify-between items-start mb-2">
         <div class="flex-1 pr-3">
@@ -120,15 +123,125 @@ function renderOhUpcoming(list) {
         </div>
         ${badge}
       </div>
-      <div class="flex items-center justify-between text-[11px]">
+      <div class="mt-2">
+        <div class="flex items-baseline justify-between mb-1">
+          <span class="text-[10px] font-bold uppercase tracking-wider" style="color:${OH_COLORS.darkGold};">Checklist Kesiapan</span>
+          <span class="text-[10px] font-black" style="color:${pctBadgeColor};">${p.checklist_done || 0}/${p.checklist_total || 0} &middot; ${pct}%</span>
+        </div>
+        <div class="h-1.5 w-full rounded-full overflow-hidden" style="background:#E8DFC8;">
+          <div style="width:${Math.min(100,pct)}%;height:100%;background:${barColor};transition:width 0.4s ease;"></div>
+        </div>
+      </div>
+      <div class="flex items-center justify-between text-[11px] mt-2">
         <span style="color:${OH_COLORS.gray500};">
           Terisi: <b style="color:${seatColor};">${p.filled || 0} / ${p.quota || 45}</b>
           ${p.airline_depart ? '&middot; ' + p.airline_depart : ''}
         </span>
-        <button onclick="showPage('operasional')" class="text-xs px-2 py-1 rounded font-medium" style="background:${OH_COLORS.gold};color:${OH_COLORS.charcoal};">Kelola Manifest</button>
+        <div class="flex gap-1">
+          <button onclick="openChecklistModal(${p.id}, ${JSON.stringify(p.name).replace(/"/g,'&quot;')})" class="text-xs px-2 py-1 rounded font-medium" style="background:${OH_COLORS.gold};color:${OH_COLORS.charcoal};">Checklist</button>
+          <button onclick="showPage('operasional')" class="text-xs px-2 py-1 rounded font-medium border" style="border-color:#E8DFC8;color:${OH_COLORS.charcoal};">Manifest</button>
+        </div>
       </div>
     </div>`;
   }).join('');
+}
+
+// ============================================================================
+// CHECKLIST PRA-KEBERANGKATAN
+// ============================================================================
+let __chkPkgId = null;
+
+async function openChecklistModal(pkgId, pkgName) {
+  __chkPkgId = pkgId;
+  document.getElementById('chk-title').textContent = 'Checklist: ' + pkgName;
+  document.getElementById('chk-body').innerHTML = '<p class="text-xs text-gray-400 py-4 text-center">Memuat...</p>';
+  openModal('modal-checklist');
+  await renderChecklistDetail();
+}
+
+async function renderChecklistDetail() {
+  try {
+    const res = await ohFetch(`/api/packages/${__chkPkgId}/checklist`);
+    if (!res.ok) throw new Error('Gagal muat checklist');
+    const d = await res.json();
+    const body = document.getElementById('chk-body');
+    const s = d.summary || { done: 0, total: 0, pct: 0 };
+    const barColor = s.pct >= 100 ? OH_COLORS.green : s.pct >= 70 ? OH_COLORS.gold : s.pct >= 40 ? OH_COLORS.darkGold : OH_COLORS.red;
+    const daysToGoLabel = d.package?.days_to_go != null
+      ? `Berangkat ${ohFmtDate(d.package.departure_date)} <b>(H-${d.package.days_to_go})</b>`
+      : `Berangkat ${ohFmtDate(d.package?.departure_date)}`;
+    const catColors = { Dokumen: '#2563EB', Logistik: '#B8860B', Vendor: '#7C3AED', Umum: '#6B7280' };
+    // Group by category
+    const grouped = {};
+    (d.items || []).forEach(i => { (grouped[i.category] = grouped[i.category] || []).push(i); });
+    const groupsHtml = Object.entries(grouped).map(([cat, items]) => `
+      <div class="mb-3">
+        <div class="text-[10px] font-bold uppercase tracking-wider mb-1.5" style="color:${catColors[cat]||catColors.Umum};">${cat}</div>
+        ${items.map(i => renderChecklistItem(i)).join('')}
+      </div>
+    `).join('');
+    body.innerHTML = `
+      <div class="rounded-lg p-3 mb-4 border" style="background:#F4F1EA;border-color:#E8DFC8;">
+        <div class="text-xs" style="color:${OH_COLORS.gray500};">${daysToGoLabel}</div>
+        <div class="flex items-baseline justify-between mt-2 mb-1">
+          <span class="text-xs font-bold" style="color:${OH_COLORS.charcoal};">Progress Kesiapan</span>
+          <span class="text-sm font-black" style="color:${barColor};">${s.done}/${s.total} &middot; ${s.pct}%</span>
+        </div>
+        <div class="h-2 w-full rounded-full overflow-hidden" style="background:#E8DFC8;">
+          <div style="width:${Math.min(100,s.pct)}%;height:100%;background:${barColor};transition:width 0.4s ease;"></div>
+        </div>
+      </div>
+      ${groupsHtml}
+    `;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+function renderChecklistItem(i) {
+  const statusColor = { done: OH_COLORS.green, na: OH_COLORS.gray500, pending: OH_COLORS.red };
+  const statusLabel = { done: 'Selesai', na: 'Tidak Berlaku', pending: 'Belum' };
+  const statusBg = { done: '#D1FAE5', na: '#F3F4F6', pending: '#FEE2E2' };
+  const s = i.status || 'pending';
+  const dueLabel = i.default_offset_days ? `<span class="text-[10px]" style="color:${OH_COLORS.gray500};">target H-${i.default_offset_days}</span>` : '';
+  const completedInfo = i.completed_at
+    ? `<div class="text-[10px] mt-0.5" style="color:${OH_COLORS.gray500};">Oleh <b>${i.completed_by}</b> &middot; ${ohFmtDate(i.completed_at)}</div>`
+    : '';
+  return `
+    <div class="border rounded-lg p-3 mb-2" style="border-color:#F4F1EA;background:#FFFDF7;">
+      <div class="flex items-start justify-between gap-2">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:${statusBg[s]};color:${statusColor[s]};">${statusLabel[s]}</span>
+            ${dueLabel}
+          </div>
+          <p class="text-sm mt-1" style="color:${OH_COLORS.charcoal};">${i.label}</p>
+          ${completedInfo}
+        </div>
+        <div class="flex gap-1 shrink-0">
+          <button onclick="toggleChecklistItem('${i.item_key}', 'done')" class="text-[10px] px-2 py-1 rounded font-bold ${s==='done'?'ring-2':''}" style="background:${OH_COLORS.green};color:#fff;">&#10003;</button>
+          <button onclick="toggleChecklistItem('${i.item_key}', 'na')" class="text-[10px] px-2 py-1 rounded font-bold ${s==='na'?'ring-2':''}" style="background:${OH_COLORS.gray500};color:#fff;" title="Tidak berlaku">N/A</button>
+          <button onclick="toggleChecklistItem('${i.item_key}', 'pending')" class="text-[10px] px-2 py-1 rounded font-bold ${s==='pending'?'ring-2':''}" style="background:${OH_COLORS.red};color:#fff;">&#8635;</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function toggleChecklistItem(itemKey, status) {
+  if (!__chkPkgId) return;
+  try {
+    const res = await ohFetch(`/api/packages/${__chkPkgId}/checklist`, {
+      method: 'POST',
+      body: JSON.stringify({ item_key: itemKey, status }),
+    });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.detail || 'Gagal update');
+    await renderChecklistDetail();
+    // Refresh Home Ops kalau lagi visible -- socket bisa saja belum wired,
+    // jadi pull manual supaya progress bar + attention hero konsisten.
+    const homePage = document.getElementById('page-ops-home');
+    if (homePage && !homePage.classList.contains('hidden')) initOpsHome();
+  } catch (e) { showToast(e.message, 'error'); }
 }
 
 function renderOhIncidents(list) {

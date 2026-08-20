@@ -597,14 +597,20 @@ async def ops_home(user=Depends(authenticate_token)):
     )
     asset_checkout_count = (asset_checkout or {}).get("c", 0)
 
+    total_checklist_items = db.query_one("SELECT COUNT(*) c FROM checklist_templates")["c"] or 1
     upcoming_packages = db.query_all(
         "SELECT p.id, p.name, p.departure_date, p.duration, p.quota, p.hotel_mekkah, p.airline_depart, "
         "  (SELECT COUNT(*) FROM jamaah j WHERE j.package_type = p.name AND j.status NOT IN ('Cancelled')) AS filled, "
-        "  CAST(julianday(p.departure_date) - julianday('now') AS INTEGER) AS days_to_go "
+        "  CAST(julianday(p.departure_date) - julianday('now') AS INTEGER) AS days_to_go, "
+        "  (SELECT COUNT(*) FROM package_checklist_progress pc WHERE pc.package_id = p.id AND pc.status IN ('done','na')) AS checklist_done, "
+        "  ? AS checklist_total "
         "FROM packages p "
         "WHERE p.departure_date IS NOT NULL AND date(p.departure_date) BETWEEN date('now') AND date('now', '+30 days') "
-        "ORDER BY p.departure_date ASC LIMIT 5"
+        "ORDER BY p.departure_date ASC LIMIT 5",
+        (total_checklist_items,),
     )
+    for p in upcoming_packages:
+        p["checklist_pct"] = round((p["checklist_done"] / p["checklist_total"]) * 100) if p["checklist_total"] else 0
 
     incidents_open = db.query_all(
         "SELECT i.id, i.package_name, i.incident_text, i.severity, i.assigned_to, i.reported_by, i.created_at "
@@ -630,16 +636,21 @@ async def ops_home(user=Depends(authenticate_token)):
         "ORDER BY p.departure_date ASC LIMIT 15"
     )
 
+    paket_not_ready = sum(
+        1 for p in upcoming_packages
+        if (p.get("days_to_go") or 999) <= 7 and (p.get("checklist_pct") or 0) < 70
+    )
     attention = {
         "upcoming_H7": sum(1 for p in upcoming_packages if (p.get("days_to_go") or 999) <= 7),
         "upcoming_H14": sum(1 for p in upcoming_packages if (p.get("days_to_go") or 999) <= 14),
+        "paket_not_ready": paket_not_ready,
         "incidents_open": len(incidents_open),
         "low_stock": low_stock_count,
         "passport_expiring": len(passport_expiring),
         "handover_pending": len(handover_pending),
     }
     attention["total"] = (
-        attention["upcoming_H7"] + attention["incidents_open"] + attention["low_stock"]
+        paket_not_ready + attention["incidents_open"] + attention["low_stock"]
         + attention["passport_expiring"] + attention["handover_pending"]
     )
 
@@ -659,6 +670,68 @@ async def ops_home(user=Depends(authenticate_token)):
         "passport_expiring": passport_expiring,
         "handover_pending": handover_pending,
     }
+
+
+# ---------------------------------------------------------------------------
+# Checklist Pra-Keberangkatan per Paket
+# ---------------------------------------------------------------------------
+@app.get("/api/packages/{pid}/checklist")
+async def package_checklist_get(pid: int, user=Depends(authenticate_token)):
+    require_role(user, "admin", "ops", "management")
+    pkg = db.query_one(
+        "SELECT id, name, departure_date, CAST(julianday(departure_date) - julianday('now') AS INTEGER) AS days_to_go "
+        "FROM packages WHERE id = ?",
+        (pid,),
+    )
+    if not pkg:
+        raise HTTPException(status_code=404, detail="Paket tidak ditemukan.")
+    items = db.query_all(
+        "SELECT t.item_key, t.label, t.category, t.default_offset_days, t.sort_order, "
+        "  COALESCE(p.status, 'pending') AS status, "
+        "  p.completed_by, p.completed_at, p.note "
+        "FROM checklist_templates t "
+        "LEFT JOIN package_checklist_progress p ON p.item_key = t.item_key AND p.package_id = ? "
+        "ORDER BY t.sort_order ASC",
+        (pid,),
+    )
+    done = sum(1 for i in items if i["status"] in ("done", "na"))
+    total = len(items)
+    return {
+        "package": pkg,
+        "items": items,
+        "summary": {"done": done, "total": total, "pct": round((done/total)*100) if total else 0},
+    }
+
+
+@app.post("/api/packages/{pid}/checklist")
+async def package_checklist_upsert(pid: int, body: dict = Depends(json_body), user=Depends(authenticate_token)):
+    require_role(user, "admin", "ops", "management")
+    item_key = body.get("item_key")
+    status = body.get("status") or "pending"
+    if not item_key:
+        raise HTTPException(status_code=400, detail="item_key wajib diisi.")
+    if status not in ("pending", "done", "na"):
+        raise HTTPException(status_code=400, detail="status harus pending/done/na.")
+    if not db.query_one("SELECT id FROM checklist_templates WHERE item_key = ?", (item_key,)):
+        raise HTTPException(status_code=400, detail="item_key tidak dikenal.")
+    if not db.query_one("SELECT id FROM packages WHERE id = ?", (pid,)):
+        raise HTTPException(status_code=404, detail="Paket tidak ditemukan.")
+    completed_by = user["name"] if status in ("done", "na") else None
+    completed_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") if status in ("done", "na") else None
+    note = body.get("note") if "note" in body else None
+    db.execute(
+        "INSERT INTO package_checklist_progress (package_id, item_key, status, completed_by, completed_at, note) "
+        "VALUES (?, ?, ?, ?, ?, ?) "
+        "ON CONFLICT(package_id, item_key) DO UPDATE SET "
+        "  status = excluded.status, "
+        "  completed_by = excluded.completed_by, "
+        "  completed_at = excluded.completed_at, "
+        "  note = COALESCE(excluded.note, package_checklist_progress.note)",
+        (pid, item_key, status, completed_by, completed_at, note),
+    )
+    log_action(user, "CHECKLIST_UPDATE", f"pkg={pid} item={item_key} status={status}")
+    notify("data_updated", "package")
+    return {"message": "Checklist diperbarui."}
 
 
 @app.get("/api/audit-logs")
