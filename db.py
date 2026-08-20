@@ -477,18 +477,6 @@ SCHEMA = [
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )""",
-    # Boarding check-in per (jamaah, paket) -- di-stamp saat scan QR di airport
-    # atau input manual oleh ops. Satu row per keberangkatan, tidak overwrite.
-    """CREATE TABLE IF NOT EXISTS jamaah_checkins (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        jamaah_id INTEGER NOT NULL,
-        package_id INTEGER NOT NULL,
-        checkin_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        checkin_by TEXT,
-        method TEXT DEFAULT 'qr',
-        location TEXT,
-        note TEXT
-    )""",
 ]
 
 # Migrasi kolom untuk DB lama (abaikan error bila kolom sudah ada)
@@ -669,8 +657,9 @@ ALTER_QUERIES = [
     "CREATE INDEX IF NOT EXISTS idx_checklist_progress_package ON package_checklist_progress(package_id)",
     "CREATE INDEX IF NOT EXISTS idx_vendor_bookings_package ON vendor_bookings(package_id)",
     "CREATE INDEX IF NOT EXISTS idx_vendor_bookings_status ON vendor_bookings(status)",
-    "CREATE UNIQUE INDEX IF NOT EXISTS idx_jamaah_checkins_pair ON jamaah_checkins(jamaah_id, package_id)",
-    "CREATE INDEX IF NOT EXISTS idx_jamaah_checkins_package ON jamaah_checkins(package_id)",
+    # Cleanup: fitur QR Boarding Check-in di-revert (belum dibutuhkan). Drop tabel
+    # jamaah_checkins yang sempat dibuat oleh commit 2af9816.
+    "DROP TABLE IF EXISTS jamaah_checkins",
     # Perluasan tabel incidents (schema dasar cuma package_name/reported_by/text) --
     # untuk manajemen ops butuh severity + assignee + resolution + link ke jamaah.
     "ALTER TABLE incidents ADD COLUMN severity TEXT DEFAULT 'Medium'",

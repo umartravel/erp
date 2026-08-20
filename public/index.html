@@ -1753,32 +1753,6 @@
     </div>
 
     <!-- MODAL LAPOR INSIDEN -->
-    <!-- Modal Boarding Check-in (scanner + manifest) -->
-    <div id="modal-checkin" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[92vh] overflow-y-auto p-6">
-            <div class="flex justify-between items-center mb-4 border-b pb-2">
-                <h3 id="chkin-title" class="font-bold text-lg flex items-center gap-2" style="color:#1D1D1B;"><i data-lucide="scan-line" class="w-5 h-5" style="color:#B8860B;"></i>Boarding Check-in</h3>
-                <button onclick="closeModal('modal-checkin')" class="text-gray-400 hover:text-red-500"><i data-lucide="x" class="w-5 h-5"></i></button>
-            </div>
-            <div class="mb-4 p-3 rounded-lg" style="background:#1D1D1B;">
-                <label class="text-[10px] font-bold uppercase tracking-wider block mb-1" style="color:#F8BE20;">Scan QR / Ketik ID Jamaah</label>
-                <input type="text" id="chkin-scan-input" placeholder="JMH-000045 lalu Enter" autofocus autocomplete="off"
-                    onkeydown="handleScanInput(event)"
-                    class="w-full px-3 py-2 rounded text-lg font-mono" style="background:#F8BE20;color:#1D1D1B;border:none;">
-                <p class="text-[10px] mt-1" style="color:#F4F1EA;opacity:0.8;">Terima input dari hardware barcode scanner atau ketik manual. Format valid: JMH-000045, 45, atau UMAR:JMH-45.</p>
-            </div>
-            <div class="flex flex-wrap gap-2 mb-3 items-center">
-                <input type="text" id="chkin-search" placeholder="Cari jamaah (nama/paspor/id)..." oninput="applyCheckinSearch(this.value)" class="flex-1 min-w-[180px] border rounded-lg px-3 py-1.5 text-sm bg-white">
-                <button onclick="printQrLabels()" class="px-3 py-1.5 rounded-lg text-xs font-bold border" style="border-color:#B8860B;color:#B8860B;background:#FFF;"><i data-lucide="printer" class="inline w-3.5 h-3.5"></i> Cetak QR Labels</button>
-                <button onclick="renderCheckinList()" class="px-3 py-1.5 rounded-lg text-xs font-bold" style="background:#F4F1EA;color:#1D1D1B;"><i data-lucide="refresh-cw" class="inline w-3.5 h-3.5"></i> Refresh</button>
-            </div>
-            <div id="chkin-body"></div>
-            <div class="flex justify-end mt-4 pt-3 border-t">
-                <button type="button" onclick="closeModal('modal-checkin')" class="px-4 py-2 border rounded-lg text-sm font-medium">Tutup</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Modal Vendor Timeline per Paket -->
     <div id="modal-vendor" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6">
@@ -7074,6 +7048,6 @@
     <!-- Marketing Analytics: heatmap + chart (dimuat setelah inline JS supaya authFetch sudah terdefinisi). -->
     <script src="js/marketing.js?v=20260817d"></script>
     <script src="js/sales-home.js?v=20260819a"></script>
-    <script src="js/ops-home.js?v=20260820f"></script>
+    <script src="js/ops-home.js?v=20260820e"></script>
 </body>
 </html>
