@@ -57,11 +57,49 @@ function renderOpsHome(data) {
 
   renderOhAttention(data.attention || {});
   renderOhUpcoming(data.upcoming_packages || []);
+  renderOhReturned(data.returned_packages || []);
   renderOhIncidents(data.incidents_open || []);
   renderOhStock(data.low_stock_items || []);
   renderOhPassport(data.passport_expiring || []);
   renderOhHandover(data.handover_pending || []);
   ohWireSocketAutoRefresh();
+}
+
+function renderOhReturned(list) {
+  const body = document.getElementById('oh-returned-body');
+  if (!body) return;
+  if (!list.length) { body.innerHTML = ohEmpty('Belum ada paket selesai dalam 60 hari terakhir.'); return; }
+  body.innerHTML = list.map(p => {
+    const debriefPct = Math.round(((p.debrief_filled || 0) / 6) * 100);
+    const debriefColor = debriefPct >= 100 ? OH_COLORS.green : debriefPct >= 50 ? OH_COLORS.gold : OH_COLORS.red;
+    const feedbackColor = (p.feedback_count || 0) >= (p.filled || 0) ? OH_COLORS.green : OH_COLORS.darkGold;
+    return `<div class="p-4 border-b last:border-b-0" style="border-color:#F4F1EA;">
+      <div class="flex justify-between items-start mb-2">
+        <div class="flex-1 pr-3">
+          <b class="text-sm" style="color:${OH_COLORS.charcoal};">${p.name}</b>
+          <div class="text-[11px] mt-0.5" style="color:${OH_COLORS.gray500};">
+            Kembali <b style="color:${OH_COLORS.charcoal};">${ohFmtDate(p.effective_return || p.return_date || p.departure_date)}</b>
+            &middot; ${p.filled || 0} jamaah
+            &middot; ${p.hotel_mekkah || 'Hotel Mekkah -'}
+          </div>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-2 text-[11px] mt-2">
+        <div>
+          <span style="color:${OH_COLORS.gray500};">Debrief:</span>
+          <b style="color:${debriefColor};">${p.debrief_filled||0}/6 kategori</b>
+        </div>
+        <div>
+          <span style="color:${OH_COLORS.gray500};">Feedback jamaah:</span>
+          <b style="color:${feedbackColor};">${p.feedback_count||0}/${p.filled||0}</b>
+        </div>
+      </div>
+      <div class="flex gap-1 mt-2 justify-end">
+        <button onclick="openDebriefModal(${p.id}, ${JSON.stringify(p.name).replace(/"/g,'&quot;')})" class="text-xs px-2 py-1 rounded font-medium" style="background:${OH_COLORS.gold};color:${OH_COLORS.charcoal};">Debrief Ops</button>
+        <button onclick="openFeedbackModal(${p.id}, ${JSON.stringify(p.name).replace(/"/g,'&quot;')})" class="text-xs px-2 py-1 rounded font-medium border" style="border-color:#E8DFC8;color:${OH_COLORS.charcoal};background:#E0E7FF;">Feedback Jamaah</button>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function renderOhAttention(a) {
@@ -86,6 +124,7 @@ function renderOhAttention(a) {
     chip('Stok kritis', a.low_stock, '#FFEDD5', "document.getElementById('oh-stock-body')?.scrollIntoView({behavior:'smooth',block:'start'})"),
     chip('Paspor expiring', a.passport_expiring, '#DBEAFE', "document.getElementById('oh-passport-body')?.scrollIntoView({behavior:'smooth',block:'start'})"),
     chip('Handover pending', a.handover_pending, '#F3E8FF', "document.getElementById('oh-handover-body')?.scrollIntoView({behavior:'smooth',block:'start'})"),
+    chip('Paket selesai belum debrief', a.debrief_pending, '#E0E7FF', "document.getElementById('oh-returned-body')?.scrollIntoView({behavior:'smooth',block:'start'})"),
   ].filter(Boolean).join('');
 }
 
@@ -415,6 +454,174 @@ async function deleteVendor() {
     showToast(d.message);
     hideVendorForm();
     await renderVendorList();
+    const homePage = document.getElementById('page-ops-home');
+    if (homePage && !homePage.classList.contains('hidden')) initOpsHome();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+// ============================================================================
+// DEBRIEF POST-TRIP + FEEDBACK JAMAAH
+// ============================================================================
+const DEBRIEF_CAT_LABEL = {
+  hotel_mekkah: 'Hotel Mekkah', hotel_madinah: 'Hotel Madinah',
+  airline: 'Maskapai', bus: 'Bus Lokal', muthawif: 'Muthawif / Tour Leader',
+  overall: 'Overall / Kesan Keseluruhan',
+};
+let __dbrPkgId = null;
+let __fbPkgId = null;
+
+function starRow(active, itemKey, prefix) {
+  return [1,2,3,4,5].map(n => `<button type="button" onclick="setStar${prefix}('${itemKey}',${n})" class="text-lg" style="color:${n<=active?OH_COLORS.gold:'#D1D5DB'};line-height:1;">&#9733;</button>`).join('');
+}
+
+async function openDebriefModal(pkgId, pkgName) {
+  __dbrPkgId = pkgId;
+  document.getElementById('dbr-title').textContent = 'Debrief Post-Trip: ' + pkgName;
+  document.getElementById('dbr-body').innerHTML = '<p class="text-xs text-gray-400 py-4 text-center">Memuat...</p>';
+  openModal('modal-debrief');
+  await renderDebriefDetail();
+}
+
+async function renderDebriefDetail() {
+  try {
+    const res = await ohFetch(`/api/packages/${__dbrPkgId}/debriefs`);
+    if (!res.ok) throw new Error('Gagal muat debrief');
+    const d = await res.json();
+    const s = d.summary;
+    const body = document.getElementById('dbr-body');
+    body.innerHTML = `
+      <div class="rounded-lg p-3 mb-3 border" style="background:#F4F1EA;border-color:#E8DFC8;">
+        <div class="flex justify-between items-center">
+          <div class="text-xs" style="color:${OH_COLORS.gray500};">${d.package.name} &middot; ${ohFmtDate(d.package.departure_date)}</div>
+          <div class="text-sm font-black" style="color:${OH_COLORS.darkGold};">${s.filled}/${s.total} kategori ${s.avg_rating ? '&middot; ⭐ ' + s.avg_rating : ''}</div>
+        </div>
+      </div>
+      ${d.items.map(i => `
+        <div class="border rounded-lg p-3 mb-2" style="border-color:#F4F1EA;background:#FFFDF7;">
+          <div class="flex justify-between items-center mb-1.5">
+            <b class="text-sm" style="color:${OH_COLORS.charcoal};">${DEBRIEF_CAT_LABEL[i.category] || i.category}</b>
+            <div class="flex items-center gap-2">
+              <div id="dbr-stars-${i.category}">${starRow(i.rating || 0, i.category, 'Debrief')}</div>
+              <span class="text-[10px]" style="color:${OH_COLORS.gray500};">${i.rating || '-'}/5</span>
+            </div>
+          </div>
+          <textarea id="dbr-notes-${i.category}" rows="2" placeholder="Catatan kualitas ${DEBRIEF_CAT_LABEL[i.category].toLowerCase()}..." class="w-full text-xs border rounded p-2 bg-white" style="border-color:#E8DFC8;">${i.notes || ''}</textarea>
+          <div class="flex justify-between items-center mt-1">
+            <div class="text-[10px]" style="color:${OH_COLORS.gray500};">${i.updated_at ? 'Oleh ' + (i.created_by||'-') + ' &middot; ' + ohFmtDate(i.updated_at) : 'Belum diisi'}</div>
+            <button onclick="saveDebrief('${i.category}')" class="text-[10px] px-2 py-1 rounded font-bold" style="background:${OH_COLORS.gold};color:${OH_COLORS.charcoal};">Simpan</button>
+          </div>
+        </div>
+      `).join('')}
+    `;
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+function setStarDebrief(cat, n) {
+  document.getElementById(`dbr-stars-${cat}`).innerHTML = starRow(n, cat, 'Debrief');
+  document.getElementById(`dbr-stars-${cat}`).dataset.rating = n;
+  document.getElementById(`dbr-stars-${cat}`).nextElementSibling.textContent = `${n}/5`;
+}
+
+async function saveDebrief(cat) {
+  const rating = parseInt(document.getElementById(`dbr-stars-${cat}`).dataset.rating || '0') || null;
+  const notes = document.getElementById(`dbr-notes-${cat}`).value;
+  if (!rating) { showToast('Klik bintang dulu untuk kasih rating', 'error'); return; }
+  try {
+    const res = await ohFetch(`/api/packages/${__dbrPkgId}/debriefs`, {
+      method: 'POST',
+      body: JSON.stringify({ category: cat, rating, notes }),
+    });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.detail || 'Gagal simpan');
+    showToast(d.message);
+    await renderDebriefDetail();
+    const homePage = document.getElementById('page-ops-home');
+    if (homePage && !homePage.classList.contains('hidden')) initOpsHome();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+async function openFeedbackModal(pkgId, pkgName) {
+  __fbPkgId = pkgId;
+  document.getElementById('fb-title').textContent = 'Feedback Jamaah: ' + pkgName;
+  document.getElementById('fb-body').innerHTML = '<p class="text-xs text-gray-400 py-4 text-center">Memuat...</p>';
+  openModal('modal-feedback');
+  await renderFeedbackList();
+}
+
+async function renderFeedbackList() {
+  try {
+    const res = await ohFetch(`/api/packages/${__fbPkgId}/feedback`);
+    if (!res.ok) throw new Error('Gagal muat feedback');
+    const d = await res.json();
+    const s = d.summary;
+    const body = document.getElementById('fb-body');
+    body.innerHTML = `
+      <div class="rounded-lg p-3 mb-3 border grid grid-cols-3 gap-2 text-center" style="background:#F4F1EA;border-color:#E8DFC8;">
+        <div>
+          <div class="text-[10px] font-bold uppercase" style="color:${OH_COLORS.darkGold};">Terisi</div>
+          <div class="text-xl font-black" style="color:${OH_COLORS.charcoal};">${s.filled}/${s.total}</div>
+        </div>
+        <div>
+          <div class="text-[10px] font-bold uppercase" style="color:${OH_COLORS.darkGold};">Avg Rating</div>
+          <div class="text-xl font-black" style="color:${OH_COLORS.gold};">${s.avg_rating ? '⭐ ' + s.avg_rating : '-'}</div>
+        </div>
+        <div>
+          <div class="text-[10px] font-bold uppercase" style="color:${OH_COLORS.darkGold};">Recommend</div>
+          <div class="text-xl font-black" style="color:${OH_COLORS.green};">${s.recommend_pct}%</div>
+        </div>
+      </div>
+      <div class="max-h-96 overflow-y-auto">
+        ${(d.jamaah || []).map(j => `
+          <div class="border rounded-lg p-3 mb-2" style="border-color:#F4F1EA;background:#FFFDF7;">
+            <div class="flex justify-between items-start mb-1">
+              <div>
+                <b class="text-sm" style="color:${OH_COLORS.charcoal};">${j.name || '-'}</b>
+                ${j.phone ? '<div class="text-[10px]" style="color:'+OH_COLORS.gray500+';">'+j.phone+'</div>' : ''}
+              </div>
+              <div class="flex items-center gap-2">
+                <div id="fb-stars-${j.id}">${starRow(j.rating || 0, j.id, 'Feedback')}</div>
+                <span class="text-[10px]" style="color:${OH_COLORS.gray500};">${j.rating || '-'}/5</span>
+              </div>
+            </div>
+            <textarea id="fb-testi-${j.id}" rows="2" placeholder="Testimoni jamaah..." class="w-full text-xs border rounded p-2 bg-white mt-2" style="border-color:#E8DFC8;">${j.testimonial || ''}</textarea>
+            <textarea id="fb-cmp-${j.id}" rows="1" placeholder="Komplain (opsional)..." class="w-full text-xs border rounded p-2 bg-white mt-2" style="border-color:#E8DFC8;">${j.complaint || ''}</textarea>
+            <div class="flex justify-between items-center mt-2">
+              <label class="flex items-center gap-1.5 text-[11px]" style="color:${OH_COLORS.gray500};">
+                <input type="checkbox" id="fb-rec-${j.id}" ${j.would_recommend?'checked':''}>
+                Bersedia rekomendasikan
+              </label>
+              <div class="flex items-center gap-2">
+                ${j.created_at ? '<span class="text-[10px]" style="color:'+OH_COLORS.gray500+';">'+(j.source||'manual')+' &middot; '+ohFmtDate(j.created_at)+'</span>' : ''}
+                <button onclick="saveFeedback(${j.id})" class="text-[10px] px-2 py-1 rounded font-bold" style="background:${OH_COLORS.gold};color:${OH_COLORS.charcoal};">Simpan</button>
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+function setStarFeedback(jid, n) {
+  document.getElementById(`fb-stars-${jid}`).innerHTML = starRow(n, jid, 'Feedback');
+  document.getElementById(`fb-stars-${jid}`).dataset.rating = n;
+  document.getElementById(`fb-stars-${jid}`).nextElementSibling.textContent = `${n}/5`;
+}
+
+async function saveFeedback(jid) {
+  const rating = parseInt(document.getElementById(`fb-stars-${jid}`).dataset.rating || '0') || null;
+  const testimonial = document.getElementById(`fb-testi-${jid}`).value;
+  const complaint = document.getElementById(`fb-cmp-${jid}`).value;
+  const would_recommend = document.getElementById(`fb-rec-${jid}`).checked;
+  try {
+    const res = await ohFetch('/api/feedback', {
+      method: 'POST',
+      body: JSON.stringify({ jamaah_id: jid, package_id: __fbPkgId, rating, testimonial, complaint, would_recommend, source: 'manual' }),
+    });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.detail || 'Gagal simpan');
+    showToast(d.message);
+    await renderFeedbackList();
     const homePage = document.getElementById('page-ops-home');
     if (homePage && !homePage.classList.contains('hidden')) initOpsHome();
   } catch (e) { showToast(e.message, 'error'); }

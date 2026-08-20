@@ -472,6 +472,17 @@
                     </div>
                     <div id="oh-handover-body" class="max-h-80 overflow-y-auto py-2"></div>
                 </div>
+
+                <!-- Paket Selesai (Debrief + Feedback post-trip) -->
+                <div class="rounded-xl border shadow-sm overflow-hidden" style="background:#FFFDF7;border-color:#F4F1EA;">
+                    <div class="px-5 py-3 border-b" style="background:#F4F1EA;border-color:#E8DFC8;">
+                        <h3 class="font-bold flex items-center gap-2 text-sm" style="color:#1D1D1B;">
+                            <i data-lucide="award" class="w-4 h-4" style="color:#B8860B;"></i>
+                            Paket Baru Selesai <span class="text-[10px] font-normal" style="color:#6B7280;">(60 hari terakhir -- input debrief ops + feedback jamaah untuk continuous improvement)</span>
+                        </h3>
+                    </div>
+                    <div id="oh-returned-body" class="max-h-96 overflow-y-auto"></div>
+                </div>
             </div>
 
             <!-- PAGE: INSIDEN LAPANGAN (page-incidents) -->
@@ -1753,6 +1764,36 @@
     </div>
 
     <!-- MODAL LAPOR INSIDEN -->
+    <!-- Modal Debrief Post-Trip -->
+    <div id="modal-debrief" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 id="dbr-title" class="font-bold text-lg flex items-center gap-2" style="color:#1D1D1B;"><i data-lucide="clipboard-check" class="w-5 h-5" style="color:#B8860B;"></i>Debrief Post-Trip</h3>
+                <button onclick="closeModal('modal-debrief')" class="text-gray-400 hover:text-red-500"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <p class="text-xs text-gray-500 mb-3">Isi rating 1-5 bintang + catatan per kategori vendor post-trip. Data ini dipakai untuk evaluasi vendor + continuous improvement paket berikutnya.</p>
+            <div id="dbr-body"></div>
+            <div class="flex justify-end mt-4 pt-3 border-t">
+                <button type="button" onclick="closeModal('modal-debrief')" class="px-4 py-2 border rounded-lg text-sm font-medium">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Feedback Jamaah Post-Trip -->
+    <div id="modal-feedback" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[92vh] overflow-y-auto p-6">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 id="fb-title" class="font-bold text-lg flex items-center gap-2" style="color:#1D1D1B;"><i data-lucide="message-square-heart" class="w-5 h-5" style="color:#B8860B;"></i>Feedback Jamaah</h3>
+                <button onclick="closeModal('modal-feedback')" class="text-gray-400 hover:text-red-500"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <p class="text-xs text-gray-500 mb-3">Input rating + testimoni jamaah berdasarkan hasil call/WA/kunjungan. Rata-rata rating &amp; recommend rate muncul di summary.</p>
+            <div id="fb-body"></div>
+            <div class="flex justify-end mt-4 pt-3 border-t">
+                <button type="button" onclick="closeModal('modal-feedback')" class="px-4 py-2 border rounded-lg text-sm font-medium">Tutup</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Vendor Timeline per Paket -->
     <div id="modal-vendor" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6">
@@ -7048,6 +7089,6 @@
     <!-- Marketing Analytics: heatmap + chart (dimuat setelah inline JS supaya authFetch sudah terdefinisi). -->
     <script src="js/marketing.js?v=20260817d"></script>
     <script src="js/sales-home.js?v=20260819a"></script>
-    <script src="js/ops-home.js?v=20260820e"></script>
+    <script src="js/ops-home.js?v=20260820g"></script>
 </body>
 </html>

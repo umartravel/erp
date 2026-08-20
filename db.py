@@ -477,6 +477,32 @@ SCHEMA = [
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )""",
+    # Feedback jamaah post-trip -- 1 row per (jamaah, paket). Diisi ops berdasarkan
+    # hasil call/WA ke jamaah setelah kembali. Rating 1-5 + testimoni + komplain.
+    """CREATE TABLE IF NOT EXISTS jamaah_feedback (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        jamaah_id INTEGER NOT NULL,
+        package_id INTEGER NOT NULL,
+        rating INTEGER,
+        testimonial TEXT,
+        complaint TEXT,
+        would_recommend INTEGER DEFAULT 0,
+        source TEXT DEFAULT 'manual',
+        created_by TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )""",
+    # Debrief internal post-trip per paket per kategori (hotel_mekkah/hotel_madinah/
+    # airline/bus/muthawif/overall). Rating 1-5 + notes. Untuk continuous improvement.
+    """CREATE TABLE IF NOT EXISTS package_debriefs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        package_id INTEGER NOT NULL,
+        category TEXT NOT NULL,
+        rating INTEGER,
+        notes TEXT,
+        created_by TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )""",
 ]
 
 # Migrasi kolom untuk DB lama (abaikan error bila kolom sudah ada)
@@ -660,6 +686,10 @@ ALTER_QUERIES = [
     # Cleanup: fitur QR Boarding Check-in di-revert (belum dibutuhkan). Drop tabel
     # jamaah_checkins yang sempat dibuat oleh commit 2af9816.
     "DROP TABLE IF EXISTS jamaah_checkins",
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_jamaah_feedback_pair ON jamaah_feedback(jamaah_id, package_id)",
+    "CREATE INDEX IF NOT EXISTS idx_jamaah_feedback_package ON jamaah_feedback(package_id)",
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_package_debriefs_pair ON package_debriefs(package_id, category)",
+    "CREATE INDEX IF NOT EXISTS idx_package_debriefs_package ON package_debriefs(package_id)",
     # Perluasan tabel incidents (schema dasar cuma package_name/reported_by/text) --
     # untuk manajemen ops butuh severity + assignee + resolution + link ke jamaah.
     "ALTER TABLE incidents ADD COLUMN severity TEXT DEFAULT 'Medium'",
