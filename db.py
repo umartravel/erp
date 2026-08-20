@@ -459,6 +459,24 @@ SCHEMA = [
         completed_at DATETIME,
         note TEXT
     )""",
+    # Vendor bookings per paket -- untuk tracking status koordinasi vendor (hotel,
+    # maskapai, bus, muthawif, dsb). Lifecycle: Booked -> Deposit -> Paid -> Confirmed
+    # (bisa Cancelled kapan saja). Ops fill saat mereka mengelola vendor.
+    """CREATE TABLE IF NOT EXISTS vendor_bookings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        package_id INTEGER NOT NULL,
+        vendor_type TEXT NOT NULL,
+        vendor_name TEXT,
+        status TEXT DEFAULT 'Booked',
+        deposit_amount INTEGER DEFAULT 0,
+        total_amount INTEGER DEFAULT 0,
+        due_date TEXT,
+        confirmation_code TEXT,
+        notes TEXT,
+        created_by TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )""",
 ]
 
 # Migrasi kolom untuk DB lama (abaikan error bila kolom sudah ada)
@@ -637,6 +655,8 @@ ALTER_QUERIES = [
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_sales_targets_user_month ON sales_targets(user_id, month)",
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_checklist_progress_pkg_item ON package_checklist_progress(package_id, item_key)",
     "CREATE INDEX IF NOT EXISTS idx_checklist_progress_package ON package_checklist_progress(package_id)",
+    "CREATE INDEX IF NOT EXISTS idx_vendor_bookings_package ON vendor_bookings(package_id)",
+    "CREATE INDEX IF NOT EXISTS idx_vendor_bookings_status ON vendor_bookings(status)",
     # Perluasan tabel incidents (schema dasar cuma package_name/reported_by/text) --
     # untuk manajemen ops butuh severity + assignee + resolution + link ke jamaah.
     "ALTER TABLE incidents ADD COLUMN severity TEXT DEFAULT 'Medium'",

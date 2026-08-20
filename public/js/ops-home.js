@@ -81,6 +81,7 @@ function renderOhAttention(a) {
     : '';
   chips.innerHTML = [
     chip('Paket H-7 belum siap (<70%)', a.paket_not_ready, '#FEE2E2', "document.getElementById('oh-upcoming-body')?.scrollIntoView({behavior:'smooth',block:'start'})"),
+    chip('Vendor belum confirmed H-14', a.vendor_at_risk, '#FCE7F3', "document.getElementById('oh-upcoming-body')?.scrollIntoView({behavior:'smooth',block:'start'})"),
     chip('Insiden terbuka', a.incidents_open, '#FEF3C7', "showPage('incidents')"),
     chip('Stok kritis', a.low_stock, '#FFEDD5', "document.getElementById('oh-stock-body')?.scrollIntoView({behavior:'smooth',block:'start'})"),
     chip('Paspor expiring', a.passport_expiring, '#DBEAFE', "document.getElementById('oh-passport-body')?.scrollIntoView({behavior:'smooth',block:'start'})"),
@@ -132,6 +133,10 @@ function renderOhUpcoming(list) {
           <div style="width:${Math.min(100,pct)}%;height:100%;background:${barColor};transition:width 0.4s ease;"></div>
         </div>
       </div>
+      <div class="text-[10px] mt-1.5" style="color:${OH_COLORS.gray500};">
+        Vendor: <b style="color:${(p.vendor_pending||0)>0 && (days!==null&&days<=14) ? OH_COLORS.red : OH_COLORS.charcoal};">${p.vendor_confirmed||0}/${p.vendor_total||0} confirmed</b>
+        ${(p.vendor_pending||0)>0 ? `&middot; <span style="color:${OH_COLORS.red};">${p.vendor_pending} pending</span>` : ''}
+      </div>
       <div class="flex items-center justify-between text-[11px] mt-2">
         <span style="color:${OH_COLORS.gray500};">
           Terisi: <b style="color:${seatColor};">${p.filled || 0} / ${p.quota || 45}</b>
@@ -139,6 +144,7 @@ function renderOhUpcoming(list) {
         </span>
         <div class="flex gap-1">
           <button onclick="openChecklistModal(${p.id}, ${JSON.stringify(p.name).replace(/"/g,'&quot;')})" class="text-xs px-2 py-1 rounded font-medium" style="background:${OH_COLORS.gold};color:${OH_COLORS.charcoal};">Checklist</button>
+          <button onclick="openVendorModal(${p.id}, ${JSON.stringify(p.name).replace(/"/g,'&quot;')})" class="text-xs px-2 py-1 rounded font-medium border" style="border-color:#E8DFC8;color:${OH_COLORS.charcoal};background:#FCE7F3;">Vendor</button>
           <button onclick="showPage('operasional')" class="text-xs px-2 py-1 rounded font-medium border" style="border-color:#E8DFC8;color:${OH_COLORS.charcoal};">Manifest</button>
         </div>
       </div>
@@ -239,6 +245,176 @@ async function toggleChecklistItem(itemKey, status) {
     await renderChecklistDetail();
     // Refresh Home Ops kalau lagi visible -- socket bisa saja belum wired,
     // jadi pull manual supaya progress bar + attention hero konsisten.
+    const homePage = document.getElementById('page-ops-home');
+    if (homePage && !homePage.classList.contains('hidden')) initOpsHome();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+// ============================================================================
+// VENDOR BOOKINGS
+// ============================================================================
+const VENDOR_TYPE_LABEL = {
+  hotel_mekkah: 'Hotel Mekkah', hotel_madinah: 'Hotel Madinah',
+  airline_depart: 'Maskapai Berangkat', airline_return: 'Maskapai Pulang', airline_transit: 'Maskapai Transit',
+  bus_local: 'Bus Lokal', muthawif: 'Muthawif / Tour Leader', catering: 'Catering', other: 'Lainnya',
+};
+const VENDOR_STATUS_COLOR = {
+  Booked:    { bg: '#F3F4F6', fg: '#6B7280' },
+  Deposit:   { bg: '#DBEAFE', fg: '#2563EB' },
+  Paid:      { bg: '#FEF3C7', fg: '#B45309' },
+  Confirmed: { bg: '#D1FAE5', fg: '#059669' },
+  Cancelled: { bg: '#FEE2E2', fg: '#DC2626' },
+};
+let __vendPkgId = null;
+let __vendPkgName = '';
+
+function openVendorModal(pkgId, pkgName) {
+  __vendPkgId = pkgId;
+  __vendPkgName = pkgName;
+  document.getElementById('vend-title').textContent = 'Vendor Timeline: ' + pkgName;
+  document.getElementById('vend-list').innerHTML = '<p class="text-xs text-gray-400 py-4 text-center">Memuat...</p>';
+  hideVendorForm();
+  openModal('modal-vendor');
+  renderVendorList();
+}
+
+async function renderVendorList() {
+  try {
+    const res = await ohFetch(`/api/packages/${__vendPkgId}/vendors`);
+    if (!res.ok) throw new Error('Gagal muat vendor');
+    const list = await res.json();
+    const box = document.getElementById('vend-list');
+    if (!list.length) {
+      box.innerHTML = `<div class="text-center py-6">
+        <p class="text-sm" style="color:${OH_COLORS.gray500};">Belum ada vendor booking untuk paket ini.</p>
+        <button onclick="openAddVendorForm()" class="mt-3 px-3 py-1.5 rounded-lg text-xs font-bold" style="background:${OH_COLORS.gold};color:${OH_COLORS.charcoal};"><i data-lucide="plus" class="inline w-3.5 h-3.5"></i> Tambah Vendor Booking</button>
+      </div>`;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+      return;
+    }
+    box.innerHTML = list.map(v => {
+      const sc = VENDOR_STATUS_COLOR[v.status] || VENDOR_STATUS_COLOR.Booked;
+      const dueLabel = v.due_date ? `Due: ${ohFmtDate(v.due_date)}` : '';
+      const amountLabel = (v.deposit_amount || v.total_amount)
+        ? `DP ${ohFmtRp(v.deposit_amount)} / ${ohFmtRp(v.total_amount)}` : '';
+      return `<div class="border rounded-lg p-3 mb-2" style="border-color:#F4F1EA;background:#FFFDF7;">
+        <div class="flex justify-between items-start gap-2">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap mb-1">
+              <span class="text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:${sc.bg};color:${sc.fg};">${v.status}</span>
+              <span class="text-[10px] font-bold" style="color:${OH_COLORS.darkGold};">${VENDOR_TYPE_LABEL[v.vendor_type] || v.vendor_type}</span>
+              ${dueLabel ? `<span class="text-[10px]" style="color:${OH_COLORS.gray500};">${dueLabel}</span>` : ''}
+            </div>
+            <b class="text-sm" style="color:${OH_COLORS.charcoal};">${v.vendor_name || '<span style="color:'+OH_COLORS.gray500+';">(nama vendor belum diisi)</span>'}</b>
+            ${v.confirmation_code ? `<div class="text-[10px] mt-0.5" style="color:${OH_COLORS.gray500};">Ref: <b>${v.confirmation_code}</b></div>` : ''}
+            ${amountLabel ? `<div class="text-[10px] mt-0.5" style="color:${OH_COLORS.gray500};">${amountLabel}</div>` : ''}
+            ${v.notes ? `<div class="text-[10px] mt-1 italic" style="color:${OH_COLORS.gray500};">"${v.notes}"</div>` : ''}
+          </div>
+          <div class="flex flex-col gap-1 shrink-0">
+            <button onclick="openEditVendorForm(${v.id})" class="text-[10px] px-2 py-1 rounded font-bold" style="background:${OH_COLORS.gold};color:${OH_COLORS.charcoal};">Edit</button>
+            ${v.status !== 'Confirmed' && v.status !== 'Cancelled' ? `<button onclick="quickAdvanceVendor(${v.id}, '${nextStatus(v.status)}')" class="text-[10px] px-2 py-1 rounded font-bold" style="background:${OH_COLORS.green};color:#fff;" title="Advance ke ${nextStatus(v.status)}">&rarr; ${nextStatus(v.status)}</button>` : ''}
+          </div>
+        </div>
+      </div>`;
+    }).join('') + `<button onclick="openAddVendorForm()" class="w-full mt-2 px-3 py-2 rounded-lg text-xs font-bold border-2 border-dashed" style="border-color:${OH_COLORS.gold};color:${OH_COLORS.darkGold};"><i data-lucide="plus" class="inline w-3.5 h-3.5"></i> Tambah Vendor Booking</button>`;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+function nextStatus(current) {
+  const flow = { Booked: 'Deposit', Deposit: 'Paid', Paid: 'Confirmed' };
+  return flow[current] || current;
+}
+
+async function quickAdvanceVendor(vid, newStatus) {
+  try {
+    const res = await ohFetch(`/api/vendors/${vid}`, { method: 'PATCH', body: JSON.stringify({ status: newStatus }) });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.detail || 'Gagal advance');
+    showToast('Status: ' + newStatus);
+    await renderVendorList();
+    const homePage = document.getElementById('page-ops-home');
+    if (homePage && !homePage.classList.contains('hidden')) initOpsHome();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+function openAddVendorForm() {
+  showVendorForm();
+  document.getElementById('vend-form-title').textContent = 'Tambah Vendor Booking';
+  document.getElementById('vend-form-id').value = '';
+  document.getElementById('vend-form-type').value = 'hotel_mekkah';
+  document.getElementById('vend-form-name').value = '';
+  document.getElementById('vend-form-status').value = 'Booked';
+  document.getElementById('vend-form-deposit').value = '';
+  document.getElementById('vend-form-total').value = '';
+  document.getElementById('vend-form-due').value = '';
+  document.getElementById('vend-form-code').value = '';
+  document.getElementById('vend-form-notes').value = '';
+  document.getElementById('vend-form-delete').classList.add('hidden');
+}
+
+async function openEditVendorForm(vid) {
+  try {
+    const res = await ohFetch(`/api/packages/${__vendPkgId}/vendors`);
+    const list = await res.json();
+    const v = list.find(x => x.id === vid);
+    if (!v) return showToast('Vendor tidak ditemukan', 'error');
+    showVendorForm();
+    document.getElementById('vend-form-title').textContent = 'Edit Vendor Booking';
+    document.getElementById('vend-form-id').value = v.id;
+    document.getElementById('vend-form-type').value = v.vendor_type;
+    document.getElementById('vend-form-name').value = v.vendor_name || '';
+    document.getElementById('vend-form-status').value = v.status;
+    document.getElementById('vend-form-deposit').value = v.deposit_amount || '';
+    document.getElementById('vend-form-total').value = v.total_amount || '';
+    document.getElementById('vend-form-due').value = v.due_date || '';
+    document.getElementById('vend-form-code').value = v.confirmation_code || '';
+    document.getElementById('vend-form-notes').value = v.notes || '';
+    document.getElementById('vend-form-delete').classList.remove('hidden');
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+function showVendorForm() { document.getElementById('vend-form').classList.remove('hidden'); }
+function hideVendorForm() { document.getElementById('vend-form').classList.add('hidden'); }
+
+async function saveVendor(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const id = document.getElementById('vend-form-id').value;
+  const payload = {
+    vendor_type: document.getElementById('vend-form-type').value,
+    vendor_name: document.getElementById('vend-form-name').value,
+    status: document.getElementById('vend-form-status').value,
+    deposit_amount: parseInt(document.getElementById('vend-form-deposit').value) || 0,
+    total_amount: parseInt(document.getElementById('vend-form-total').value) || 0,
+    due_date: document.getElementById('vend-form-due').value,
+    confirmation_code: document.getElementById('vend-form-code').value,
+    notes: document.getElementById('vend-form-notes').value,
+  };
+  try {
+    const url = id ? `/api/vendors/${id}` : `/api/packages/${__vendPkgId}/vendors`;
+    const method = id ? 'PATCH' : 'POST';
+    const res = await ohFetch(url, { method, body: JSON.stringify(payload) });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.detail || 'Gagal simpan');
+    showToast(d.message || 'Tersimpan');
+    hideVendorForm();
+    await renderVendorList();
+    const homePage = document.getElementById('page-ops-home');
+    if (homePage && !homePage.classList.contains('hidden')) initOpsHome();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+async function deleteVendor() {
+  const id = document.getElementById('vend-form-id').value;
+  if (!id) return;
+  if (!confirm('Hapus vendor booking ini?')) return;
+  try {
+    const res = await ohFetch(`/api/vendors/${id}`, { method: 'DELETE' });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.detail || 'Gagal hapus');
+    showToast(d.message);
+    hideVendorForm();
+    await renderVendorList();
     const homePage = document.getElementById('page-ops-home');
     if (homePage && !homePage.classList.contains('hidden')) initOpsHome();
   } catch (e) { showToast(e.message, 'error'); }

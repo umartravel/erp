@@ -1753,6 +1753,86 @@
     </div>
 
     <!-- MODAL LAPOR INSIDEN -->
+    <!-- Modal Vendor Timeline per Paket -->
+    <div id="modal-vendor" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 id="vend-title" class="font-bold text-lg flex items-center gap-2" style="color:#1D1D1B;"><i data-lucide="building-2" class="w-5 h-5" style="color:#B8860B;"></i>Vendor Timeline</h3>
+                <button onclick="closeModal('modal-vendor')" class="text-gray-400 hover:text-red-500"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <p class="text-xs text-gray-500 mb-3">Lifecycle: <b>Booked</b> &rarr; <b>Deposit</b> &rarr; <b>Paid</b> &rarr; <b>Confirmed</b> (bisa Cancelled kapan saja). Tombol hijau &rarr; advance ke status berikutnya cepat.</p>
+            <div id="vend-list"></div>
+
+            <div id="vend-form" class="hidden mt-4 p-4 border rounded-lg" style="background:#FFFDF7;border-color:#F4F1EA;">
+                <h4 id="vend-form-title" class="font-bold text-sm mb-3" style="color:#1D1D1B;">Tambah Vendor Booking</h4>
+                <form onsubmit="saveVendor(event)" class="space-y-2">
+                    <input type="hidden" id="vend-form-id" value="">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-xs font-medium">Tipe Vendor</label>
+                            <select id="vend-form-type" class="w-full border p-2 rounded text-sm bg-white">
+                                <option value="hotel_mekkah">Hotel Mekkah</option>
+                                <option value="hotel_madinah">Hotel Madinah</option>
+                                <option value="airline_depart">Maskapai Berangkat</option>
+                                <option value="airline_return">Maskapai Pulang</option>
+                                <option value="airline_transit">Maskapai Transit</option>
+                                <option value="bus_local">Bus Lokal</option>
+                                <option value="muthawif">Muthawif / Tour Leader</option>
+                                <option value="catering">Catering</option>
+                                <option value="other">Lainnya</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium">Status</label>
+                            <select id="vend-form-status" class="w-full border p-2 rounded text-sm bg-white">
+                                <option value="Booked">Booked</option>
+                                <option value="Deposit">Deposit dibayar</option>
+                                <option value="Paid">Paid (lunas)</option>
+                                <option value="Confirmed">Confirmed</option>
+                                <option value="Cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium">Nama Vendor</label>
+                        <input type="text" id="vend-form-name" placeholder="Cth: Hotel Al-Safwah Tower / Garuda Indonesia" class="w-full border p-2 rounded text-sm">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-xs font-medium">Deposit (Rp)</label>
+                            <input type="number" id="vend-form-deposit" min="0" step="100000" class="w-full border p-2 rounded text-sm">
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium">Total Kontrak (Rp)</label>
+                            <input type="number" id="vend-form-total" min="0" step="100000" class="w-full border p-2 rounded text-sm">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-xs font-medium">Due Date</label>
+                            <input type="date" id="vend-form-due" class="w-full border p-2 rounded text-sm">
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium">Confirmation / Booking Ref</label>
+                            <input type="text" id="vend-form-code" placeholder="Cth: PNR ABC123 / Voucher #INV-4521" class="w-full border p-2 rounded text-sm">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium">Catatan</label>
+                        <textarea id="vend-form-notes" rows="2" class="w-full border p-2 rounded text-sm" placeholder="Cth: Deposit dikirim via BCA 2026-08-20"></textarea>
+                    </div>
+                    <div class="flex justify-between items-center pt-3 border-t mt-3">
+                        <button type="button" id="vend-form-delete" onclick="deleteVendor()" class="hidden text-xs px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded font-bold">Hapus</button>
+                        <div class="flex gap-2 ml-auto">
+                            <button type="button" onclick="hideVendorForm()" class="px-3 py-1.5 border rounded text-xs font-medium">Batal</button>
+                            <button type="submit" class="px-3 py-1.5 rounded text-xs font-bold" style="background:#B8860B;color:#fff;">Simpan</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Checklist Pra-Keberangkatan -->
     <div id="modal-checklist" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6">
@@ -6968,6 +7048,6 @@
     <!-- Marketing Analytics: heatmap + chart (dimuat setelah inline JS supaya authFetch sudah terdefinisi). -->
     <script src="js/marketing.js?v=20260817d"></script>
     <script src="js/sales-home.js?v=20260819a"></script>
-    <script src="js/ops-home.js?v=20260820d"></script>
+    <script src="js/ops-home.js?v=20260820e"></script>
 </body>
 </html>

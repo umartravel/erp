@@ -603,7 +603,9 @@ async def ops_home(user=Depends(authenticate_token)):
         "  (SELECT COUNT(*) FROM jamaah j WHERE j.package_type = p.name AND j.status NOT IN ('Cancelled')) AS filled, "
         "  CAST(julianday(p.departure_date) - julianday('now') AS INTEGER) AS days_to_go, "
         "  (SELECT COUNT(*) FROM package_checklist_progress pc WHERE pc.package_id = p.id AND pc.status IN ('done','na')) AS checklist_done, "
-        "  ? AS checklist_total "
+        "  ? AS checklist_total, "
+        "  (SELECT COUNT(*) FROM vendor_bookings v WHERE v.package_id = p.id AND v.status != 'Cancelled') AS vendor_total, "
+        "  (SELECT COUNT(*) FROM vendor_bookings v WHERE v.package_id = p.id AND v.status = 'Confirmed') AS vendor_confirmed "
         "FROM packages p "
         "WHERE p.departure_date IS NOT NULL AND date(p.departure_date) BETWEEN date('now') AND date('now', '+30 days') "
         "ORDER BY p.departure_date ASC LIMIT 5",
@@ -611,6 +613,7 @@ async def ops_home(user=Depends(authenticate_token)):
     )
     for p in upcoming_packages:
         p["checklist_pct"] = round((p["checklist_done"] / p["checklist_total"]) * 100) if p["checklist_total"] else 0
+        p["vendor_pending"] = (p["vendor_total"] or 0) - (p["vendor_confirmed"] or 0)
 
     incidents_open = db.query_all(
         "SELECT i.id, i.package_name, i.incident_text, i.severity, i.assigned_to, i.reported_by, i.created_at "
@@ -640,17 +643,22 @@ async def ops_home(user=Depends(authenticate_token)):
         1 for p in upcoming_packages
         if (p.get("days_to_go") or 999) <= 7 and (p.get("checklist_pct") or 0) < 70
     )
+    vendor_at_risk = sum(
+        1 for p in upcoming_packages
+        if (p.get("days_to_go") or 999) <= 14 and (p.get("vendor_pending") or 0) > 0
+    )
     attention = {
         "upcoming_H7": sum(1 for p in upcoming_packages if (p.get("days_to_go") or 999) <= 7),
         "upcoming_H14": sum(1 for p in upcoming_packages if (p.get("days_to_go") or 999) <= 14),
         "paket_not_ready": paket_not_ready,
+        "vendor_at_risk": vendor_at_risk,
         "incidents_open": len(incidents_open),
         "low_stock": low_stock_count,
         "passport_expiring": len(passport_expiring),
         "handover_pending": len(handover_pending),
     }
     attention["total"] = (
-        paket_not_ready + attention["incidents_open"] + attention["low_stock"]
+        paket_not_ready + vendor_at_risk + attention["incidents_open"] + attention["low_stock"]
         + attention["passport_expiring"] + attention["handover_pending"]
     )
 
@@ -670,6 +678,103 @@ async def ops_home(user=Depends(authenticate_token)):
         "passport_expiring": passport_expiring,
         "handover_pending": handover_pending,
     }
+
+
+# ---------------------------------------------------------------------------
+# Vendor Bookings per Paket (Hotel/Airline/Bus/Muthawif/etc)
+# ---------------------------------------------------------------------------
+VENDOR_STATUSES = ("Booked", "Deposit", "Paid", "Confirmed", "Cancelled")
+VENDOR_TYPES = (
+    "hotel_mekkah", "hotel_madinah", "airline_depart", "airline_return",
+    "airline_transit", "bus_local", "muthawif", "catering", "other",
+)
+
+
+@app.get("/api/packages/{pid}/vendors")
+async def vendors_list(pid: int, user=Depends(authenticate_token)):
+    require_role(user, "admin", "ops", "management", "finance")
+    if not db.query_one("SELECT id FROM packages WHERE id = ?", (pid,)):
+        raise HTTPException(status_code=404, detail="Paket tidak ditemukan.")
+    return db.query_all(
+        "SELECT * FROM vendor_bookings WHERE package_id = ? "
+        "ORDER BY CASE status "
+        "  WHEN 'Cancelled' THEN 5 "
+        "  WHEN 'Confirmed' THEN 4 "
+        "  WHEN 'Paid' THEN 3 "
+        "  WHEN 'Deposit' THEN 2 "
+        "  WHEN 'Booked' THEN 1 ELSE 0 END ASC, "
+        "vendor_type ASC, created_at DESC",
+        (pid,),
+    ) or []
+
+
+@app.post("/api/packages/{pid}/vendors")
+async def vendors_create(pid: int, body: dict = Depends(json_body), user=Depends(authenticate_token)):
+    require_role(user, "admin", "ops", "management")
+    if not db.query_one("SELECT id FROM packages WHERE id = ?", (pid,)):
+        raise HTTPException(status_code=404, detail="Paket tidak ditemukan.")
+    vtype = body.get("vendor_type")
+    if vtype not in VENDOR_TYPES:
+        raise HTTPException(status_code=400, detail=f"vendor_type harus salah satu: {', '.join(VENDOR_TYPES)}")
+    status = body.get("status") or "Booked"
+    if status not in VENDOR_STATUSES:
+        raise HTTPException(status_code=400, detail=f"status harus salah satu: {', '.join(VENDOR_STATUSES)}")
+    db.execute(
+        "INSERT INTO vendor_bookings (package_id, vendor_type, vendor_name, status, "
+        "deposit_amount, total_amount, due_date, confirmation_code, notes, created_by) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            pid, vtype, body.get("vendor_name"), status,
+            int(body.get("deposit_amount") or 0),
+            int(body.get("total_amount") or 0),
+            body.get("due_date") or None,
+            body.get("confirmation_code"),
+            body.get("notes"),
+            user["name"],
+        ),
+    )
+    log_action(user, "VENDOR_CREATE", f"pkg={pid} type={vtype} status={status}")
+    notify("data_updated", "vendor")
+    return {"message": "Vendor booking tersimpan."}
+
+
+@app.patch("/api/vendors/{vid}")
+async def vendors_update(vid: int, body: dict = Depends(json_body), user=Depends(authenticate_token)):
+    require_role(user, "admin", "ops", "management")
+    row = db.query_one("SELECT * FROM vendor_bookings WHERE id = ?", (vid,))
+    if not row:
+        raise HTTPException(status_code=404, detail="Vendor booking tidak ditemukan.")
+    status = body.get("status") or row["status"]
+    if status not in VENDOR_STATUSES:
+        raise HTTPException(status_code=400, detail=f"status harus salah satu: {', '.join(VENDOR_STATUSES)}")
+    db.execute(
+        "UPDATE vendor_bookings SET vendor_name=?, status=?, deposit_amount=?, total_amount=?, "
+        "due_date=?, confirmation_code=?, notes=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
+        (
+            body.get("vendor_name") if "vendor_name" in body else row["vendor_name"],
+            status,
+            int(body.get("deposit_amount") if "deposit_amount" in body else (row["deposit_amount"] or 0)),
+            int(body.get("total_amount") if "total_amount" in body else (row["total_amount"] or 0)),
+            body.get("due_date") if "due_date" in body else row["due_date"],
+            body.get("confirmation_code") if "confirmation_code" in body else row["confirmation_code"],
+            body.get("notes") if "notes" in body else row["notes"],
+            vid,
+        ),
+    )
+    log_action(user, "VENDOR_UPDATE", f"id={vid} status={status}")
+    notify("data_updated", "vendor")
+    return {"message": "Vendor booking diperbarui."}
+
+
+@app.delete("/api/vendors/{vid}")
+async def vendors_delete(vid: int, user=Depends(authenticate_token)):
+    require_role(user, "admin", "management")
+    if not db.query_one("SELECT id FROM vendor_bookings WHERE id = ?", (vid,)):
+        raise HTTPException(status_code=404, detail="Vendor booking tidak ditemukan.")
+    db.execute("DELETE FROM vendor_bookings WHERE id = ?", (vid,))
+    log_action(user, "VENDOR_DELETE", f"id={vid}")
+    notify("data_updated", "vendor")
+    return {"message": "Vendor booking dihapus."}
 
 
 # ---------------------------------------------------------------------------
