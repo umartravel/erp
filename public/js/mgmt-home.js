@@ -16,9 +16,9 @@
         return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     }
     function mhUpdateTabBadge(urgentCount) {
-        const t = document.title;
-        const base = t.replace(/^\(\d+\)\s+/, '');
-        document.title = urgentCount > 0 ? `(${urgentCount}) ${base}` : base;
+        if (typeof window.setUmarTabBadge === 'function') {
+            window.setUmarTabBadge('mgmt', urgentCount);
+        }
     }
     const SEV_CLASS = {
         critical: 'bg-red-100 text-red-800 border-red-300',

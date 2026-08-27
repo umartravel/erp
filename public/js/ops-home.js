@@ -7,9 +7,8 @@ const OH_COLORS = {
   green: '#059669', blue: '#2563EB',
 };
 
-const OH_BASE_TITLE = document.title.replace(/^\(\d+\)\s*/, '');
 function ohUpdateTabBadge(n) {
-  document.title = n > 0 ? `(${n}) ${OH_BASE_TITLE}` : OH_BASE_TITLE;
+  if (typeof window.setUmarTabBadge === 'function') { window.setUmarTabBadge('ops', n); return; }
 }
 
 function ohFetch(url, opts) { return (window.authFetch || fetch)(url, opts); }

@@ -4469,6 +4469,96 @@ async def finance_home(user=Depends(authenticate_token)):
     }
 
 
+@app.get("/api/search")
+async def global_search(q: str = "", user=Depends(authenticate_token)):
+    """Global search: jamaah + paket + agen + user. Batasi 5 per kategori supaya
+    palette tidak kelebihan hasil. Role-gated: sales cuma cari jamaah/paket/agen
+    yang dia handle."""
+    q = (q or "").strip()
+    if len(q) < 2:
+        return {"results": []}
+
+    like = f"%{q}%"
+    role = user.get("role")
+    results = []
+
+    # Jamaah
+    jamaah_filter = ""
+    jamaah_params = [like, like, like]
+    if role == "sales":
+        jamaah_filter = " AND sales_id = ?"
+        jamaah_params.append(user["id"])
+    for j in db.query_all(
+        "SELECT id, name, phone, package_type, payment_status, status FROM jamaah "
+        f"WHERE (name LIKE ? OR phone LIKE ? OR nik LIKE ?){jamaah_filter} "
+        "ORDER BY name ASC LIMIT 5",
+        tuple(jamaah_params),
+    ):
+        results.append({
+            "kind": "jamaah",
+            "id": j["id"],
+            "title": j["name"],
+            "subtitle": f"{j['phone'] or '-'} - {j['package_type'] or '-'}",
+            "meta": f"{j['payment_status'] or '-'} - {j['status'] or '-'}",
+            "goto": "jamaah",
+        })
+
+    # Paket
+    for p in db.query_all(
+        "SELECT id, name, departure_date, quota FROM packages "
+        "WHERE name LIKE ? ORDER BY departure_date DESC LIMIT 5",
+        (like,),
+    ):
+        results.append({
+            "kind": "paket",
+            "id": p["id"],
+            "title": p["name"],
+            "subtitle": f"Berangkat {p['departure_date'] or '-'}",
+            "meta": f"Kuota {p['quota'] or 0}",
+            "goto": "packages",
+        })
+
+    # Agen
+    agent_filter = ""
+    agent_params = [like, like]
+    if role == "sales":
+        agent_filter = " AND handler_cs_id = ?"
+        agent_params.append(user["id"])
+    for a in db.query_all(
+        "SELECT id, name, phone, city FROM agents "
+        f"WHERE (name LIKE ? OR phone LIKE ?){agent_filter} "
+        "ORDER BY name ASC LIMIT 5",
+        tuple(agent_params),
+    ):
+        results.append({
+            "kind": "agen",
+            "id": a["id"],
+            "title": a["name"],
+            "subtitle": f"{a['phone'] or '-'} - {a['city'] or '-'}",
+            "meta": "",
+            "goto": "agents",
+        })
+
+    # User (admin/mgmt only)
+    if role in ("admin", "management"):
+        for u in db.query_all(
+            "SELECT id, name, username, role FROM users "
+            "WHERE name LIKE ? OR username LIKE ? "
+            "ORDER BY name ASC LIMIT 5",
+            (like, like),
+        ):
+            results.append({
+                "kind": "user",
+                "id": u["id"],
+                "title": u["name"],
+                "subtitle": f"@{u['username']}",
+                "meta": u["role"],
+                "goto": "users",
+            })
+
+    return {"results": results, "query": q, "count": len(results)}
+
+
 @app.get("/api/finance/aged-receivable")
 async def finance_aged_receivable(user=Depends(authenticate_token)):
     """Detail piutang jamaah dengan bucket aging + drill-down full list."""

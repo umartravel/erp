@@ -22,9 +22,9 @@
     }
 
     function fhUpdateTabBadge(urgentCount) {
-        const t = document.title;
-        const base = t.replace(/^\(\d+\)\s+/, '');
-        document.title = urgentCount > 0 ? `(${urgentCount}) ${base}` : base;
+        if (typeof window.setUmarTabBadge === 'function') {
+            window.setUmarTabBadge('finance', urgentCount);
+        }
     }
 
     const SEV_CLASS = {

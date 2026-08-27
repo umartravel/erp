@@ -45,9 +45,8 @@ async function initSalesHome() {
 }
 
 // Judul tab dinamis: (N) UMAR ketika ada aksi urgen -- disimpan supaya bisa restore
-const SH_BASE_TITLE = document.title.replace(/^\(\d+\)\s*/, '');
 function shUpdateTabBadge(n) {
-  document.title = n > 0 ? `(${n}) ${SH_BASE_TITLE}` : SH_BASE_TITLE;
+  if (typeof window.setUmarTabBadge === 'function') { window.setUmarTabBadge('sales', n); return; }
 }
 
 // Auto-refresh: dengar socket 'data_updated' untuk event yang mengubah tampilan Home Sales

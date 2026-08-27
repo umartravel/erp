@@ -101,8 +101,11 @@
         </div>
     </div>
 
-    <!-- MAIN APP: Sidebar -->
-    <aside id="sidebar" class="w-64 bg-emerald-900 text-white flex flex-col hidden h-full overflow-y-auto custom-scrollbar shrink-0">
+    <!-- MAIN APP: Sidebar backdrop (mobile drawer) -->
+    <div id="sidebar-backdrop" class="fixed inset-0 bg-black/40 z-30 hidden lg:hidden" onclick="toggleMobileSidebar(false)"></div>
+
+    <!-- MAIN APP: Sidebar (desktop: static column, mobile: fixed drawer) -->
+    <aside id="sidebar" class="w-64 bg-emerald-900 text-white flex flex-col hidden h-full overflow-y-auto custom-scrollbar shrink-0 fixed lg:static inset-y-0 left-0 z-40 transform -translate-x-full lg:translate-x-0 transition-transform duration-200">
         <div class="p-6 flex items-center gap-3 border-b border-emerald-800 sticky top-0 bg-emerald-900 z-10">
             <img src="umar-Logo.png" alt="Logo Umar" class="brand-logo h-10 object-contain bg-white rounded-md p-1" onerror="this.style.display='none'">
             <span class="brand-name text-xl font-bold tracking-wider">UMAR CRM</span>
@@ -223,9 +226,24 @@
 
     <!-- Main Content Area -->
     <main id="main-content" class="flex-1 flex flex-col hidden h-full overflow-hidden bg-gray-100">
-        <header class="bg-white/80 backdrop-blur-sm border-b border-gray-200 h-16 flex items-center px-8 z-10 justify-between shrink-0">
-            <h2 id="page-title" class="text-xl font-semibold text-gray-800">Dashboard</h2>
-            <div class="text-sm font-medium text-emerald-700" id="current-date"></div>
+        <header class="bg-white/80 backdrop-blur-sm border-b border-gray-200 h-16 flex items-center px-4 lg:px-8 z-10 justify-between shrink-0 gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+                <button id="btn-mobile-menu" onclick="toggleMobileSidebar()" class="lg:hidden p-2 rounded-lg hover:bg-gray-100" aria-label="Buka menu">
+                    <i data-lucide="menu" class="w-5 h-5 text-gray-700"></i>
+                </button>
+                <h2 id="page-title" class="text-xl font-semibold text-gray-800 truncate">Dashboard</h2>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="openPalette()" class="hidden md:inline-flex items-center gap-2 px-3 py-1.5 text-xs text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-lg border" title="Cari (Ctrl+K)">
+                    <i data-lucide="search" class="w-3.5 h-3.5"></i>
+                    <span>Cari...</span>
+                    <kbd class="text-[10px] font-mono bg-white border rounded px-1">Ctrl K</kbd>
+                </button>
+                <button onclick="openPalette()" class="md:hidden p-2 rounded-lg hover:bg-gray-100" title="Cari" aria-label="Cari">
+                    <i data-lucide="search" class="w-5 h-5 text-gray-700"></i>
+                </button>
+                <div class="text-sm font-medium text-emerald-700 hidden sm:block" id="current-date"></div>
+            </div>
         </header>
 
         <div class="flex-1 overflow-y-auto p-6 lg:p-8 relative custom-scrollbar">
@@ -1957,6 +1975,25 @@
         </div>
     </div>
 
+    <!-- MODAL CMD+K COMMAND PALETTE (UX-1 global search) -->
+    <div id="modal-palette" class="fixed inset-0 modal-bg z-[60] hidden flex items-start justify-center p-4 pt-24">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-xl overflow-hidden border border-gray-200">
+            <div class="flex items-center gap-2 px-4 py-3 border-b bg-gray-50">
+                <i data-lucide="search" class="w-4 h-4 text-gray-400"></i>
+                <input id="palette-input" type="text" placeholder="Cari jamaah, paket, agen, karyawan..." class="flex-1 bg-transparent outline-none text-sm" autocomplete="off">
+                <kbd class="text-[10px] font-mono text-gray-400 bg-white border rounded px-1.5 py-0.5">Esc</kbd>
+            </div>
+            <div id="palette-results" class="max-h-96 overflow-y-auto custom-scrollbar">
+                <div class="p-6 text-center text-xs text-gray-400">Ketik minimal 2 karakter untuk mulai mencari...</div>
+            </div>
+            <div class="px-4 py-2 bg-gray-50 border-t text-[10px] text-gray-500 flex items-center gap-3">
+                <span><kbd class="font-mono bg-white border rounded px-1">↑↓</kbd> navigasi</span>
+                <span><kbd class="font-mono bg-white border rounded px-1">Enter</kbd> buka</span>
+                <span><kbd class="font-mono bg-white border rounded px-1">Esc</kbd> tutup</span>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL LAPOR INSIDEN -->
     <!-- Modal Debrief Post-Trip -->
     <div id="modal-debrief" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center p-4">
@@ -3183,6 +3220,166 @@
             }
         };
         const closeModal = (id) => document.getElementById(id).classList.add('hidden');
+
+        // ========== UX-3: UNIFIED TAB BADGE + EMPTY STATE HELPER ==========
+        // Single source of truth untuk tab title badge -- semua Home pages
+        // (sales/ops/finance/mgmt) tulis ke sini supaya konsisten.
+        (function() {
+            const BASE_TITLE = 'CRM Umar Travel - Travel Umroh';
+            const counts = {};  // {sales: 3, ops: 2, ...}
+            window.setUmarTabBadge = function(key, n) {
+                counts[key] = n || 0;
+                const total = Object.values(counts).reduce((a, b) => a + b, 0);
+                document.title = total > 0 ? `(${total}) ${BASE_TITLE}` : BASE_TITLE;
+            };
+        })();
+
+        // Reusable empty state renderer. Konsisten pattern icon + title + hint + optional CTA.
+        window.umarEmptyState = function({icon, title, hint, ctaLabel, ctaAction}) {
+            const ctaHtml = ctaLabel && ctaAction
+                ? `<button onclick="${ctaAction}" class="mt-4 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold inline-flex items-center gap-2"><i data-lucide="arrow-right" class="w-3 h-3"></i>${ctaLabel}</button>`
+                : '';
+            return `<div class="py-10 px-6 text-center">
+                <div class="inline-flex w-14 h-14 rounded-full items-center justify-center mb-3" style="background:#F4F1EA;">
+                    <i data-lucide="${icon || 'inbox'}" class="w-7 h-7" style="color:#B8860B;"></i>
+                </div>
+                <p class="font-semibold text-gray-700 mb-1">${title || 'Belum ada data'}</p>
+                <p class="text-xs text-gray-500 max-w-md mx-auto leading-relaxed">${hint || ''}</p>
+                ${ctaHtml}
+            </div>`;
+        };
+
+        // ========== UX-2: MOBILE SIDEBAR DRAWER ==========
+        window.toggleMobileSidebar = function(force) {
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('sidebar-backdrop');
+            if (!sidebar || !backdrop) return;
+            const willOpen = typeof force === 'boolean' ? force : sidebar.classList.contains('-translate-x-full');
+            sidebar.classList.toggle('-translate-x-full', !willOpen);
+            backdrop.classList.toggle('hidden', !willOpen);
+            document.body.style.overflow = willOpen ? 'hidden' : '';
+        };
+        // Auto-close mobile sidebar on nav click
+        document.addEventListener('click', e => {
+            if (window.innerWidth >= 1024) return;
+            const link = e.target.closest('#sidebar a[onclick^="showPage"]');
+            if (link) toggleMobileSidebar(false);
+        });
+
+        // ========== UX-1: CMD+K GLOBAL SEARCH PALETTE ==========
+        let paletteResults = [];
+        let paletteActiveIdx = 0;
+        let paletteDebounce = null;
+
+        window.openPalette = function() {
+            document.getElementById('modal-palette').classList.remove('hidden');
+            const input = document.getElementById('palette-input');
+            input.value = '';
+            paletteResults = [];
+            paletteActiveIdx = 0;
+            renderPaletteResults('');
+            setTimeout(() => input.focus(), 50);
+        };
+
+        window.closePalette = function() {
+            document.getElementById('modal-palette').classList.add('hidden');
+        };
+
+        function paletteKindIcon(kind) {
+            return ({jamaah:'user', paket:'package', agen:'network', user:'users'})[kind] || 'circle';
+        }
+
+        function paletteKindColor(kind) {
+            return ({jamaah:'text-emerald-700 bg-emerald-100', paket:'text-blue-700 bg-blue-100', agen:'text-indigo-700 bg-indigo-100', user:'text-purple-700 bg-purple-100'})[kind] || 'text-gray-700 bg-gray-100';
+        }
+
+        function renderPaletteResults(query) {
+            const el = document.getElementById('palette-results');
+            if (!el) return;
+            if (query.length < 2) {
+                el.innerHTML = `<div class="p-6 text-center text-xs text-gray-400">Ketik minimal 2 karakter untuk mulai mencari...</div>`;
+                return;
+            }
+            if (!paletteResults.length) {
+                el.innerHTML = `<div class="p-6 text-center text-xs text-gray-400">Tidak ada hasil untuk "${query}"</div>`;
+                return;
+            }
+            el.innerHTML = paletteResults.map((r, i) => {
+                const activeCls = i === paletteActiveIdx ? 'bg-emerald-50 border-l-2 border-emerald-600' : 'hover:bg-gray-50';
+                const kindBadge = paletteKindColor(r.kind);
+                return `<div class="px-4 py-2.5 cursor-pointer flex items-center gap-3 ${activeCls}" onclick="selectPaletteResult(${i})" onmouseenter="setPaletteActive(${i})">
+                    <div class="w-8 h-8 rounded-full ${kindBadge} flex items-center justify-center shrink-0">
+                        <i data-lucide="${paletteKindIcon(r.kind)}" class="w-3.5 h-3.5"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <div class="text-sm font-medium text-gray-800 truncate">${r.title}</div>
+                        <div class="text-[10px] text-gray-500 truncate">${r.subtitle || ''}</div>
+                    </div>
+                    <div class="text-[10px] text-gray-400 shrink-0">${r.meta || ''}</div>
+                </div>`;
+            }).join('');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        window.setPaletteActive = function(i) {
+            paletteActiveIdx = i;
+            const items = document.querySelectorAll('#palette-results > div');
+            items.forEach((el, idx) => {
+                el.classList.toggle('bg-emerald-50', idx === i);
+                el.classList.toggle('border-l-2', idx === i);
+                el.classList.toggle('border-emerald-600', idx === i);
+                el.classList.toggle('hover:bg-gray-50', idx !== i);
+            });
+        };
+
+        window.selectPaletteResult = function(i) {
+            const r = paletteResults[i];
+            if (!r) return;
+            closePalette();
+            if (r.goto) showPage(r.goto);
+        };
+
+        async function paletteSearch(q) {
+            try {
+                const res = await authFetch(`/search?q=${encodeURIComponent(q)}`);
+                if (!res.ok) return;
+                const d = await res.json();
+                paletteResults = d.results || [];
+                paletteActiveIdx = 0;
+                renderPaletteResults(q);
+            } catch (e) { console.error('[palette]', e); }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const input = document.getElementById('palette-input');
+            if (input) {
+                input.addEventListener('input', e => {
+                    clearTimeout(paletteDebounce);
+                    const q = e.target.value.trim();
+                    paletteDebounce = setTimeout(() => paletteSearch(q), 200);
+                });
+                input.addEventListener('keydown', e => {
+                    if (e.key === 'Escape') { e.preventDefault(); closePalette(); }
+                    else if (e.key === 'ArrowDown') { e.preventDefault(); paletteActiveIdx = Math.min(paletteActiveIdx + 1, paletteResults.length - 1); renderPaletteResults(input.value); }
+                    else if (e.key === 'ArrowUp') { e.preventDefault(); paletteActiveIdx = Math.max(paletteActiveIdx - 1, 0); renderPaletteResults(input.value); }
+                    else if (e.key === 'Enter') { e.preventDefault(); selectPaletteResult(paletteActiveIdx); }
+                });
+            }
+            // Global Ctrl+K / Cmd+K shortcut
+            document.addEventListener('keydown', e => {
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+                    e.preventDefault();
+                    openPalette();
+                }
+                if (e.key === 'Escape' && !document.getElementById('modal-palette').classList.contains('hidden')) {
+                    closePalette();
+                }
+            });
+            // Click backdrop to close
+            document.getElementById('modal-palette')?.addEventListener('click', e => {
+                if (e.target.id === 'modal-palette') closePalette();
+            });
+        });
 
         // --- WEBSOCKET CLIENT UNTUK REAL-TIME WA ---
         const socket = typeof io !== 'undefined' ? io(API_URL.replace('/api', '')) : null;
@@ -7317,9 +7514,9 @@
     </script>
     <!-- Marketing Analytics: heatmap + chart (dimuat setelah inline JS supaya authFetch sudah terdefinisi). -->
     <script src="js/marketing.js?v=20260817d"></script>
-    <script src="js/sales-home.js?v=20260819a"></script>
-    <script src="js/ops-home.js?v=20260820g"></script>
-    <script src="js/finance-home.js?v=20260827d"></script>
-    <script src="js/mgmt-home.js?v=20260827d"></script>
+    <script src="js/sales-home.js?v=20260827e"></script>
+    <script src="js/ops-home.js?v=20260827e"></script>
+    <script src="js/finance-home.js?v=20260827e"></script>
+    <script src="js/mgmt-home.js?v=20260827e"></script>
 </body>
 </html>
