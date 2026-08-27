@@ -1,0 +1,192 @@
+// Home Management dashboard — executive landing untuk role management (dan admin).
+(function(){
+    let mhLoading = false;
+
+    async function mhFetch(url) {
+        return (window.authFetch || fetch)(url);
+    }
+    function mhFmtShort(n) {
+        n = Math.round(n || 0);
+        if (n >= 1_000_000_000) return 'Rp ' + (n/1_000_000_000).toFixed(1).replace('.0','') + 'M';
+        if (n >= 1_000_000) return 'Rp ' + (n/1_000_000).toFixed(1).replace('.0','') + 'jt';
+        if (n >= 1_000) return 'Rp ' + (n/1_000).toFixed(0) + 'rb';
+        return 'Rp ' + n.toLocaleString('id-ID');
+    }
+    function mhEscape(s) {
+        return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+    function mhUpdateTabBadge(urgentCount) {
+        const t = document.title;
+        const base = t.replace(/^\(\d+\)\s+/, '');
+        document.title = urgentCount > 0 ? `(${urgentCount}) ${base}` : base;
+    }
+    const SEV_CLASS = {
+        critical: 'bg-red-100 text-red-800 border-red-300',
+        high: 'bg-orange-100 text-orange-800 border-orange-300',
+        medium: 'bg-amber-100 text-amber-800 border-amber-300',
+        low: 'bg-gray-100 text-gray-700 border-gray-300',
+    };
+
+    function renderAttention(list) {
+        const wrap = document.getElementById('mh-attention');
+        const inner = document.getElementById('mh-attention-list');
+        if (!wrap || !inner) return;
+        if (!list || !list.length) {
+            wrap.classList.add('hidden');
+            mhUpdateTabBadge(0);
+            return;
+        }
+        wrap.classList.remove('hidden');
+        inner.innerHTML = list.map(a => {
+            const cls = SEV_CLASS[a.severity] || SEV_CLASS.low;
+            const goto = a.goto && a.goto !== 'mgmt-home' ? `onclick="showPage('${a.goto}')"` : '';
+            return `<button ${goto} class="text-xs font-medium px-3 py-1.5 rounded-full border ${cls} hover:opacity-80 transition">${mhEscape(a.label)}</button>`;
+        }).join('');
+        const urgent = list.filter(a => a.severity === 'critical' || a.severity === 'high').length;
+        mhUpdateTabBadge(urgent);
+    }
+
+    function renderKPI(kpi) {
+        document.getElementById('mh-kpi-omzet').textContent = mhFmtShort(kpi.omzet_this_month);
+        document.getElementById('mh-kpi-closing').textContent = kpi.closing_this_month || 0;
+        document.getElementById('mh-kpi-piutang').textContent = mhFmtShort(kpi.piutang_total);
+        document.getElementById('mh-kpi-piutang-count').textContent = kpi.piutang_count || 0;
+        document.getElementById('mh-kpi-cash').textContent = mhFmtShort(kpi.cash_saldo);
+        const mom = kpi.mom_omzet_pct;
+        const momEl = document.getElementById('mh-kpi-omzet-mom');
+        if (mom === null || mom === undefined) {
+            momEl.textContent = 'vs bulan lalu: -';
+            momEl.className = 'text-[10px] text-gray-400 mt-1';
+        } else {
+            const up = mom >= 0;
+            momEl.innerHTML = `<span class="${up ? 'text-emerald-600' : 'text-red-600'} font-semibold">${up ? 'naik' : 'turun'} ${Math.abs(mom)}%</span> vs bulan lalu`;
+        }
+    }
+
+    function renderSalesPerf(list) {
+        const el = document.getElementById('mh-sales-list');
+        if (!el) return;
+        if (!list || !list.length) {
+            el.innerHTML = `<div class="p-6 text-center text-xs text-gray-400">Tidak ada sales terdaftar.</div>`;
+            return;
+        }
+        el.innerHTML = list.map(s => {
+            const cPct = s.closing_pct;
+            const oPct = s.omzet_pct;
+            const noTarget = cPct === null && oPct === null;
+            const bar = (pct, color) => {
+                const w = Math.min(pct || 0, 100);
+                return `<div class="h-1 bg-gray-100 rounded overflow-hidden"><div class="${color} h-full" style="width:${w}%"></div></div>`;
+            };
+            return `<div class="px-4 py-3 hover:bg-blue-50">
+                <div class="flex justify-between items-center mb-1.5">
+                    <span class="text-sm font-medium text-gray-800">${mhEscape(s.name)}</span>
+                    <span class="text-xs text-gray-500">${s.actual_closing} closing - ${mhFmtShort(s.actual_omzet)}</span>
+                </div>
+                ${noTarget ? '<div class="text-[10px] text-gray-400 italic">Target belum ditetapkan</div>' : `
+                    <div class="space-y-1.5 text-[10px]">
+                        <div>
+                            <div class="flex justify-between mb-0.5"><span class="text-gray-500">Closing</span><span class="font-semibold ${cPct >= 100 ? 'text-emerald-600' : cPct >= 50 ? 'text-amber-600' : 'text-red-600'}">${cPct !== null ? cPct + '%' : '-'}</span></div>
+                            ${bar(cPct, cPct >= 100 ? 'bg-emerald-500' : cPct >= 50 ? 'bg-amber-500' : 'bg-red-500')}
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-0.5"><span class="text-gray-500">Omzet</span><span class="font-semibold ${oPct >= 100 ? 'text-emerald-600' : oPct >= 50 ? 'text-amber-600' : 'text-red-600'}">${oPct !== null ? oPct + '%' : '-'}</span></div>
+                            ${bar(oPct, oPct >= 100 ? 'bg-emerald-500' : oPct >= 50 ? 'bg-amber-500' : 'bg-red-500')}
+                        </div>
+                    </div>
+                `}
+            </div>`;
+        }).join('');
+    }
+
+    function renderTopAgents(list) {
+        const el = document.getElementById('mh-agents-list');
+        if (!el) return;
+        if (!list || !list.length) {
+            el.innerHTML = `<div class="p-6 text-center text-xs text-gray-400">Belum ada closing agen bulan ini.</div>`;
+            return;
+        }
+        el.innerHTML = list.map((a, i) => `
+            <div class="px-4 py-3 hover:bg-emerald-50 flex items-center justify-between gap-3">
+                <div class="min-w-0 flex-1 flex items-center gap-3">
+                    <div class="w-6 h-6 rounded-full ${i === 0 ? 'bg-yellow-100 text-yellow-700' : i === 1 ? 'bg-gray-100 text-gray-700' : i === 2 ? 'bg-orange-100 text-orange-700' : 'bg-emerald-50 text-emerald-600'} flex items-center justify-center text-xs font-bold shrink-0">${i+1}</div>
+                    <div class="min-w-0">
+                        <div class="text-sm font-medium text-gray-800 truncate">${mhEscape(a.name)}</div>
+                        <div class="text-[10px] text-gray-500">${a.closings} closing</div>
+                    </div>
+                </div>
+                <div class="text-sm font-bold text-emerald-700 shrink-0">${mhFmtShort(a.omzet)}</div>
+            </div>`).join('');
+    }
+
+    function renderPackages(list) {
+        const el = document.getElementById('mh-packages-list');
+        if (!el) return;
+        if (!list || !list.length) {
+            el.innerHTML = `<div class="p-4 text-center text-xs text-gray-400">Tidak ada paket berangkat 30 hari ke depan.</div>`;
+            return;
+        }
+        el.innerHTML = list.map(p => {
+            const fillPct = p.quota ? Math.round((p.filled / p.quota) * 100) : 0;
+            const color = fillPct >= 90 ? 'bg-emerald-500' : fillPct >= 60 ? 'bg-amber-500' : 'bg-red-500';
+            return `<div class="px-4 py-3 hover:bg-orange-50">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-sm font-medium text-gray-800 truncate">${mhEscape(p.name)}</span>
+                    <span class="text-[10px] font-bold text-orange-700">H-${p.days_to_go}</span>
+                </div>
+                <div class="flex justify-between text-[10px] text-gray-500 mb-1">
+                    <span>${p.filled}/${p.quota || '?'} jamaah</span>
+                    <span>${fillPct}%</span>
+                </div>
+                <div class="h-1 bg-gray-100 rounded overflow-hidden"><div class="${color} h-full" style="width:${Math.min(fillPct,100)}%"></div></div>
+            </div>`;
+        }).join('');
+    }
+
+    function renderApprovals(list) {
+        const el = document.getElementById('mh-approvals-list');
+        if (!el) return;
+        if (!list || !list.length) {
+            el.innerHTML = `<div class="p-4 text-center text-xs text-gray-400">Tidak ada antrian approval.</div>`;
+            return;
+        }
+        el.innerHTML = list.map(a => {
+            const badge = a.kind === 'incident' ? 'bg-red-100 text-red-700' : a.kind === 'refund' ? 'bg-rose-100 text-rose-700' : 'bg-indigo-100 text-indigo-700';
+            const goto = a.kind === 'incident' ? 'incidents' : 'finance';
+            const amt = a.amount ? `<span class="text-xs font-bold text-gray-800">${mhFmtShort(a.amount)}</span>` : '';
+            return `<div class="px-3 py-2 hover:bg-purple-50 cursor-pointer" onclick="showPage('${goto}')">
+                <div class="flex justify-between items-start gap-2">
+                    <div class="min-w-0 flex-1">
+                        <div class="text-xs font-medium text-gray-800 truncate">${mhEscape(a.label)}</div>
+                        <div class="text-[9px] font-medium px-1 rounded ${badge} inline-block mt-0.5">${a.kind}</div>
+                    </div>
+                    ${amt}
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    window.initMgmtHome = async function() {
+        if (mhLoading) return;
+        mhLoading = true;
+        try {
+            const res = await mhFetch('/mgmt/home');
+            if (!res.ok) throw new Error('Gagal memuat Home Management');
+            const data = await res.json();
+            renderKPI(data.kpi || {});
+            renderAttention(data.attention || []);
+            renderSalesPerf(data.sales_performance || []);
+            renderTopAgents(data.top_agents || []);
+            renderPackages(data.upcoming_packages || []);
+            renderApprovals(data.approvals || []);
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        } catch (err) {
+            console.error('[mgmt-home]', err);
+            const inner = document.getElementById('mh-attention-list');
+            if (inner) inner.innerHTML = `<span class="text-xs text-red-600">Gagal memuat data: ${mhEscape(err.message)}</span>`;
+            document.getElementById('mh-attention')?.classList.remove('hidden');
+        } finally {
+            mhLoading = false;
+        }
+    };
+})();

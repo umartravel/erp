@@ -134,9 +134,6 @@
                 <a href="#" id="nav-agents" onclick="showPage('agents')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150">
                     <i data-lucide="network" class="w-4 h-4"></i> Keagenan (Mitra)
                 </a>
-                <a href="#" id="nav-livechat" onclick="return false" class="hidden" data-removed="live-chat-module-removed-2026-08-17" style="display:none !important">
-                    <i data-lucide="message-circle" class="w-4 h-4"></i> Live Chat WhatsApp
-                </a>
                 <a href="#" id="nav-sales-home" onclick="showPage('sales-home')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
                     <i data-lucide="sun" class="w-4 h-4"></i> Home Sales
                 </a>
@@ -149,6 +146,12 @@
                 <i data-lucide="chevron-right" class="w-3.5 h-3.5 nav-group-chevron transition-transform duration-150 shrink-0" id="chevron-finance"></i> Finance
             </button>
             <div id="navgroup-finance" class="space-y-1">
+                <a href="#" id="nav-finance-home" onclick="showPage('finance-home')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
+                    <i data-lucide="sun" class="w-4 h-4"></i> Home Finance
+                </a>
+                <a href="#" id="nav-mgmt-home" onclick="showPage('mgmt-home')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
+                    <i data-lucide="crown" class="w-4 h-4"></i> Home Management
+                </a>
                 <a href="#" id="nav-finance" onclick="showPage('finance')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150">
                     <i data-lucide="wallet" class="w-4 h-4"></i> Keuangan & Ledger
                 </a>
@@ -894,6 +897,156 @@
                 </div>
             </div>
 
+            <!-- PAGE: HOME FINANCE (F-A) — landing dashboard untuk role finance -->
+            <div id="page-finance-home" class="page-content hidden space-y-6">
+                <!-- HERO: Butuh Perhatian Hari Ini -->
+                <div id="fh-attention" class="hidden bg-gradient-to-br from-amber-50 to-red-50 border-l-4 border-red-500 rounded-xl shadow-sm p-5">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="flex-1">
+                            <div class="text-xs font-bold text-red-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> Butuh Perhatian Hari Ini
+                            </div>
+                            <div id="fh-attention-list" class="flex flex-wrap gap-2"></div>
+                        </div>
+                        <div class="text-[10px] text-gray-500 shrink-0">otomatis · auto-refresh</div>
+                    </div>
+                </div>
+
+                <!-- KPI GRID -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-white rounded-xl shadow-sm border p-4">
+                        <div class="text-[10px] uppercase tracking-wider text-gray-500 mb-1 flex items-center gap-1.5"><i data-lucide="wallet" class="w-3 h-3"></i> Saldo Kas</div>
+                        <div id="fh-kpi-cash" class="text-2xl font-bold text-gray-800">Rp 0</div>
+                        <div class="text-[10px] text-gray-400 mt-1">dari buku kas (transactions)</div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border p-4">
+                        <div class="text-[10px] uppercase tracking-wider text-gray-500 mb-1 flex items-center gap-1.5"><i data-lucide="hand-coins" class="w-3 h-3 text-amber-600"></i> Piutang Jamaah</div>
+                        <div id="fh-kpi-piutang" class="text-2xl font-bold text-amber-700">Rp 0</div>
+                        <div class="text-[10px] text-gray-400 mt-1"><span id="fh-kpi-piutang-count">0</span> jamaah belum lunas</div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border p-4">
+                        <div class="text-[10px] uppercase tracking-wider text-gray-500 mb-1 flex items-center gap-1.5"><i data-lucide="building-2" class="w-3 h-3 text-indigo-600"></i> Utang Vendor</div>
+                        <div id="fh-kpi-utang" class="text-2xl font-bold text-indigo-700">Rp 0</div>
+                        <div class="text-[10px] text-gray-400 mt-1"><span id="fh-kpi-utang-count">0</span> booking belum dilunasi</div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border p-4">
+                        <div class="text-[10px] uppercase tracking-wider text-gray-500 mb-1 flex items-center gap-1.5"><i data-lucide="clipboard-check" class="w-3 h-3 text-emerald-600"></i> Antrian Approval</div>
+                        <div id="fh-kpi-queue" class="text-2xl font-bold text-emerald-700">0</div>
+                        <div class="text-[10px] text-gray-400 mt-1">expense + refund + komisi</div>
+                    </div>
+                </div>
+
+                <!-- PANEL: Piutang jamaah + Vendor due -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+                        <div class="px-4 py-3 border-b bg-amber-50/50 flex items-center justify-between">
+                            <h3 class="font-semibold text-amber-800 flex items-center gap-2"><i data-lucide="hand-coins" class="w-4 h-4"></i>Piutang Jamaah (Top 10)</h3>
+                            <button onclick="showPage('finance')" class="text-[10px] text-amber-700 hover:text-amber-900 font-medium">Lihat semua →</button>
+                        </div>
+                        <div id="fh-piutang-list" class="divide-y max-h-96 overflow-y-auto custom-scrollbar"></div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+                        <div class="px-4 py-3 border-b bg-indigo-50/50 flex items-center justify-between">
+                            <h3 class="font-semibold text-indigo-800 flex items-center gap-2"><i data-lucide="calendar-clock" class="w-4 h-4"></i>Vendor Payment Due (±14 hari)</h3>
+                            <button onclick="showPage('procurement')" class="text-[10px] text-indigo-700 hover:text-indigo-900 font-medium">Kelola →</button>
+                        </div>
+                        <div id="fh-vendor-list" class="divide-y max-h-96 overflow-y-auto custom-scrollbar"></div>
+                    </div>
+                </div>
+
+                <!-- PANEL: Aged buckets + Antrian approval -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+                        <div class="px-4 py-3 border-b bg-gray-50">
+                            <h3 class="font-semibold text-gray-800 flex items-center gap-2"><i data-lucide="bar-chart-3" class="w-4 h-4 text-gray-600"></i>Aging Piutang</h3>
+                        </div>
+                        <div id="fh-aged-list" class="p-4 space-y-2"></div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+                        <div class="px-4 py-3 border-b bg-emerald-50/50">
+                            <h3 class="font-semibold text-emerald-800 flex items-center gap-2"><i data-lucide="receipt" class="w-4 h-4"></i>Expense Menunggu</h3>
+                        </div>
+                        <div id="fh-expense-list" class="divide-y max-h-64 overflow-y-auto custom-scrollbar"></div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+                        <div class="px-4 py-3 border-b bg-rose-50/50">
+                            <h3 class="font-semibold text-rose-800 flex items-center gap-2"><i data-lucide="undo-2" class="w-4 h-4"></i>Refund & Komisi Cair</h3>
+                        </div>
+                        <div id="fh-cair-list" class="divide-y max-h-64 overflow-y-auto custom-scrollbar"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE: HOME MANAGEMENT (M-A) — executive landing -->
+            <div id="page-mgmt-home" class="page-content hidden space-y-6">
+                <div id="mh-attention" class="hidden bg-gradient-to-br from-purple-50 to-amber-50 border-l-4 border-purple-500 rounded-xl shadow-sm p-5">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="flex-1">
+                            <div class="text-xs font-bold text-purple-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                <i data-lucide="crown" class="w-3.5 h-3.5"></i> Prioritas Manajemen
+                            </div>
+                            <div id="mh-attention-list" class="flex flex-wrap gap-2"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KPI 4 kartu utama -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-white rounded-xl shadow-sm border p-4">
+                        <div class="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Omzet Bulan Ini</div>
+                        <div id="mh-kpi-omzet" class="text-xl font-bold text-emerald-700">Rp 0</div>
+                        <div class="text-[10px] text-gray-400 mt-1"><span id="mh-kpi-omzet-mom">-</span></div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border p-4">
+                        <div class="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Closing Bulan Ini</div>
+                        <div id="mh-kpi-closing" class="text-xl font-bold text-blue-700">0</div>
+                        <div class="text-[10px] text-gray-400 mt-1">jamaah</div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border p-4">
+                        <div class="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Piutang Total</div>
+                        <div id="mh-kpi-piutang" class="text-xl font-bold text-amber-700">Rp 0</div>
+                        <div class="text-[10px] text-gray-400 mt-1"><span id="mh-kpi-piutang-count">0</span> jamaah</div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border p-4">
+                        <div class="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Cash-on-Hand</div>
+                        <div id="mh-kpi-cash" class="text-xl font-bold text-indigo-700">Rp 0</div>
+                        <div class="text-[10px] text-gray-400 mt-1">buku kas</div>
+                    </div>
+                </div>
+
+                <!-- Sales Attainment + Top Agen -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+                        <div class="px-4 py-3 border-b bg-blue-50/50">
+                            <h3 class="font-semibold text-blue-800 flex items-center gap-2"><i data-lucide="target" class="w-4 h-4"></i>Sales Attainment Bulan Ini</h3>
+                        </div>
+                        <div id="mh-sales-list" class="divide-y max-h-96 overflow-y-auto custom-scrollbar"></div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+                        <div class="px-4 py-3 border-b bg-emerald-50/50">
+                            <h3 class="font-semibold text-emerald-800 flex items-center gap-2"><i data-lucide="trophy" class="w-4 h-4"></i>Top Agen Bulan Ini</h3>
+                        </div>
+                        <div id="mh-agents-list" class="divide-y max-h-96 overflow-y-auto custom-scrollbar"></div>
+                    </div>
+                </div>
+
+                <!-- Ops readiness + Approval inbox -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+                        <div class="px-4 py-3 border-b bg-orange-50/50">
+                            <h3 class="font-semibold text-orange-800 flex items-center gap-2"><i data-lucide="plane-takeoff" class="w-4 h-4"></i>Paket Berangkat 30 Hari</h3>
+                        </div>
+                        <div id="mh-packages-list" class="divide-y max-h-72 overflow-y-auto custom-scrollbar"></div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+                        <div class="px-4 py-3 border-b bg-purple-50/50">
+                            <h3 class="font-semibold text-purple-800 flex items-center gap-2"><i data-lucide="inbox" class="w-4 h-4"></i>Antrian Approval Anda</h3>
+                        </div>
+                        <div id="mh-approvals-list" class="divide-y max-h-72 overflow-y-auto custom-scrollbar"></div>
+                    </div>
+                </div>
+            </div>
+
             <!-- PAGE: KEUANGAN -->
             <div id="page-finance" class="page-content hidden">
                 <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
@@ -1122,72 +1275,7 @@
                 </div>
             </div>
 
-            <!-- PAGE: LIVE CHAT WA (module dihapus 2026-08-17 -- nav & JS references dicabut,
-                 HTML placeholder ini tetap ada supaya struktur DOM utuh; showPage('livechat')
-                 tidak lagi bisa dipanggil karena nav-livechat link sudah dihapus.) -->
-            <div id="page-livechat" class="page-content hidden h-[calc(100vh-130px)]">
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 flex h-full overflow-hidden">
-                    <!-- Sidebar Chat List -->
-                    <div class="w-1/3 border-r flex flex-col bg-gray-50 z-10 shadow-[2px_0_10px_rgba(0,0,0,0.05)]">
-                        <div class="p-4 border-b bg-white">
-                            <h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2"><i data-lucide="message-circle" class="w-5 h-5 text-emerald-600"></i>Inbox Live Chat</h3>
-                            <input type="text" id="chat-search" placeholder="Cari nama atau nomor..." class="w-full px-4 py-2 border border-gray-200 rounded-full text-sm mb-3 focus:ring-2 focus:ring-emerald-500 outline-none transition" onkeyup="filterChats(this.value)">
-                            <div class="flex gap-2">
-                                <select id="chat-filter" class="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-xs bg-gray-50 text-gray-700 font-medium" onchange="loadConversations()">
-                                    <option value="all">Semua Percakapan</option>
-                                    <option value="mine">Chat & Tugas Saya</option>
-                                    <option value="unassigned">Belum Diambil / Dibalas</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div id="chat-list" class="flex-1 overflow-y-auto custom-scrollbar bg-white"></div>
-                    </div>
-                    
-                    <!-- Chat Area -->
-                    <div class="flex-1 flex flex-col relative bg-[#efeae2]" id="chat-area-container">
-                        <div id="chat-placeholder" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 z-10">
-                            <div class="bg-white p-6 rounded-full shadow-sm mb-4"><i data-lucide="messages-square" class="w-12 h-12 text-emerald-200"></i></div>
-                            <p class="text-gray-500 font-medium text-sm">Pilih obrolan jamaah di samping untuk mulai merespon</p>
-                        </div>
-                        
-                        <!-- Chat Header -->
-                        <div class="px-5 py-3 bg-white border-b flex justify-between items-center shadow-sm z-10 shrink-0">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center font-bold text-lg" id="active-chat-avatar">U</div>
-                                <div>
-                                    <h4 class="font-bold text-gray-800 leading-tight flex items-center gap-2"><span id="active-chat-name">Nama Jamaah</span><button onclick="renameContact()" class="text-gray-400 hover:text-emerald-600 transition" title="Simpan / Ganti Nama Kontak"><i data-lucide="edit-3" class="w-3 h-3"></i></button></h4>
-                                    <p class="text-[11px] text-gray-500 font-medium font-mono" id="active-chat-phone">0812345678</p>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <div class="text-[10px] bg-gray-50 px-3 py-1.5 rounded-lg border flex items-center gap-2"><span class="text-gray-400 font-medium uppercase tracking-wider">PIC:</span><span id="active-chat-assignee-avatar"></span><span class="font-bold text-indigo-700" id="active-chat-assignee">-</span></div>
-                                <button onclick="openQuickRegisterModal()" class="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-100 border border-emerald-200 transition shadow-sm flex items-center gap-1" title="Daftarkan jamaah dari chat ini"><i data-lucide="user-plus" class="w-3 h-3"></i>Daftarkan</button>
-                                <button onclick="claimChat()" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-indigo-700 shadow-sm transition" id="btn-claim-chat">Ambil Alih</button>
-                                <button onclick="openDispatchModal()" class="bg-orange-50 text-orange-700 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-orange-100 border border-orange-200 transition flex items-center gap-1" title="Teruskan (Dispatch) ke divisi lain"><i data-lucide="forward" class="w-3 h-3"></i>Teruskan</button>
-                            </div>
-                        </div>
-                        
-                        <div id="chat-messages" class="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] opacity-90 mix-blend-multiply"></div>
-                        
-                        <!-- Chat Input Box -->
-                        <div class="p-3 bg-[#f0f2f5] border-t flex flex-col gap-2 shrink-0">
-                            <div id="attachment-preview" class="hidden flex items-center gap-3 bg-white p-2 rounded-lg border shadow-sm w-fit">
-                                <i data-lucide="file-check-2" class="w-5 h-5 text-emerald-600"></i>
-                                <div class="text-xs font-medium text-gray-700 truncate max-w-[150px]" id="attachment-name">filename.jpg</div>
-                                <button type="button" onclick="cancelAttachment()" class="text-red-500 hover:text-red-700"><i data-lucide="x-circle" class="w-4 h-4"></i></button>
-                            </div>
-                            <form id="form-chat-send" class="flex items-center gap-3">
-                                <button type="button" onclick="document.getElementById('chat-file-input').click()" class="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-emerald-600 bg-white rounded-full shadow-sm hover:shadow transition shrink-0" title="Lampirkan File/Gambar/Brosur"><i data-lucide="paperclip" class="w-5 h-5"></i></button>
-                                <input type="file" id="chat-file-input" class="hidden" onchange="handleAttachment(this)" accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx">
-                                <button type="button" onclick="openTemplatesModal()" class="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-emerald-600 bg-white rounded-full shadow-sm hover:shadow transition" title="Gunakan Quick Reply / Template"><i data-lucide="zap" class="w-5 h-5 fill-current opacity-20"></i></button>
-                                <input type="hidden" id="active-chat-id">
-                                <textarea id="chat-input" rows="1" class="flex-1 border-0 rounded-2xl px-5 py-3 text-sm focus:outline-none focus:ring-0 shadow-sm resize-none custom-scrollbar leading-relaxed" placeholder="Ketik pesan..." autocomplete="off" style="min-height: 44px; max-height: 120px;"></textarea>
-                                <button type="submit" class="bg-emerald-600 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-emerald-700 shadow-md transform transition active:scale-95 shrink-0"><i data-lucide="send" class="w-4 h-4 ml-1"></i></button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <!-- PAGE: LIVE CHAT WA (removed 2026-08-27; two-way chat via WA never used) -->
 
             <!-- PAGE: PROCUREMENT & VENDOR -->
             <div id="page-procurement" class="page-content hidden">
@@ -2954,22 +3042,6 @@
         const socket = typeof io !== 'undefined' ? io(API_URL.replace('/api', '')) : null;
         
         if (socket) {
-            socket.on('wa_new_message', (msg) => {
-                // Jika pesan dari nomor yang sama dengan obrolan yang sedang terbuka
-                if (activeChatPhone === msg.phone) {
-                    loadMessages(activeChatPhone, true);
-                } else if (msg.sender !== 'system') {
-                    // Jika tidak sedang dibuka, munculkan pop-up toast kecil
-                    showToast(`Pesan baru dari ${msg.phone.split('@')[0]}`, 'success');
-                }
-            });
-
-            socket.on('wa_conversation_updated', (conv) => {
-                if (document.getElementById('page-livechat') && !document.getElementById('page-livechat').classList.contains('hidden')) {
-                    loadConversations(true);
-                }
-            });
-
             socket.on('wa_status', (statusData) => {
                 if (document.getElementById('page-whatsapp') && !document.getElementById('page-whatsapp').classList.contains('hidden')) checkWaStatus();
             });
@@ -3253,6 +3325,9 @@
                 document.getElementById('nav-procurement').classList.remove('hidden');
                 document.getElementById('btn-add-procurement').classList.remove('hidden');
                 document.getElementById('finance-write-panel').classList.remove('hidden');
+                // Finance landing = Home Finance
+                document.getElementById('nav-finance-home').classList.remove('hidden');
+                document.getElementById('nav-dashboard').classList.add('hidden');
             } else if (currentUser.role === 'ops') {
                 document.getElementById('nav-pendaftaran').classList.add('hidden');
                 document.getElementById('nav-inbox').classList.add('hidden');
@@ -3281,9 +3356,12 @@
                 // di backend memang dibatasi khusus admin+sales, jadi Management akan selalu 403
                 // bila mencoba mereview -- konsisten untuk tidak menampilkan nav yang pasti gagal.
                 document.getElementById('nav-inbox').classList.add('hidden');
-                // Management lihat Home Ops + Insiden untuk oversight
+                // Management: Home Management + Home Finance + Home Ops + Insiden untuk oversight
+                document.getElementById('nav-mgmt-home').classList.remove('hidden');
+                document.getElementById('nav-finance-home').classList.remove('hidden');
                 document.getElementById('nav-ops-home').classList.remove('hidden');
                 document.getElementById('nav-incidents').classList.remove('hidden');
+                document.getElementById('nav-dashboard').classList.add('hidden');
             }
 
             initNavGroups();
@@ -3293,6 +3371,8 @@
             showPage(
                 currentUser.role === 'sales' ? 'sales-home' :
                 currentUser.role === 'ops' ? 'ops-home' :
+                currentUser.role === 'finance' ? 'finance-home' :
+                currentUser.role === 'management' ? 'mgmt-home' :
                 'dashboard'
             );
             refreshInboxBadge();
@@ -3328,14 +3408,15 @@
             return false;
         }
 
-        const pageTitles = { 'dashboard': 'Dashboard', 'pendaftaran': 'Pendaftaran Baru', 'jamaah': 'Master Data Jamaah', 'finance': 'Keuangan & P&L', 'operasional': 'Operasional & Logistik', 'whatsapp': 'Manajemen WA', 'users': 'Master Data Karyawan', 'packages': 'Master Paket Umroh', 'agents': 'Manajemen Keagenan', 'tactical': 'Kesiapan Operasional & Audit', 'procurement': 'Manajemen Vendor / Procurement', 'settings': 'Pengaturan Aplikasi', 'followup': 'Follow-up Lead (CRM Sales)', 'expense': 'Expense Report', 'inbox': 'Kotak Masuk Pendaftaran Publik', 'leave': 'Ajukan Izin', 'marketing': 'Marketing Analytics', 'sales-home': 'Home Sales', 'ops-home': 'Home Ops', 'incidents': 'Insiden Lapangan' };
+        const pageTitles = { 'dashboard': 'Dashboard', 'pendaftaran': 'Pendaftaran Baru', 'jamaah': 'Master Data Jamaah', 'finance': 'Keuangan & P&L', 'operasional': 'Operasional & Logistik', 'whatsapp': 'Manajemen WA', 'users': 'Master Data Karyawan', 'packages': 'Master Paket Umroh', 'agents': 'Manajemen Keagenan', 'tactical': 'Kesiapan Operasional & Audit', 'procurement': 'Manajemen Vendor / Procurement', 'settings': 'Pengaturan Aplikasi', 'followup': 'Follow-up Lead (CRM Sales)', 'expense': 'Expense Report', 'inbox': 'Kotak Masuk Pendaftaran Publik', 'leave': 'Ajukan Izin', 'marketing': 'Marketing Analytics', 'sales-home': 'Home Sales', 'ops-home': 'Home Ops', 'incidents': 'Insiden Lapangan', 'finance-home': 'Home Finance', 'mgmt-home': 'Home Management' };
 
         // --- SIDEBAR: kategori yang bisa dilipat (accordion), status tersimpan per browser ---
         const NAV_GROUPS = ['crm', 'finance', 'ops', 'tools'];
         const PAGE_TO_NAV_GROUP = {
-            pendaftaran: 'crm', inbox: 'crm', jamaah: 'crm', followup: 'crm', agents: 'crm', livechat: 'crm', marketing: 'crm',
-            finance: 'finance', expense: 'finance',
-            operasional: 'ops', procurement: 'ops',
+            pendaftaran: 'crm', inbox: 'crm', jamaah: 'crm', followup: 'crm', agents: 'crm', marketing: 'crm',
+            'sales-home': 'crm',
+            'finance-home': 'finance', 'mgmt-home': 'finance', finance: 'finance', expense: 'finance',
+            operasional: 'ops', procurement: 'ops', 'ops-home': 'ops', incidents: 'ops',
             leave: 'tools', tactical: 'tools', whatsapp: 'tools', packages: 'tools', users: 'tools', settings: 'tools',
         };
         function toggleNavGroup(key, forceOpen) {
@@ -3420,9 +3501,10 @@
             if(id === 'followup') loadFollowups();
             if(id === 'expense') { fetchExpenseProjects(); fetchExpenseReports(); }
             if(id === 'inbox') fetchInbox();
-            if(id === 'livechat') loadConversations(true);
             if(id === 'marketing' && typeof initMarketingPage === 'function') initMarketingPage();
             if(id === 'sales-home' && typeof initSalesHome === 'function') initSalesHome();
+            if(id === 'finance-home' && typeof initFinanceHome === 'function') initFinanceHome();
+            if(id === 'mgmt-home' && typeof initMgmtHome === 'function') initMgmtHome();
 
             clearInterval(waPollInterval);
             if(id === 'whatsapp') { checkWaStatus(); waPollInterval = setInterval(checkWaStatus, 3000); } 
@@ -5541,7 +5623,7 @@
             document.getElementById('attachment-preview').classList.add('hidden');
         }
 
-        document.getElementById('form-chat-send').addEventListener('submit', async e => {
+        document.getElementById('form-chat-send')?.addEventListener('submit', async e => {
             e.preventDefault(); const phone = document.getElementById('active-chat-id').value, input = document.getElementById('chat-input'), msg = input.value;
             if(!phone || (!msg.trim() && !chatAttachment)) return; 
             
@@ -7090,5 +7172,7 @@
     <script src="js/marketing.js?v=20260817d"></script>
     <script src="js/sales-home.js?v=20260819a"></script>
     <script src="js/ops-home.js?v=20260820g"></script>
+    <script src="js/finance-home.js?v=20260827a"></script>
+    <script src="js/mgmt-home.js?v=20260827a"></script>
 </body>
 </html>

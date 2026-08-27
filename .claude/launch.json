@@ -1,11 +1,1 @@
-{
-  "version": "0.0.1",
-  "configurations": [
-    {
-      "name": "umar-crm-fastapi",
-      "runtimeExecutable": ".venv\\Scripts\\python.exe",
-      "runtimeArgs": ["app.py"],
-      "port": 3000
-    }
-  ]
-}
+{"version":"0.0.1","configurations":[{"name":"umar-erp","runtimeExecutable":".venv/Scripts/python.exe","runtimeArgs":["-m","uvicorn","app:app","--host","127.0.0.1","--port","8000","--reload"],"port":8000}]}
