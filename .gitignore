@@ -20,3 +20,4 @@ public/branding/
 
 # ===== Variabel rahasia =====
 .env
+migrations/__pycache__/

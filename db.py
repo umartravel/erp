@@ -57,7 +57,17 @@ def executemany(sql, seq_of_params):
 
 
 # ---------------------------------------------------------------------------
-# Inisialisasi skema, data dummy, dan migrasi kolom
+# SKEMA + ALTER: snapshot yang di-baseline oleh migrations/001_baseline.py.
+#
+# ! JANGAN modifikasi list ini untuk perubahan skema baru !
+# Tambah tabel/kolom baru dilakukan lewat migration file baru:
+#   1. Tulis migrations/00N_nama.py dengan fungsi up(conn)
+#   2. Runner otomatis apply saat init_db() next boot
+#   3. Cek status via `python migrate.py status`
+#
+# List di bawah dipertahankan sebagai referensi historis baseline (dipakai
+# 001_baseline.py untuk fresh DB) -- production DB yang existing sudah punya
+# semua tabel/kolom ini, jadi baseline hanya recorded, no side effect.
 # ---------------------------------------------------------------------------
 SCHEMA = [
     # Tabel Pengguna (Role: admin, sales, finance, ops)
@@ -756,17 +766,7 @@ ALTER_QUERIES = [
 
 
 def init_db():
-    with _lock:
-        for stmt in SCHEMA:
-            _conn.execute(stmt)
-        _conn.commit()
-        for q in ALTER_QUERIES:
-            try:
-                _conn.execute(q)
-                _conn.commit()
-            except sqlite3.OperationalError:
-                pass  # kolom sudah ada
-
+    _migrate()
     _seed_users()
     _seed_packages()
     _seed_inventory()
@@ -777,6 +777,92 @@ def init_db():
     _backfill_procurement_status()
     _backfill_asset_codes()
     print("Berhasil terhubung ke SQLite database Umar CRM.")
+
+
+# ---------------------------------------------------------------------------
+# Migration runner (Alembic-lite)
+# ---------------------------------------------------------------------------
+# Migrations disimpan di folder `migrations/` sebagai file bernomor urut:
+#   001_baseline.py, 002_add_xxx.py, 003_...py, dst.
+# Setiap file expose function `up(conn: sqlite3.Connection) -> None`.
+# Tabel `schema_migrations` mencatat file mana yang sudah applied.
+# Untuk DB existing (production), 001_baseline idempoten -> hanya recorded.
+# Untuk skema baru: buat file 00N_nama.py + tulis SQL di up(). Jangan modifikasi
+# migration lama -- runner hanya mengeksekusi migration yang belum tercatat.
+# ---------------------------------------------------------------------------
+def _migrate():
+    import hashlib
+    import importlib.util
+    import pathlib
+    import re
+
+    with _lock:
+        _conn.execute(
+            "CREATE TABLE IF NOT EXISTS schema_migrations ("
+            "  version TEXT PRIMARY KEY,"
+            "  applied_at DATETIME DEFAULT CURRENT_TIMESTAMP,"
+            "  checksum TEXT"
+            ")"
+        )
+        _conn.commit()
+        applied = {r["version"] for r in query_all("SELECT version FROM schema_migrations")}
+
+    mig_dir = pathlib.Path(__file__).parent / "migrations"
+    if not mig_dir.exists():
+        return
+
+    pending = []
+    for path in sorted(mig_dir.glob("[0-9][0-9][0-9]_*.py")):
+        version = path.stem  # e.g. "001_baseline"
+        if version in applied:
+            continue
+        pending.append((version, path))
+
+    if not pending:
+        return
+
+    for version, path in pending:
+        checksum = hashlib.sha1(path.read_bytes()).hexdigest()
+        module_name = f"migrations.{version}"
+        # Nama file bisa punya digit di depan -- Python module dari path aman via spec_from_file_location.
+        spec = importlib.util.spec_from_file_location(module_name, path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        if not hasattr(mod, "up"):
+            raise RuntimeError(f"Migration {version} tidak punya fungsi up()")
+        print(f"[migrate] applying {version}...")
+        with _lock:
+            mod.up(_conn)
+            _conn.execute(
+                "INSERT INTO schema_migrations (version, checksum) VALUES (?, ?)",
+                (version, checksum),
+            )
+            _conn.commit()
+        print(f"[migrate] applied {version}")
+
+
+def migrations_status():
+    """Return (applied_list, pending_list). Dipakai CLI + test."""
+    import pathlib
+
+    with _lock:
+        _conn.execute(
+            "CREATE TABLE IF NOT EXISTS schema_migrations ("
+            "  version TEXT PRIMARY KEY,"
+            "  applied_at DATETIME DEFAULT CURRENT_TIMESTAMP,"
+            "  checksum TEXT"
+            ")"
+        )
+        _conn.commit()
+    applied_rows = query_all("SELECT version, applied_at FROM schema_migrations ORDER BY version")
+    applied_set = {r["version"] for r in applied_rows}
+    mig_dir = pathlib.Path(__file__).parent / "migrations"
+    pending = []
+    if mig_dir.exists():
+        for path in sorted(mig_dir.glob("[0-9][0-9][0-9]_*.py")):
+            if path.stem not in applied_set:
+                pending.append(path.stem)
+    return applied_rows, pending
 
 
 def _seed_checklist_templates():
