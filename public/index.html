@@ -941,7 +941,7 @@
                     <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
                         <div class="px-4 py-3 border-b bg-amber-50/50 flex items-center justify-between">
                             <h3 class="font-semibold text-amber-800 flex items-center gap-2"><i data-lucide="hand-coins" class="w-4 h-4"></i>Piutang Jamaah (Top 10)</h3>
-                            <button onclick="showPage('finance')" class="text-[10px] text-amber-700 hover:text-amber-900 font-medium">Lihat semua →</button>
+                            <button onclick="showPage('aged-receivable')" class="text-[10px] text-amber-700 hover:text-amber-900 font-medium">Lihat semua →</button>
                         </div>
                         <div id="fh-piutang-list" class="divide-y max-h-96 overflow-y-auto custom-scrollbar"></div>
                     </div>
@@ -992,6 +992,55 @@
                 </div>
             </div>
 
+            <!-- PAGE: AGED RECEIVABLE (F-D) - Detail piutang jamaah by aging bucket -->
+            <div id="page-aged-receivable" class="page-content hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div class="bg-white rounded-xl shadow-sm border p-4 lg:col-span-1">
+                        <div class="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Total Piutang</div>
+                        <div id="ar-total" class="text-2xl font-bold text-amber-700">Rp 0</div>
+                        <div class="text-[10px] text-gray-400 mt-1"><span id="ar-count">0</span> jamaah aktif belum lunas</div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border p-4 lg:col-span-2">
+                        <div class="text-[10px] uppercase tracking-wider text-gray-500 mb-2">Distribusi Aging</div>
+                        <div class="h-32 relative"><canvas id="ar-chart"></canvas></div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+                    <div class="px-4 py-3 border-b bg-amber-50/50 flex items-center justify-between gap-3 flex-wrap">
+                        <h3 class="font-semibold text-amber-800 flex items-center gap-2"><i data-lucide="hand-coins" class="w-4 h-4"></i>Detail Piutang Jamaah</h3>
+                        <div class="flex items-center gap-2">
+                            <input type="search" id="ar-filter" placeholder="Cari nama/paket/sales..." class="text-xs border rounded-lg px-2 py-1.5 w-56">
+                            <select id="ar-bucket-filter" class="text-xs border rounded-lg px-2 py-1.5">
+                                <option value="">Semua bucket</option>
+                                <option value="0-7 hari">0-7 hari</option>
+                                <option value="8-30 hari">8-30 hari</option>
+                                <option value="31-60 hari">31-60 hari</option>
+                                <option value="60+ hari">60+ hari</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="overflow-auto">
+                        <table class="w-full text-xs">
+                            <thead class="text-[10px] uppercase bg-gray-50 text-gray-500">
+                                <tr>
+                                    <th class="px-3 py-2 text-left">Jamaah</th>
+                                    <th class="px-3 py-2 text-left">Paket</th>
+                                    <th class="px-3 py-2 text-left">Sales</th>
+                                    <th class="px-3 py-2 text-right">Total</th>
+                                    <th class="px-3 py-2 text-right">Terbayar</th>
+                                    <th class="px-3 py-2 text-right">Sisa</th>
+                                    <th class="px-3 py-2 text-center">Age</th>
+                                    <th class="px-3 py-2 text-center">Depart</th>
+                                    <th class="px-3 py-2 text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ar-tbody" class="divide-y"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <!-- PAGE: HOME MANAGEMENT (M-A) — executive landing -->
             <div id="page-mgmt-home" class="page-content hidden space-y-6">
                 <div id="mh-attention" class="hidden bg-gradient-to-br from-purple-50 to-amber-50 border-l-4 border-purple-500 rounded-xl shadow-sm p-5">
@@ -1002,6 +1051,20 @@
                             </div>
                             <div id="mh-attention-list" class="flex flex-wrap gap-2"></div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- COMPANY TARGET PROGRESS + EXPORT PDF -->
+                <div class="bg-white rounded-xl shadow-sm border p-3 flex items-center justify-between gap-3 flex-wrap">
+                    <div class="min-w-0">
+                        <div class="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Target Company Bulan Ini</div>
+                        <div id="mh-kpi-target" class="text-xs text-gray-700">-</div>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <input type="month" id="mh-report-month" class="border rounded-lg px-2 py-1.5 text-xs">
+                        <a id="mh-report-btn" href="#" onclick="mhDownloadPdf();return false;" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1">
+                            <i data-lucide="download" class="w-3 h-3"></i> PDF Laporan
+                        </a>
                     </div>
                 </div>
 
@@ -1403,6 +1466,34 @@
                                 </tr>
                             </thead>
                             <tbody id="table-sales-targets" class="divide-y"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Target Company Bulanan (admin & management) -->
+                <div id="section-company-targets" class="bg-white rounded-xl shadow-sm border p-6 mt-6 hidden">
+                    <div class="flex flex-wrap items-center justify-between gap-3 border-b pb-4 mb-4">
+                        <h3 class="font-semibold text-gray-800 flex items-center gap-2"><i data-lucide="crown" class="w-5 h-5" style="color:#B8860B;"></i>Target Company Bulanan</h3>
+                        <div class="flex items-center gap-2">
+                            <input type="month" id="ct-month" class="border rounded-lg px-2 py-1.5 text-sm">
+                            <input type="text" id="ct-revenue" placeholder="Target Revenue (Rp)" class="border rounded-lg px-2 py-1.5 text-sm w-40">
+                            <input type="number" id="ct-closing" placeholder="Target Closing" class="border rounded-lg px-2 py-1.5 text-sm w-32">
+                            <button onclick="saveCompanyTarget()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold">Simpan</button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 mb-3">Target agregat company (revenue Rp + closing jamaah) per bulan. Progress muncul di Home Management sebagai <b>% target</b>.</p>
+                    <div class="overflow-auto rounded-lg border">
+                        <table class="w-full text-sm">
+                            <thead class="text-xs uppercase bg-gray-50 text-gray-500">
+                                <tr>
+                                    <th class="px-3 py-2 text-left">Bulan</th>
+                                    <th class="px-3 py-2 text-right">Target Revenue</th>
+                                    <th class="px-3 py-2 text-right">Target Closing</th>
+                                    <th class="px-3 py-2 text-left">Diset oleh</th>
+                                    <th class="px-3 py-2 text-left">Diperbarui</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-company-targets" class="divide-y"></tbody>
                         </table>
                     </div>
                 </div>
@@ -2877,13 +2968,53 @@
                 document.getElementById('set-logo-preview').src = publicAsset(s.logo_url || 'umar-Logo.png');
                 if (typeof lucide !== 'undefined') lucide.createIcons();
             } catch (e) { showToast('Gagal memuat pengaturan', 'error'); }
-            // Target Sales section: hanya admin/management yg lihat, auto-load bulan berjalan
+            // Target Sales + Company section: hanya admin/management
             if (currentUser && ['admin', 'management'].includes(currentUser.role)) {
                 document.getElementById('section-sales-targets').classList.remove('hidden');
                 const picker = document.getElementById('target-month-picker');
                 if (!picker.value) picker.value = new Date().toISOString().slice(0, 7);
                 loadSalesTargets();
+                document.getElementById('section-company-targets').classList.remove('hidden');
+                const ctMonth = document.getElementById('ct-month');
+                if (!ctMonth.value) ctMonth.value = new Date().toISOString().slice(0, 7);
+                loadCompanyTargets();
             }
+        }
+
+        async function loadCompanyTargets() {
+            try {
+                const res = await authFetch('/mgmt/company-targets');
+                if (!res.ok) return;
+                const d = await res.json();
+                const rpFmt = n => 'Rp ' + (n | 0).toLocaleString('id-ID');
+                const tbody = document.getElementById('table-company-targets');
+                tbody.innerHTML = (d.targets || []).map(t => `<tr>
+                    <td class="px-3 py-2 font-medium text-gray-800">${t.month}</td>
+                    <td class="px-3 py-2 text-right">${rpFmt(t.revenue_target)}</td>
+                    <td class="px-3 py-2 text-right">${(t.closing_target || 0).toLocaleString('id-ID')}</td>
+                    <td class="px-3 py-2 text-xs text-gray-500">${t.set_by || '-'}</td>
+                    <td class="px-3 py-2 text-xs text-gray-400">${t.updated_at || ''}</td>
+                </tr>`).join('') || '<tr><td colspan="5" class="text-center py-6 text-gray-400 text-xs">Belum ada target company. Isi field di atas untuk set bulan pertama.</td></tr>';
+            } catch(e) { showToast('Gagal muat target company: ' + e.message, 'error'); }
+        }
+
+        async function saveCompanyTarget() {
+            const month = document.getElementById('ct-month').value;
+            const rev = parseInt(String(document.getElementById('ct-revenue').value || '').replace(/[^0-9]/g, ''), 10) || 0;
+            const cls = parseInt(document.getElementById('ct-closing').value || '0', 10) || 0;
+            if (!month) { showToast('Pilih bulan dulu.', 'error'); return; }
+            try {
+                const res = await authFetch('/mgmt/company-targets', {
+                    method: 'POST',
+                    body: JSON.stringify({month, revenue_target: rev, closing_target: cls}),
+                });
+                const p = await res.json();
+                if (!res.ok) throw new Error(p.detail || 'Gagal simpan');
+                showToast(p.message || 'Target company tersimpan.');
+                document.getElementById('ct-revenue').value = '';
+                document.getElementById('ct-closing').value = '';
+                loadCompanyTargets();
+            } catch (e) { showToast(e.message, 'error'); }
         }
 
         async function loadSalesTargets() {
@@ -3423,7 +3554,7 @@
             return false;
         }
 
-        const pageTitles = { 'dashboard': 'Dashboard', 'pendaftaran': 'Pendaftaran Baru', 'jamaah': 'Master Data Jamaah', 'finance': 'Keuangan & P&L', 'operasional': 'Operasional & Logistik', 'whatsapp': 'Manajemen WA', 'users': 'Master Data Karyawan', 'packages': 'Master Paket Umroh', 'agents': 'Manajemen Keagenan', 'tactical': 'Kesiapan Operasional & Audit', 'procurement': 'Manajemen Vendor / Procurement', 'settings': 'Pengaturan Aplikasi', 'followup': 'Follow-up Lead (CRM Sales)', 'expense': 'Expense Report', 'inbox': 'Kotak Masuk Pendaftaran Publik', 'leave': 'Ajukan Izin', 'marketing': 'Marketing Analytics', 'sales-home': 'Home Sales', 'ops-home': 'Home Ops', 'incidents': 'Insiden Lapangan', 'finance-home': 'Home Finance', 'mgmt-home': 'Home Management' };
+        const pageTitles = { 'dashboard': 'Dashboard', 'pendaftaran': 'Pendaftaran Baru', 'jamaah': 'Master Data Jamaah', 'finance': 'Keuangan & P&L', 'operasional': 'Operasional & Logistik', 'whatsapp': 'Manajemen WA', 'users': 'Master Data Karyawan', 'packages': 'Master Paket Umroh', 'agents': 'Manajemen Keagenan', 'tactical': 'Kesiapan Operasional & Audit', 'procurement': 'Manajemen Vendor / Procurement', 'settings': 'Pengaturan Aplikasi', 'followup': 'Follow-up Lead (CRM Sales)', 'expense': 'Expense Report', 'inbox': 'Kotak Masuk Pendaftaran Publik', 'leave': 'Ajukan Izin', 'marketing': 'Marketing Analytics', 'sales-home': 'Home Sales', 'ops-home': 'Home Ops', 'incidents': 'Insiden Lapangan', 'finance-home': 'Home Finance', 'mgmt-home': 'Home Management', 'aged-receivable': 'Aged Receivable' };
 
         // --- SIDEBAR: kategori yang bisa dilipat (accordion), status tersimpan per browser ---
         const NAV_GROUPS = ['crm', 'finance', 'ops', 'tools'];
@@ -3520,6 +3651,7 @@
             if(id === 'sales-home' && typeof initSalesHome === 'function') initSalesHome();
             if(id === 'finance-home' && typeof initFinanceHome === 'function') initFinanceHome();
             if(id === 'mgmt-home' && typeof initMgmtHome === 'function') initMgmtHome();
+            if(id === 'aged-receivable' && typeof initAgedReceivable === 'function') initAgedReceivable();
 
             clearInterval(waPollInterval);
             if(id === 'whatsapp') { checkWaStatus(); waPollInterval = setInterval(checkWaStatus, 3000); } 
@@ -7187,7 +7319,7 @@
     <script src="js/marketing.js?v=20260817d"></script>
     <script src="js/sales-home.js?v=20260819a"></script>
     <script src="js/ops-home.js?v=20260820g"></script>
-    <script src="js/finance-home.js?v=20260827c"></script>
-    <script src="js/mgmt-home.js?v=20260827b"></script>
+    <script src="js/finance-home.js?v=20260827d"></script>
+    <script src="js/mgmt-home.js?v=20260827d"></script>
 </body>
 </html>

@@ -438,6 +438,17 @@ SCHEMA = [
         set_by TEXT,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )""",
+    # Target company-wide (revenue + closing) per bulan. Beda dari sales_targets
+    # yang per-sales; ini agregasi target seluruh perusahaan supaya Home
+    # Management bisa tampilkan progress vs target bulanan.
+    """CREATE TABLE IF NOT EXISTS company_targets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        month TEXT NOT NULL UNIQUE,
+        revenue_target INTEGER DEFAULT 0,
+        closing_target INTEGER DEFAULT 0,
+        set_by TEXT,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )""",
     # Template checklist pra-keberangkatan (master item ops standar) -- 1 baris per
     # item universal. Progress tersimpan terpisah per paket di package_checklist_progress.
     """CREATE TABLE IF NOT EXISTS checklist_templates (

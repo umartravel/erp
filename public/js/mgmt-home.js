@@ -61,6 +61,19 @@
             const up = mom >= 0;
             momEl.innerHTML = `<span class="${up ? 'text-emerald-600' : 'text-red-600'} font-semibold">${up ? 'naik' : 'turun'} ${Math.abs(mom)}%</span> vs bulan lalu`;
         }
+        // Company target progress
+        const trg = document.getElementById('mh-kpi-target');
+        if (trg) {
+            const rev = kpi.revenue_pct;
+            const cls = kpi.closing_pct;
+            if (rev === null && cls === null) {
+                trg.innerHTML = `<span class="italic">Target belum ditetapkan (Admin/Mgmt → Settings)</span>`;
+            } else {
+                const revLabel = rev !== null ? `<span class="${rev >= 100 ? 'text-emerald-700' : rev >= 50 ? 'text-amber-700' : 'text-red-700'} font-semibold">${rev}%</span> revenue (${mhFmtShort(kpi.revenue_target)})` : '';
+                const clsLabel = cls !== null ? `<span class="${cls >= 100 ? 'text-emerald-700' : cls >= 50 ? 'text-amber-700' : 'text-red-700'} font-semibold">${cls}%</span> closing (${kpi.closing_target} tgt)` : '';
+                trg.innerHTML = [revLabel, clsLabel].filter(Boolean).join(' · ');
+            }
+        }
     }
 
     function renderSalesPerf(list) {
@@ -197,6 +210,28 @@
         } catch (err) { alert('Error: ' + err.message); }
     };
 
+    window.mhDownloadPdf = async function() {
+        const mEl = document.getElementById('mh-report-month');
+        const month = mEl?.value || new Date().toISOString().slice(0, 7);
+        try {
+            const res = await mhFetch(`/mgmt/monthly-pdf?month=${month}`);
+            if (!res.ok) {
+                let m = 'Gagal generate PDF';
+                try { m = (await res.json()).detail || m; } catch(e){}
+                throw new Error(m);
+            }
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Laporan-Eksekutif-${month}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+        } catch (err) { alert('Error: ' + err.message); }
+    };
+
     window.mhRejectItem = async function(kind, id) {
         const note = prompt(`Tolak ${kind} #${id}. Alasan penolakan (wajib):`);
         if (!note || !note.trim()) return;
@@ -207,9 +242,15 @@
         } catch (err) { alert('Error: ' + err.message); }
     };
 
+    function ensureMonthPicker() {
+        const p = document.getElementById('mh-report-month');
+        if (p && !p.value) p.value = new Date().toISOString().slice(0, 7);
+    }
+
     window.initMgmtHome = async function() {
         if (mhLoading) return;
         mhLoading = true;
+        ensureMonthPicker();
         try {
             const res = await mhFetch('/mgmt/home');
             if (!res.ok) throw new Error('Gagal memuat Home Management');

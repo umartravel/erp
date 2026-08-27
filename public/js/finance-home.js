@@ -331,6 +331,108 @@
         }
     }
 
+    let agedChart = null;
+    let agedAllRows = [];
+
+    function agedRender(rows) {
+        const tbody = document.getElementById('ar-tbody');
+        if (!tbody) return;
+        if (!rows.length) {
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-8 text-gray-400 text-xs">Tidak ada piutang cocok filter.</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = rows.map(j => {
+            const depCls = j.days_to_depart !== null && j.days_to_depart <= 30 ? 'text-red-700 font-bold' : 'text-gray-600';
+            const ageCls = j.age_days > 60 ? 'text-red-700' : j.age_days > 30 ? 'text-orange-600' : j.age_days > 7 ? 'text-amber-600' : 'text-emerald-700';
+            return `<tr class="hover:bg-amber-50">
+                <td class="px-3 py-2">
+                    <div class="font-medium text-gray-800">${fhEscape(j.name)}</div>
+                    <div class="text-[10px] text-gray-400">${fhEscape(j.phone || '')}</div>
+                </td>
+                <td class="px-3 py-2 text-gray-600 truncate max-w-[180px]">${fhEscape(j.package_type)}</td>
+                <td class="px-3 py-2 text-gray-600">${fhEscape(j.sales_name)}</td>
+                <td class="px-3 py-2 text-right">${fhFmtShort(j.total_price)}</td>
+                <td class="px-3 py-2 text-right text-emerald-700">${fhFmtShort(j.paid_amount)}</td>
+                <td class="px-3 py-2 text-right font-bold text-amber-700">${fhFmtShort(j.sisa)}</td>
+                <td class="px-3 py-2 text-center ${ageCls} font-semibold">${j.age_days}h</td>
+                <td class="px-3 py-2 text-center ${depCls}">${j.days_to_depart !== null ? 'H-' + j.days_to_depart : '-'}</td>
+                <td class="px-3 py-2 text-center"><span class="text-[10px] px-1.5 py-0.5 rounded ${j.payment_status === 'DP' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'}">${j.payment_status}</span></td>
+            </tr>`;
+        }).join('');
+    }
+
+    function agedFilterAndRender() {
+        const q = (document.getElementById('ar-filter')?.value || '').toLowerCase();
+        const bucket = document.getElementById('ar-bucket-filter')?.value || '';
+        const filtered = agedAllRows.filter(j => {
+            if (bucket) {
+                const age = j.age_days;
+                const jBucket = age <= 7 ? '0-7 hari' : age <= 30 ? '8-30 hari' : age <= 60 ? '31-60 hari' : '60+ hari';
+                if (jBucket !== bucket) return false;
+            }
+            if (q) {
+                const hay = `${j.name} ${j.package_type} ${j.sales_name}`.toLowerCase();
+                if (!hay.includes(q)) return false;
+            }
+            return true;
+        });
+        agedRender(filtered);
+    }
+
+    function agedChartRender(buckets) {
+        const canvas = document.getElementById('ar-chart');
+        if (!canvas || typeof Chart === 'undefined') return;
+        if (agedChart) agedChart.destroy();
+        const colorMap = {'0-7 hari': '#10b981', '8-30 hari': '#f59e0b', '31-60 hari': '#f97316', '60+ hari': '#ef4444'};
+        agedChart = new Chart(canvas, {
+            type: 'bar',
+            data: {
+                labels: buckets.map(b => b.bucket),
+                datasets: [{
+                    label: 'Piutang',
+                    data: buckets.map(b => b.sisa),
+                    backgroundColor: buckets.map(b => colorMap[b.bucket] || '#6b7280'),
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: {
+                    legend: {display: false},
+                    tooltip: {callbacks: {
+                        label: (ctx) => {
+                            const b = buckets[ctx.dataIndex];
+                            return `${b.n} jamaah · ${fhFmtShort(b.sisa)}`;
+                        },
+                    }},
+                },
+                scales: {
+                    x: {ticks: {font: {size: 9}, callback: v => fhFmtShort(v)}},
+                    y: {ticks: {font: {size: 10}}},
+                },
+            },
+        });
+    }
+
+    window.initAgedReceivable = async function() {
+        try {
+            const res = await fhFetch('/finance/aged-receivable');
+            if (!res.ok) throw new Error('Gagal muat data');
+            const d = await res.json();
+            document.getElementById('ar-total').textContent = fhFmtShort(d.total);
+            document.getElementById('ar-count').textContent = d.count;
+            agedChartRender(d.buckets || []);
+            agedAllRows = d.rows || [];
+            agedRender(agedAllRows);
+            document.getElementById('ar-filter').oninput = agedFilterAndRender;
+            document.getElementById('ar-bucket-filter').onchange = agedFilterAndRender;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        } catch (err) {
+            document.getElementById('ar-tbody').innerHTML = `<tr><td colspan="9" class="text-center py-8 text-red-600 text-xs">Error: ${fhEscape(err.message)}</td></tr>`;
+        }
+    };
+
     window.initFinanceHome = async function() {
         if (fhLoading) return;
         fhLoading = true;
