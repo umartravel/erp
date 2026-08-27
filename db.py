@@ -502,6 +502,28 @@ SCHEMA = [
         created_by TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )""",
+    # Mutasi bank hasil import CSV (BCA/Mandiri/BRI/BNI/generic) untuk rekonsiliasi
+    # dengan tabel transactions internal. Alur: upload CSV -> parse -> insert Unmatched ->
+    # user pilih transaksi cocok (auto-suggest amount + date +-3 hari) -> Matched.
+    # row_hash cegah baris CSV yang sama di-import dua kali (idempoten cross-batch).
+    """CREATE TABLE IF NOT EXISTS bank_mutations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        import_batch TEXT NOT NULL,
+        bank_name TEXT,
+        mutation_date TEXT NOT NULL,
+        description TEXT,
+        amount INTEGER NOT NULL,
+        direction TEXT NOT NULL,
+        reference TEXT,
+        balance INTEGER,
+        match_status TEXT DEFAULT 'Unmatched',
+        transaction_id INTEGER,
+        matched_by TEXT,
+        matched_at DATETIME,
+        row_hash TEXT UNIQUE,
+        imported_by TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )""",
     # Debrief internal post-trip per paket per kategori (hotel_mekkah/hotel_madinah/
     # airline/bus/muthawif/overall). Rating 1-5 + notes. Untuk continuous improvement.
     """CREATE TABLE IF NOT EXISTS package_debriefs (
@@ -713,6 +735,10 @@ ALTER_QUERIES = [
     "ALTER TABLE incidents ADD COLUMN jamaah_id INTEGER",
     "CREATE INDEX IF NOT EXISTS idx_incidents_status ON incidents(status)",
     "CREATE INDEX IF NOT EXISTS idx_incidents_package ON incidents(package_name)",
+    # Index untuk halaman Rekonsiliasi Bank -- filter batch + match_status paling sering.
+    "CREATE INDEX IF NOT EXISTS idx_bank_mutations_batch ON bank_mutations(import_batch)",
+    "CREATE INDEX IF NOT EXISTS idx_bank_mutations_status ON bank_mutations(match_status)",
+    "CREATE INDEX IF NOT EXISTS idx_bank_mutations_date_amount ON bank_mutations(mutation_date, amount)",
     # Timestamp last edit -- diisi trigger AFTER UPDATE. Dipakai audit trail ringan
     # (siapa/kapan terakhir menyentuh row), tanpa perlu mengubah setiap endpoint.
     "ALTER TABLE jamaah ADD COLUMN updated_at DATETIME",

@@ -161,6 +161,9 @@
                 <a href="#" id="nav-expense" onclick="showPage('expense')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150">
                     <i data-lucide="receipt" class="w-4 h-4"></i> Expense Report
                 </a>
+                <a href="#" id="nav-reconcile" onclick="showPage('reconcile')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
+                    <i data-lucide="git-merge" class="w-4 h-4"></i> Rekonsiliasi Bank
+                </a>
             </div>
 
             <button type="button" id="navgrouphdr-ops" onclick="toggleNavGroup('ops')" class="w-full flex items-center gap-1.5 px-2 mt-6 mb-2 text-xs font-bold text-emerald-400 uppercase tracking-widest hover:text-emerald-200 transition-colors">
@@ -1056,6 +1059,88 @@
                             <tbody id="ar-tbody" class="divide-y"></tbody>
                         </table>
                     </div>
+                </div>
+            </div>
+
+            <!-- PAGE: REKONSILIASI BANK (F-E) — match CSV mutasi bank ke transactions -->
+            <div id="page-reconcile" class="page-content hidden space-y-6">
+                <div class="bg-white rounded-xl shadow-sm p-5">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background:#F4F1EA;">
+                            <i data-lucide="git-merge" class="w-5 h-5" style="color:#B8860B;"></i>
+                        </div>
+                        <div>
+                            <h2 class="font-bold text-lg" style="color:#1D1D1B;">Rekonsiliasi Bank</h2>
+                            <p class="text-xs text-gray-500">Upload mutasi rekening & cocokkan ke transaksi internal.</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        <div class="lg:col-span-2 border-2 border-dashed border-gray-200 rounded-lg p-6 text-center">
+                            <input type="file" id="rec-file" accept=".csv,text/csv" class="hidden">
+                            <div id="rec-drop-zone" class="cursor-pointer" onclick="document.getElementById('rec-file').click()">
+                                <i data-lucide="upload-cloud" class="w-10 h-10 mx-auto text-gray-400 mb-2"></i>
+                                <p class="font-semibold text-sm text-gray-700 mb-1">Klik untuk pilih file CSV</p>
+                                <p class="text-xs text-gray-500">Support BCA, Mandiri, BRI, BNI, atau format generic (auto-detect kolom)</p>
+                                <p id="rec-file-name" class="text-xs font-medium text-emerald-700 mt-2"></p>
+                            </div>
+                            <div id="rec-upload-actions" class="hidden mt-4 flex justify-center gap-2">
+                                <button onclick="recCancel()" class="px-4 py-2 border rounded-lg text-sm font-medium">Batal</button>
+                                <button onclick="recDoImport()" id="rec-import-btn" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold flex items-center gap-1"><i data-lucide="upload" class="w-4 h-4"></i>Import</button>
+                            </div>
+                        </div>
+                        <div class="border rounded-lg p-4 space-y-2">
+                            <div class="text-xs font-bold text-gray-500 uppercase tracking-wide">Batch Import Terakhir</div>
+                            <div id="rec-batch-list" class="space-y-1.5 text-xs max-h-56 overflow-auto">
+                                <p class="text-gray-400 italic py-2 text-center">Memuat...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm p-5">
+                    <div class="flex flex-wrap items-center gap-3 mb-4">
+                        <h3 class="font-bold text-base" style="color:#1D1D1B;">Mutasi Bank</h3>
+                        <div class="flex gap-2 ml-auto text-xs">
+                            <select id="rec-batch-filter" onchange="recRenderMutations()" class="border rounded-lg px-2 py-1.5">
+                                <option value="">Semua Batch</option>
+                            </select>
+                            <select id="rec-status-filter" onchange="recRenderMutations()" class="border rounded-lg px-2 py-1.5">
+                                <option value="Unmatched">Unmatched</option>
+                                <option value="Matched">Matched</option>
+                                <option value="Ignored">Ignored</option>
+                                <option value="">Semua</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
+                                <tr>
+                                    <th class="px-4 py-2 text-left">Tanggal</th>
+                                    <th class="px-4 py-2 text-left">Keterangan</th>
+                                    <th class="px-4 py-2 text-right">Nominal</th>
+                                    <th class="px-4 py-2 text-center">Arah</th>
+                                    <th class="px-4 py-2 text-center">Status</th>
+                                    <th class="px-4 py-2 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-rec-mutations"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MODAL: Match Kandidat -->
+            <div id="modal-rec-match" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center p-4">
+                <div class="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[85vh] overflow-y-auto">
+                    <div class="flex justify-between items-start mb-3 border-b pb-3">
+                        <div>
+                            <h3 class="font-bold text-lg flex items-center gap-2"><i data-lucide="link" class="w-5 h-5 text-emerald-600"></i>Cocokkan ke Transaksi</h3>
+                            <p id="rec-match-subtitle" class="text-xs text-gray-500 mt-1"></p>
+                        </div>
+                        <button onclick="closeModal('modal-rec-match')" class="text-gray-400 hover:text-gray-700"><i data-lucide="x" class="w-5 h-5"></i></button>
+                    </div>
+                    <div id="rec-match-candidates" class="space-y-2"></div>
                 </div>
             </div>
 
@@ -3266,6 +3351,200 @@
             if (link) toggleMobileSidebar(false);
         });
 
+        // ========== F-E: REKONSILIASI BANK ==========
+        let recPendingFile = null;
+        let recMutationsCache = [];
+        let recCurrentMid = null;
+
+        async function recFetch(url, opts={}) {
+            const t = localStorage.getItem('token');
+            const headers = Object.assign({'Content-Type':'application/json', Authorization:'Bearer '+t}, opts.headers||{});
+            const r = await fetch(url, Object.assign({}, opts, {headers}));
+            if(!r.ok) throw new Error((await r.json().catch(()=>({detail:r.statusText}))).detail || r.statusText);
+            return r.json();
+        }
+
+        window.initReconcile = async function() {
+            document.getElementById('rec-file').addEventListener('change', recOnFilePick);
+            await recRefreshBatches();
+            await recRenderMutations();
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        };
+
+        function recOnFilePick(e) {
+            const f = e.target.files[0];
+            recPendingFile = f || null;
+            document.getElementById('rec-file-name').innerText = f ? `${f.name} (${Math.round(f.size/1024)} KB)` : '';
+            document.getElementById('rec-upload-actions').classList.toggle('hidden', !f);
+        }
+
+        function recCancel() {
+            recPendingFile = null;
+            document.getElementById('rec-file').value = '';
+            document.getElementById('rec-file-name').innerText = '';
+            document.getElementById('rec-upload-actions').classList.add('hidden');
+        }
+
+        async function recDoImport() {
+            if (!recPendingFile) return;
+            const btn = document.getElementById('rec-import-btn');
+            btn.disabled = true;
+            btn.innerText = 'Uploading...';
+            try {
+                const text = await recPendingFile.text();
+                const r = await recFetch('/api/finance/reconcile/import', {
+                    method: 'POST',
+                    body: JSON.stringify({csv_text: text})
+                });
+                showToast(`Import ${r.bank}: ${r.inserted} baru, ${r.duplicates} duplikat.`);
+                if (r.warnings && r.warnings.length) {
+                    console.warn('Import warnings:', r.warnings);
+                }
+                recCancel();
+                await recRefreshBatches();
+                if (r.batch) document.getElementById('rec-batch-filter').value = r.batch;
+                await recRenderMutations();
+            } catch (err) {
+                showToast('Import gagal: ' + err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i data-lucide="upload" class="w-4 h-4"></i>Import';
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            }
+        }
+
+        async function recRefreshBatches() {
+            try {
+                const batches = await recFetch('/api/finance/reconcile/batches');
+                const listEl = document.getElementById('rec-batch-list');
+                const filterEl = document.getElementById('rec-batch-filter');
+                const current = filterEl.value;
+                filterEl.innerHTML = '<option value="">Semua Batch</option>' +
+                    batches.map(b => `<option value="${b.batch}">${b.bank} · ${b.imported_at?.slice(0,10)} (${b.total})</option>`).join('');
+                filterEl.value = current;
+                listEl.innerHTML = batches.length ? batches.slice(0, 8).map(b => `
+                    <div class="border rounded-lg p-2 hover:bg-gray-50 cursor-pointer" onclick="document.getElementById('rec-batch-filter').value='${b.batch}'; recRenderMutations();">
+                        <div class="flex justify-between items-start gap-2">
+                            <div class="font-semibold text-gray-800">${b.bank}</div>
+                            <div class="text-[10px] text-gray-400">${(b.imported_at || '').slice(0,16).replace('T',' ')}</div>
+                        </div>
+                        <div class="text-[10px] text-gray-500 mt-1">
+                            <span class="text-emerald-600 font-medium">${b.matched}</span>/${b.total} matched
+                            ${b.ignored ? `· <span class="text-gray-500">${b.ignored} ignored</span>` : ''}
+                            ${b.unmatched ? `· <span class="text-orange-600 font-medium">${b.unmatched} pending</span>` : ''}
+                        </div>
+                    </div>`).join('') : '<p class="text-gray-400 italic py-2 text-center">Belum ada import.</p>';
+            } catch (e) { console.error('rec batches', e); }
+        }
+
+        async function recRenderMutations() {
+            const batch = document.getElementById('rec-batch-filter').value;
+            const status = document.getElementById('rec-status-filter').value;
+            try {
+                const params = new URLSearchParams();
+                if (batch) params.set('batch', batch);
+                if (status) params.set('status', status);
+                const rows = await recFetch('/api/finance/reconcile/mutations?' + params.toString());
+                recMutationsCache = rows;
+                const tb = document.getElementById('table-rec-mutations');
+                tb.innerHTML = rows.map(m => {
+                    const dirBadge = m.direction === 'credit'
+                        ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700">MASUK</span>'
+                        : '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">KELUAR</span>';
+                    const statusBadge = m.match_status === 'Matched'
+                        ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700" title="Ke transaksi #${m.transaction_id}">Matched</span>`
+                        : m.match_status === 'Ignored'
+                        ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-200 text-gray-600">Ignored</span>'
+                        : '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-700">Unmatched</span>';
+                    const actions = m.match_status === 'Unmatched'
+                        ? `<button onclick="recOpenMatch(${m.id})" class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold hover:bg-emerald-200 mr-1"><i data-lucide="link" class="w-3 h-3 inline"></i> Match</button>
+                           <button onclick="recDoIgnore(${m.id})" class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-[10px] font-bold hover:bg-gray-200">Abaikan</button>`
+                        : `<button onclick="recDoUnmatch(${m.id})" class="px-2 py-1 bg-red-50 text-red-600 rounded text-[10px] font-bold hover:bg-red-100">Lepas</button>`;
+                    return `<tr class="hover:bg-gray-50/50">
+                        <td class="px-4 py-2 text-xs">${m.mutation_date}</td>
+                        <td class="px-4 py-2 text-xs max-w-md truncate" title="${m.description || ''}">${m.description || '-'}</td>
+                        <td class="px-4 py-2 text-sm font-bold text-right">${formatRp(m.amount)}</td>
+                        <td class="px-4 py-2 text-center">${dirBadge}</td>
+                        <td class="px-4 py-2 text-center">${statusBadge}</td>
+                        <td class="px-4 py-2 text-center whitespace-nowrap">${actions}</td>
+                    </tr>`;
+                }).join('') || `<tr><td colspan="6" class="p-0">${umarEmptyState({icon: 'git-merge', title: 'Belum ada mutasi', hint: 'Upload CSV mutasi bank dari BCA/Mandiri/BRI/BNI di kotak upload atas. Baris otomatis muncul di sini.'})}</td></tr>`;
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            } catch (e) { console.error('rec mutations', e); }
+        }
+
+        async function recOpenMatch(mid) {
+            recCurrentMid = mid;
+            const m = recMutationsCache.find(x => x.id === mid);
+            document.getElementById('rec-match-subtitle').innerHTML = m
+                ? `<b>${m.mutation_date}</b> · ${formatRp(m.amount)} · ${m.description || '-'}`
+                : '';
+            openModal('modal-rec-match');
+            document.getElementById('rec-match-candidates').innerHTML = '<p class="text-xs text-gray-400 italic text-center py-4">Mencari kandidat...</p>';
+            try {
+                const candidates = await recFetch(`/api/finance/reconcile/mutations/${mid}/candidates`);
+                const container = document.getElementById('rec-match-candidates');
+                if (!candidates.length) {
+                    container.innerHTML = `<div class="text-center py-6">
+                        <i data-lucide="search-x" class="w-8 h-8 text-gray-300 mx-auto mb-2"></i>
+                        <p class="text-sm text-gray-500">Tidak ada transaksi cocok (amount + tanggal ±3 hari).</p>
+                        <p class="text-xs text-gray-400 mt-1">Cek Buku Kas apakah pembayaran ini sudah pernah dicatat sebagai transaksi internal.</p>
+                    </div>`;
+                } else {
+                    container.innerHTML = candidates.map(c => {
+                        const dd = Math.round(c.day_diff);
+                        return `<div class="border rounded-lg p-3 hover:bg-emerald-50 cursor-pointer flex justify-between items-start gap-3" onclick="recDoMatch(${c.id})">
+                            <div class="flex-1 min-w-0">
+                                <div class="text-xs text-gray-500 mb-0.5">#${c.id} · ${c.type} · ${c.category || '-'}</div>
+                                <div class="font-medium text-sm truncate" title="${c.description || ''}">${c.description || '-'}</div>
+                                <div class="text-[10px] text-gray-400 mt-0.5">${(c.created_at || '').slice(0,10)} · selisih ${dd} hari</div>
+                            </div>
+                            <div class="text-right shrink-0">
+                                <div class="font-bold text-sm">${formatRp(c.amount)}</div>
+                                <button class="mt-1 px-2 py-1 bg-emerald-600 text-white rounded text-[10px] font-bold hover:bg-emerald-700">Match</button>
+                            </div>
+                        </div>`;
+                    }).join('');
+                }
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            } catch (e) {
+                document.getElementById('rec-match-candidates').innerHTML = `<p class="text-xs text-red-600">Gagal: ${e.message}</p>`;
+            }
+        }
+
+        async function recDoMatch(tid) {
+            try {
+                await recFetch('/api/finance/reconcile/match', {
+                    method: 'POST',
+                    body: JSON.stringify({mutation_id: recCurrentMid, transaction_id: tid})
+                });
+                showToast('Match tersimpan.');
+                closeModal('modal-rec-match');
+                await recRefreshBatches();
+                await recRenderMutations();
+            } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
+        }
+
+        async function recDoUnmatch(mid) {
+            if (!await showDialog({type:'confirm', title:'Lepas Match?', message:'Mutasi kembali ke Unmatched.', okText:'Lepas'})) return;
+            try {
+                await recFetch('/api/finance/reconcile/unmatch', {method:'POST', body: JSON.stringify({mutation_id: mid})});
+                showToast('Match dilepas.');
+                await recRefreshBatches();
+                await recRenderMutations();
+            } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
+        }
+
+        async function recDoIgnore(mid) {
+            if (!await showDialog({type:'confirm', title:'Abaikan Mutasi?', message:'Cocok untuk biaya admin, bunga, atau baris yang bukan pembayaran jamaah/vendor.', okText:'Ya, Abaikan'})) return;
+            try {
+                await recFetch('/api/finance/reconcile/ignore', {method:'POST', body: JSON.stringify({mutation_id: mid})});
+                showToast('Mutasi ditandai Ignored.');
+                await recRefreshBatches();
+                await recRenderMutations();
+            } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
+        }
+
         // ========== UX-1: CMD+K GLOBAL SEARCH PALETTE ==========
         let paletteResults = [];
         let paletteActiveIdx = 0;
@@ -3645,6 +3924,7 @@
                 document.getElementById('nav-ops-home').classList.remove('hidden');
                 document.getElementById('nav-incidents').classList.remove('hidden');
                 document.getElementById('nav-sales-home').classList.remove('hidden');
+                document.getElementById('nav-reconcile').classList.remove('hidden');
             } else if (currentUser.role === 'sales') {
                 document.getElementById('nav-finance').classList.add('hidden');
                 document.getElementById('nav-operasional').classList.add('hidden');
@@ -3670,6 +3950,7 @@
                 document.getElementById('finance-write-panel').classList.remove('hidden');
                 // Finance landing = Home Finance
                 document.getElementById('nav-finance-home').classList.remove('hidden');
+                document.getElementById('nav-reconcile').classList.remove('hidden');
                 document.getElementById('nav-dashboard').classList.add('hidden');
             } else if (currentUser.role === 'ops') {
                 document.getElementById('nav-pendaftaran').classList.add('hidden');
@@ -3751,14 +4032,14 @@
             return false;
         }
 
-        const pageTitles = { 'dashboard': 'Dashboard', 'pendaftaran': 'Pendaftaran Baru', 'jamaah': 'Master Data Jamaah', 'finance': 'Keuangan & P&L', 'operasional': 'Operasional & Logistik', 'whatsapp': 'Manajemen WA', 'users': 'Master Data Karyawan', 'packages': 'Master Paket Umroh', 'agents': 'Manajemen Keagenan', 'tactical': 'Kesiapan Operasional & Audit', 'procurement': 'Manajemen Vendor / Procurement', 'settings': 'Pengaturan Aplikasi', 'followup': 'Follow-up Lead (CRM Sales)', 'expense': 'Expense Report', 'inbox': 'Kotak Masuk Pendaftaran Publik', 'leave': 'Ajukan Izin', 'marketing': 'Marketing Analytics', 'sales-home': 'Home Sales', 'ops-home': 'Home Ops', 'incidents': 'Insiden Lapangan', 'finance-home': 'Home Finance', 'mgmt-home': 'Home Management', 'aged-receivable': 'Aged Receivable' };
+        const pageTitles = { 'dashboard': 'Dashboard', 'pendaftaran': 'Pendaftaran Baru', 'jamaah': 'Master Data Jamaah', 'finance': 'Keuangan & P&L', 'operasional': 'Operasional & Logistik', 'whatsapp': 'Manajemen WA', 'users': 'Master Data Karyawan', 'packages': 'Master Paket Umroh', 'agents': 'Manajemen Keagenan', 'tactical': 'Kesiapan Operasional & Audit', 'procurement': 'Manajemen Vendor / Procurement', 'settings': 'Pengaturan Aplikasi', 'followup': 'Follow-up Lead (CRM Sales)', 'expense': 'Expense Report', 'inbox': 'Kotak Masuk Pendaftaran Publik', 'leave': 'Ajukan Izin', 'marketing': 'Marketing Analytics', 'sales-home': 'Home Sales', 'ops-home': 'Home Ops', 'incidents': 'Insiden Lapangan', 'finance-home': 'Home Finance', 'mgmt-home': 'Home Management', 'aged-receivable': 'Aged Receivable', 'reconcile': 'Rekonsiliasi Bank' };
 
         // --- SIDEBAR: kategori yang bisa dilipat (accordion), status tersimpan per browser ---
         const NAV_GROUPS = ['crm', 'finance', 'ops', 'tools'];
         const PAGE_TO_NAV_GROUP = {
             pendaftaran: 'crm', inbox: 'crm', jamaah: 'crm', followup: 'crm', agents: 'crm', marketing: 'crm',
             'sales-home': 'crm',
-            'finance-home': 'finance', 'mgmt-home': 'finance', finance: 'finance', expense: 'finance',
+            'finance-home': 'finance', 'mgmt-home': 'finance', finance: 'finance', expense: 'finance', reconcile: 'finance', 'aged-receivable': 'finance',
             operasional: 'ops', procurement: 'ops', 'ops-home': 'ops', incidents: 'ops',
             leave: 'tools', tactical: 'tools', whatsapp: 'tools', packages: 'tools', users: 'tools', settings: 'tools',
         };
@@ -3849,6 +4130,7 @@
             if(id === 'finance-home' && typeof initFinanceHome === 'function') initFinanceHome();
             if(id === 'mgmt-home' && typeof initMgmtHome === 'function') initMgmtHome();
             if(id === 'aged-receivable' && typeof initAgedReceivable === 'function') initAgedReceivable();
+            if(id === 'reconcile' && typeof initReconcile === 'function') initReconcile();
 
             clearInterval(waPollInterval);
             if(id === 'whatsapp') { checkWaStatus(); waPollInterval = setInterval(checkWaStatus, 3000); } 
