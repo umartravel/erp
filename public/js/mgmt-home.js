@@ -152,19 +152,60 @@
         }
         el.innerHTML = list.map(a => {
             const badge = a.kind === 'incident' ? 'bg-red-100 text-red-700' : a.kind === 'refund' ? 'bg-rose-100 text-rose-700' : 'bg-indigo-100 text-indigo-700';
-            const goto = a.kind === 'incident' ? 'incidents' : 'finance';
             const amt = a.amount ? `<span class="text-xs font-bold text-gray-800">${mhFmtShort(a.amount)}</span>` : '';
-            return `<div class="px-3 py-2 hover:bg-purple-50 cursor-pointer" onclick="showPage('${goto}')">
-                <div class="flex justify-between items-start gap-2">
+            const canAct = a.kind === 'refund' || a.kind === 'komisi';
+            const actions = canAct
+                ? `<div class="flex gap-1 mt-1.5">
+                        <button class="text-[10px] font-medium bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-0.5 rounded" onclick="event.stopPropagation();mhApproveItem('${a.kind}',${a.id})">Setujui</button>
+                        <button class="text-[10px] font-medium bg-red-100 hover:bg-red-200 text-red-700 px-2 py-0.5 rounded" onclick="event.stopPropagation();mhRejectItem('${a.kind}',${a.id})">Tolak</button>
+                   </div>`
+                : `<div class="text-[10px] text-gray-400 mt-1">Buka halaman untuk detail</div>`;
+            const goto = a.kind === 'incident' ? 'incidents' : 'finance';
+            return `<div class="px-3 py-2 hover:bg-purple-50">
+                <div class="flex justify-between items-start gap-2 cursor-pointer" onclick="showPage('${goto}')">
                     <div class="min-w-0 flex-1">
                         <div class="text-xs font-medium text-gray-800 truncate">${mhEscape(a.label)}</div>
                         <div class="text-[9px] font-medium px-1 rounded ${badge} inline-block mt-0.5">${a.kind}</div>
                     </div>
                     ${amt}
                 </div>
+                ${actions}
             </div>`;
         }).join('');
     }
+
+    async function mhReview(kind, id, action, note) {
+        const url = kind === 'refund' ? `/refund-requests/${id}/review` : `/commission-claims/${id}/review`;
+        const res = await mhFetch(url, {
+            method: 'PUT',
+            body: JSON.stringify({action, note: note || ''}),
+        });
+        if (!res.ok) {
+            let msg = 'Gagal memproses';
+            try { msg = (await res.json()).detail || msg; } catch(e){}
+            throw new Error(msg);
+        }
+        return res.json();
+    }
+
+    window.mhApproveItem = async function(kind, id) {
+        if (!confirm(`Setujui ${kind} #${id}?`)) return;
+        try {
+            const r = await mhReview(kind, id, 'approve');
+            alert(r.message || 'Berhasil disetujui.');
+            window.initMgmtHome();
+        } catch (err) { alert('Error: ' + err.message); }
+    };
+
+    window.mhRejectItem = async function(kind, id) {
+        const note = prompt(`Tolak ${kind} #${id}. Alasan penolakan (wajib):`);
+        if (!note || !note.trim()) return;
+        try {
+            const r = await mhReview(kind, id, 'reject', note.trim());
+            alert(r.message || 'Berhasil ditolak.');
+            window.initMgmtHome();
+        } catch (err) { alert('Error: ' + err.message); }
+    };
 
     window.initMgmtHome = async function() {
         if (mhLoading) return;

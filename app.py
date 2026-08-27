@@ -893,7 +893,7 @@ async def vendors_create(pid: int, body: dict = Depends(json_body), user=Depends
 
 @app.patch("/api/vendors/{vid}")
 async def vendors_update(vid: int, body: dict = Depends(json_body), user=Depends(authenticate_token)):
-    require_role(user, "admin", "ops", "management")
+    require_role(user, "admin", "ops", "management", "finance")
     row = db.query_one("SELECT * FROM vendor_bookings WHERE id = ?", (vid,))
     if not row:
         raise HTTPException(status_code=404, detail="Vendor booking tidak ditemukan.")
@@ -4328,10 +4328,10 @@ async def finance_home(user=Depends(authenticate_token)):
         "SELECT COUNT(*) c FROM expense_reports WHERE status IN ('Submitted', 'Approved')"
     )["c"]
     refund_pending = db.query_one(
-        "SELECT COUNT(*) c FROM refund_requests WHERE status = 'Approved' AND (disbursed_at IS NULL OR disbursed_at = '')"
+        "SELECT COUNT(*) c FROM refund_requests WHERE status = 'Disetujui'"
     )["c"]
     komisi_pending = db.query_one(
-        "SELECT COUNT(*) c FROM commission_claims WHERE status = 'Approved' AND (disbursed_at IS NULL OR disbursed_at = '')"
+        "SELECT COUNT(*) c FROM commission_claims WHERE status = 'Disetujui'"
     )["c"]
 
     kpi = {
@@ -4446,16 +4446,14 @@ async def finance_home(user=Depends(authenticate_token)):
     refund_pending_list = db.query_all(
         "SELECT r.id, r.amount, r.reason, r.requested_at, j.name AS jamaah_name "
         "FROM refund_requests r LEFT JOIN jamaah j ON r.jamaah_id = j.id "
-        "WHERE r.status = 'Approved' AND (r.disbursed_at IS NULL OR r.disbursed_at = '') "
-        "ORDER BY r.approved_at ASC LIMIT 8"
+        "WHERE r.status = 'Disetujui' ORDER BY r.approved_at ASC LIMIT 8"
     )
     komisi_pending_list = db.query_all(
         "SELECT c.id, c.amount, c.approved_at, a.name AS agent_name, j.name AS jamaah_name "
         "FROM commission_claims c "
         "LEFT JOIN agents a ON c.agent_id = a.id "
         "LEFT JOIN jamaah j ON c.jamaah_id = j.id "
-        "WHERE c.status = 'Approved' AND (c.disbursed_at IS NULL OR c.disbursed_at = '') "
-        "ORDER BY c.approved_at ASC LIMIT 8"
+        "WHERE c.status = 'Disetujui' ORDER BY c.approved_at ASC LIMIT 8"
     )
 
     return {
@@ -4467,6 +4465,158 @@ async def finance_home(user=Depends(authenticate_token)):
         "expense_pending": expense_pending_list,
         "refund_pending": refund_pending_list,
         "komisi_pending": komisi_pending_list,
+    }
+
+
+@app.get("/api/finance/forecast")
+async def finance_forecast(user=Depends(authenticate_token)):
+    """Proyeksi arus kas 60 hari ke depan.
+
+    Cash-in: piutang jamaah (DP/Unpaid) — asumsi lunas H-7 sebelum berangkat.
+    Cash-out:
+    - Vendor payment jatuh tempo (sisa dari total_amount - deposit_amount)
+    - Payroll di akhir setiap bulan (SUM base_salary semua non-admin)
+    - Refund + komisi approved (segera cair, asumsi H+3)
+
+    Running balance dihitung kumulatif dari saldo kas saat ini.
+    """
+    require_role(user, "admin", "finance", "management")
+
+    HORIZON = 60
+    cash_current = db.query_one(
+        "SELECT COALESCE(SUM(CASE WHEN type='income' THEN amount ELSE -amount END), 0) c "
+        "FROM transactions"
+    )["c"] or 0
+
+    events = []
+
+    # Vendor payments (cash-out)
+    for v in db.query_all(
+        "SELECT v.id, v.vendor_name, v.vendor_type, v.status, v.due_date, "
+        "       (COALESCE(v.total_amount,0) - CASE WHEN v.status='Deposit' THEN COALESCE(v.deposit_amount,0) ELSE 0 END) AS sisa, "
+        "       p.name AS package_name "
+        "FROM vendor_bookings v LEFT JOIN packages p ON v.package_id = p.id "
+        "WHERE v.status IN ('Booked', 'Deposit') "
+        "  AND v.due_date IS NOT NULL AND v.due_date != '' "
+        "  AND date(v.due_date) BETWEEN date('now') AND date('now', ?)",
+        (f"+{HORIZON} days",),
+    ):
+        if v["sisa"] and v["sisa"] > 0:
+            events.append({
+                "date": v["due_date"],
+                "kind": "cash_out",
+                "category": "vendor",
+                "label": f"Vendor: {v['vendor_name'] or v['vendor_type']} - {v['package_name'] or ''}",
+                "amount": v["sisa"],
+                "source_id": v["id"],
+            })
+
+    # Refund + komisi approved (cash-out asumsi H+3)
+    plus3 = (datetime.datetime.now() + datetime.timedelta(days=3)).strftime("%Y-%m-%d")
+    for r in db.query_all(
+        "SELECT r.id, r.amount, j.name AS jamaah_name "
+        "FROM refund_requests r LEFT JOIN jamaah j ON r.jamaah_id = j.id "
+        "WHERE r.status = 'Disetujui'"
+    ):
+        events.append({
+            "date": plus3,
+            "kind": "cash_out",
+            "category": "refund",
+            "label": f"Refund: {r['jamaah_name'] or '-'}",
+            "amount": r["amount"] or 0,
+            "source_id": r["id"],
+        })
+    for c in db.query_all(
+        "SELECT c.id, c.amount, a.name AS agent_name "
+        "FROM commission_claims c LEFT JOIN agents a ON c.agent_id = a.id "
+        "WHERE c.status = 'Disetujui'"
+    ):
+        events.append({
+            "date": plus3,
+            "kind": "cash_out",
+            "category": "komisi",
+            "label": f"Komisi: {c['agent_name'] or '-'}",
+            "amount": c["amount"] or 0,
+            "source_id": c["id"],
+        })
+
+    # Payroll estimasi - akhir setiap bulan
+    payroll_estimate = db.query_one(
+        "SELECT COALESCE(SUM(base_salary), 0) c FROM users WHERE role != 'admin'"
+    )["c"] or 0
+    if payroll_estimate > 0:
+        today = datetime.datetime.now().date()
+        end = today + datetime.timedelta(days=HORIZON)
+        m = today.replace(day=1)
+        while m <= end:
+            next_m_start = (m.replace(day=28) + datetime.timedelta(days=4)).replace(day=1)
+            last = next_m_start - datetime.timedelta(days=1)
+            if today <= last <= end:
+                events.append({
+                    "date": last.strftime("%Y-%m-%d"),
+                    "kind": "cash_out",
+                    "category": "payroll",
+                    "label": "Payroll bulanan (estimasi)",
+                    "amount": payroll_estimate,
+                    "source_id": None,
+                })
+            m = next_m_start
+
+    # Piutang jamaah expected (cash-in) - lunas H-7 sebelum berangkat
+    for j in db.query_all(
+        "SELECT j.id, j.name, "
+        "       (COALESCE(j.total_price,0) - COALESCE(j.paid_amount,0)) AS sisa, "
+        "       p.departure_date, "
+        "       date(p.departure_date, '-7 days') AS expected_paid_date "
+        "FROM jamaah j LEFT JOIN packages p ON j.package_type = p.name "
+        "WHERE j.payment_status IN ('DP', 'Unpaid') AND j.status NOT IN ('Cancelled', 'Lead - Follow Up') "
+        "  AND p.departure_date IS NOT NULL "
+        "  AND date(p.departure_date, '-7 days') BETWEEN date('now') AND date('now', ?) "
+        "  AND (COALESCE(j.total_price,0) - COALESCE(j.paid_amount,0)) > 0",
+        (f"+{HORIZON} days",),
+    ):
+        events.append({
+            "date": j["expected_paid_date"],
+            "kind": "cash_in",
+            "category": "piutang",
+            "label": f"Piutang: {j['name']} (dep {j['departure_date']})",
+            "amount": j["sisa"],
+            "source_id": j["id"],
+        })
+
+    events.sort(key=lambda e: e["date"])
+    running = cash_current
+    min_balance = cash_current
+    min_balance_date = datetime.datetime.now().strftime("%Y-%m-%d")
+    total_in_30d = 0
+    total_out_30d = 0
+    day_30 = (datetime.datetime.now() + datetime.timedelta(days=30)).strftime("%Y-%m-%d")
+    for e in events:
+        if e["kind"] == "cash_in":
+            running += e["amount"] or 0
+            if e["date"] <= day_30:
+                total_in_30d += e["amount"] or 0
+        else:
+            running -= e["amount"] or 0
+            if e["date"] <= day_30:
+                total_out_30d += e["amount"] or 0
+        e["running_balance"] = running
+        if running < min_balance:
+            min_balance = running
+            min_balance_date = e["date"]
+
+    return {
+        "cash_current": cash_current,
+        "horizon_days": HORIZON,
+        "events": events,
+        "summary": {
+            "total_in_30d": total_in_30d,
+            "total_out_30d": total_out_30d,
+            "net_30d": total_in_30d - total_out_30d,
+            "min_balance": min_balance,
+            "min_balance_date": min_balance_date,
+            "final_balance": running,
+        },
     }
 
 

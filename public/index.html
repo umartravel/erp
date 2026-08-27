@@ -954,6 +954,21 @@
                     </div>
                 </div>
 
+                <!-- PANEL: Cash Flow Forecast H-60 -->
+                <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+                    <div class="px-4 py-3 border-b bg-emerald-50/50 flex items-center justify-between">
+                        <h3 class="font-semibold text-emerald-800 flex items-center gap-2"><i data-lucide="line-chart" class="w-4 h-4"></i>Proyeksi Arus Kas 60 Hari</h3>
+                        <div id="fh-forecast-summary" class="text-[10px] text-gray-500 flex flex-wrap gap-3"></div>
+                    </div>
+                    <div class="p-4 space-y-3">
+                        <div class="h-48 relative"><canvas id="fh-forecast-chart"></canvas></div>
+                        <details class="text-xs">
+                            <summary class="cursor-pointer text-emerald-700 hover:text-emerald-900 font-medium">Lihat rincian event</summary>
+                            <div id="fh-forecast-events" class="mt-2 divide-y max-h-72 overflow-y-auto custom-scrollbar"></div>
+                        </details>
+                    </div>
+                </div>
+
                 <!-- PANEL: Aged buckets + Antrian approval -->
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
                     <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
@@ -7172,7 +7187,7 @@
     <script src="js/marketing.js?v=20260817d"></script>
     <script src="js/sales-home.js?v=20260819a"></script>
     <script src="js/ops-home.js?v=20260820g"></script>
-    <script src="js/finance-home.js?v=20260827a"></script>
-    <script src="js/mgmt-home.js?v=20260827a"></script>
+    <script src="js/finance-home.js?v=20260827c"></script>
+    <script src="js/mgmt-home.js?v=20260827b"></script>
 </body>
 </html>

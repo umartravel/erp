@@ -104,6 +104,7 @@
             const soon = d !== null && d >= 0 && d <= 7;
             const cls = overdue ? 'text-red-700 bg-red-100' : soon ? 'text-orange-700 bg-orange-100' : 'text-gray-600 bg-gray-100';
             const label = overdue ? `Telat ${Math.abs(d)}h` : `H-${d}`;
+            const payload = JSON.stringify({id: v.id, vendor: v.vendor_name || v.vendor_type, pkg: v.package_name || '', sisa: v.sisa, currentDeposit: v.deposit_amount || 0, total: v.total_amount || 0}).replace(/"/g,'&quot;');
             return `<div class="px-4 py-3 hover:bg-indigo-50 flex items-center justify-between gap-3">
                 <div class="min-w-0 flex-1">
                     <div class="text-sm font-medium text-gray-800 truncate">${fhEscape(v.vendor_name || v.vendor_type)}</div>
@@ -112,10 +113,48 @@
                 <div class="text-right shrink-0">
                     <div class="text-sm font-bold text-indigo-700">${fhFmtShort(v.sisa)}</div>
                     <div class="text-[10px] font-medium px-1.5 py-0.5 rounded ${cls} inline-block mt-0.5">${label}</div>
+                    <button class="mt-1 block ml-auto text-[10px] font-medium bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded" onclick='fhQuickPayVendor(${payload})'>Catat Bayar</button>
                 </div>
             </div>`;
         }).join('');
     }
+
+    window.fhQuickPayVendor = async function(ctx) {
+        const suggested = ctx.sisa;
+        const raw = prompt(`Catat pembayaran vendor "${ctx.vendor}" (${ctx.pkg}).\nSisa: Rp ${suggested.toLocaleString('id-ID')}\n\nMasukkan jumlah pembayaran:`, String(suggested));
+        if (!raw) return;
+        const amount = parseInt(String(raw).replace(/[^0-9]/g, ''), 10);
+        if (!amount || amount <= 0) { alert('Jumlah tidak valid.'); return; }
+        if (amount > ctx.sisa) {
+            if (!confirm(`Jumlah Rp ${amount.toLocaleString('id-ID')} lebih besar dari sisa Rp ${ctx.sisa.toLocaleString('id-ID')}. Tetap lanjut?`)) return;
+        }
+        const newDeposit = (ctx.currentDeposit || 0) + amount;
+        const isFullyPaid = newDeposit >= (ctx.total || 0);
+        try {
+            const exp = await fhFetch('/transactions/expense', {
+                method: 'POST',
+                body: JSON.stringify({
+                    category: 'vendor',
+                    amount,
+                    description: `Bayar vendor: ${ctx.vendor} (${ctx.pkg})`,
+                    package_name: ctx.pkg || null,
+                }),
+            });
+            if (!exp.ok) throw new Error('Gagal catat expense');
+            const vend = await fhFetch(`/vendors/${ctx.id}`, {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    deposit_amount: newDeposit,
+                    status: isFullyPaid ? 'Paid' : 'Deposit',
+                }),
+            });
+            if (!vend.ok) throw new Error('Expense tercatat tapi update vendor gagal');
+            alert(`Pembayaran Rp ${amount.toLocaleString('id-ID')} tercatat. Status vendor: ${isFullyPaid ? 'Paid (Lunas)' : 'Deposit'}.`);
+            window.initFinanceHome();
+        } catch (err) {
+            alert('Error: ' + err.message);
+        }
+    };
 
     function renderAged(list) {
         const el = document.getElementById('fh-aged-list');
@@ -187,6 +226,111 @@
         }).join('');
     }
 
+    let forecastChart = null;
+    const CAT_ICON = { vendor: 'V', refund: 'R', komisi: 'K', payroll: 'P', piutang: 'J' };
+
+    function renderForecastSummary(summary) {
+        const el = document.getElementById('fh-forecast-summary');
+        if (!el) return;
+        const net = summary.net_30d || 0;
+        const netCls = net >= 0 ? 'text-emerald-700' : 'text-red-700';
+        const netSign = net >= 0 ? '+' : '';
+        el.innerHTML = `
+            <span>Masuk 30h: <b class="text-emerald-700">${fhFmtShort(summary.total_in_30d)}</b></span>
+            <span>Keluar 30h: <b class="text-red-700">${fhFmtShort(summary.total_out_30d)}</b></span>
+            <span>Net 30h: <b class="${netCls}">${netSign}${fhFmtShort(net)}</b></span>
+            <span>Saldo terendah 60h: <b>${fhFmtShort(summary.min_balance)}</b> (${summary.min_balance_date || '-'})</span>
+        `;
+    }
+
+    function renderForecastChart(cashCurrent, events) {
+        const canvas = document.getElementById('fh-forecast-chart');
+        if (!canvas || typeof Chart === 'undefined') return;
+        const byDate = new Map();
+        events.forEach(e => {
+            const d = e.date;
+            const bucket = byDate.get(d) || {in: 0, out: 0};
+            if (e.kind === 'cash_in') bucket.in += e.amount || 0;
+            else bucket.out += e.amount || 0;
+            byDate.set(d, bucket);
+        });
+        const today = new Date().toISOString().slice(0, 10);
+        const dates = Array.from(new Set([today, ...byDate.keys()])).sort();
+        let running = cashCurrent;
+        const balancePoints = [];
+        const inBars = [];
+        const outBars = [];
+        dates.forEach(d => {
+            const b = byDate.get(d) || {in: 0, out: 0};
+            running += b.in - b.out;
+            balancePoints.push(running);
+            inBars.push(b.in);
+            outBars.push(-b.out);
+        });
+        if (forecastChart) forecastChart.destroy();
+        forecastChart = new Chart(canvas, {
+            data: {
+                labels: dates.map(d => d.slice(5)),
+                datasets: [
+                    {type: 'line', label: 'Saldo', data: balancePoints, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', tension: 0.3, fill: true, yAxisID: 'y', order: 0, pointRadius: 3},
+                    {type: 'bar', label: 'Masuk', data: inBars, backgroundColor: '#34d399', yAxisID: 'y1', order: 1},
+                    {type: 'bar', label: 'Keluar', data: outBars, backgroundColor: '#f87171', yAxisID: 'y1', order: 1},
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {mode: 'index', intersect: false},
+                plugins: {
+                    legend: {position: 'bottom', labels: {font: {size: 10}, boxWidth: 10}},
+                    tooltip: {callbacks: {label: (ctx) => `${ctx.dataset.label}: Rp ${Math.abs(ctx.parsed.y).toLocaleString('id-ID')}`}},
+                },
+                scales: {
+                    x: {ticks: {font: {size: 9}, maxRotation: 45}},
+                    y: {position: 'left', ticks: {font: {size: 9}, callback: v => fhFmtShort(v)}},
+                    y1: {position: 'right', grid: {drawOnChartArea: false}, ticks: {font: {size: 9}, callback: v => fhFmtShort(Math.abs(v))}},
+                },
+            },
+        });
+    }
+
+    function renderForecastEvents(events) {
+        const el = document.getElementById('fh-forecast-events');
+        if (!el) return;
+        if (!events || !events.length) {
+            el.innerHTML = `<div class="p-4 text-center text-xs text-gray-400">Tidak ada event proyeksi 60 hari ke depan.</div>`;
+            return;
+        }
+        el.innerHTML = events.map(e => {
+            const inCls = e.kind === 'cash_in' ? 'text-emerald-700' : 'text-red-700';
+            const sign = e.kind === 'cash_in' ? '+' : '-';
+            const badge = CAT_ICON[e.category] || 'X';
+            return `<div class="px-3 py-2 flex items-center justify-between gap-3">
+                <div class="min-w-0 flex-1">
+                    <div class="text-[11px] text-gray-500">${e.date}</div>
+                    <div class="text-xs text-gray-800 truncate"><span class="inline-block w-4 h-4 rounded bg-gray-100 text-center text-[9px] font-bold text-gray-600 mr-1">${badge}</span>${fhEscape(e.label)}</div>
+                </div>
+                <div class="text-right shrink-0">
+                    <div class="text-xs font-bold ${inCls}">${sign}${fhFmtShort(e.amount)}</div>
+                    <div class="text-[10px] text-gray-400">saldo ${fhFmtShort(e.running_balance)}</div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    async function loadForecast() {
+        try {
+            const res = await fhFetch('/finance/forecast');
+            if (!res.ok) return;
+            const data = await res.json();
+            renderForecastSummary(data.summary || {});
+            renderForecastChart(data.cash_current || 0, data.events || []);
+            renderForecastEvents(data.events || []);
+        } catch (err) {
+            console.error('[finance-home] forecast', err);
+        }
+    }
+
     window.initFinanceHome = async function() {
         if (fhLoading) return;
         fhLoading = true;
@@ -201,6 +345,7 @@
             renderAged(data.aged_buckets || []);
             renderExpensePending(data.expense_pending || []);
             renderCair(data.refund_pending || [], data.komisi_pending || []);
+            loadForecast();
             if (typeof lucide !== 'undefined') lucide.createIcons();
         } catch (err) {
             console.error('[finance-home]', err);
