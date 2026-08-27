@@ -217,6 +217,8 @@ async def login(body: dict = Depends(json_body)):
         raise HTTPException(status_code=404, detail="User tidak ditemukan")
     if not verify_password(password or "", user["password"]):
         raise HTTPException(status_code=401, detail="Password salah")
+    # Catat login sukses -- dipakai admin untuk audit user aktif.
+    db.execute("UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?", (user["id"],))
     token = create_token(user["id"], user["role"], user["name"])
     return {"token": token, "user": {"id": user["id"], "name": user["name"], "role": user["role"], "photo_url": user["photo_url"]}}
 
@@ -1647,7 +1649,8 @@ async def users_list(user=Depends(authenticate_token)):
     require_role(user, "admin", "management")
     return db.query_all(
         "SELECT id, username, name, role, base_salary, phone, personal_email, address, nik, "
-        "birth_date, photo_url, last_education, education_major, education_institution FROM users", ()
+        "birth_date, photo_url, last_education, education_major, education_institution, "
+        "last_login_at FROM users", ()
     )
 
 

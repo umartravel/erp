@@ -636,6 +636,9 @@ ALTER_QUERIES = [
     "ALTER TABLE users ADD COLUMN last_education TEXT",
     "ALTER TABLE users ADD COLUMN education_major TEXT",
     "ALTER TABLE users ADD COLUMN education_institution TEXT",
+    # Timestamp login terakhir -- diisi endpoint /api/login setiap sukses.
+    # Dipakai admin/management untuk audit siapa yang aktif memakai ERP.
+    "ALTER TABLE users ADD COLUMN last_login_at DATETIME",
     # Perbaikan modul Manajemen Vendor: alur approval + status siklus hidup + link paket.
     "ALTER TABLE procurement ADD COLUMN package_name TEXT",
     "ALTER TABLE procurement ADD COLUMN status TEXT DEFAULT 'Pending'",
@@ -710,6 +713,19 @@ ALTER_QUERIES = [
     "ALTER TABLE incidents ADD COLUMN jamaah_id INTEGER",
     "CREATE INDEX IF NOT EXISTS idx_incidents_status ON incidents(status)",
     "CREATE INDEX IF NOT EXISTS idx_incidents_package ON incidents(package_name)",
+    # Timestamp last edit -- diisi trigger AFTER UPDATE. Dipakai audit trail ringan
+    # (siapa/kapan terakhir menyentuh row), tanpa perlu mengubah setiap endpoint.
+    "ALTER TABLE jamaah ADD COLUMN updated_at DATETIME",
+    "UPDATE jamaah SET updated_at = created_at WHERE updated_at IS NULL",
+    # Auto-stamp updated_at setiap UPDATE. Guard `NEW.updated_at IS OLD.updated_at` mencegah
+    # rekursi tak berhingga saat trigger sendiri melakukan SET updated_at.
+    """CREATE TRIGGER IF NOT EXISTS trg_jamaah_updated_at
+       AFTER UPDATE ON jamaah
+       FOR EACH ROW
+       WHEN NEW.updated_at IS OLD.updated_at
+       BEGIN
+         UPDATE jamaah SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+       END""",
 ]
 
 

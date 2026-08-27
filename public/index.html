@@ -4313,7 +4313,7 @@
                             <td class="px-4 py-3 align-top"><span class="px-2 py-1 rounded text-[10px] font-bold border ${badge}">${r.status}</span></td>
                             <td class="px-4 py-3 align-top text-center"><i data-lucide="chevron-right" class="w-4 h-4 text-gray-400 inline"></i></td>
                         </tr>`;
-                    }).join('') || `<tr><td colspan="8" class="p-6 text-center text-gray-500"><i data-lucide="inbox" class="w-8 h-8 text-gray-300 mx-auto mb-2"></i>Belum ada Expense Report.</td></tr>`;
+                    }).join('') || `<tr><td colspan="8" class="p-0">${umarEmptyState({icon: 'receipt', title: 'Belum ada Expense Report', hint: 'Ajukan reimburse pengeluaran operasional dengan bukti struk. Setelah submit, akan direview approver lalu dicairkan finance.', ctaLabel: 'Buat Expense Report', ctaAction: 'openNewExpenseReportModal()'})}</td></tr>`;
                 }
                 if (typeof lucide !== 'undefined') lucide.createIcons();
             } catch(e) {}
@@ -6185,7 +6185,7 @@
                         <td class="px-4 py-3"><span class="px-2 py-1 rounded text-[10px] font-bold border ${badge}">${r.status}</span></td>
                         <td class="px-4 py-3 text-center">${actions}</td>
                     </tr>`;
-                }).join('') || '<tr><td colspan="5" class="p-6 text-center text-gray-500">Belum ada pengajuan refund.</td></tr>';
+                }).join('') || `<tr><td colspan="5" class="p-0">${umarEmptyState({icon: 'undo-2', title: 'Belum ada pengajuan refund', hint: 'Pengajuan refund dibuat dari halaman detail jamaah. Setelah CS ajukan, permintaan akan muncul di sini untuk disetujui management dan dicairkan finance.'})}</td></tr>`;
                 if (typeof lucide !== 'undefined') lucide.createIcons();
             } catch (err) { console.error('Gagal memuat permintaan refund', err); }
         }
@@ -6268,7 +6268,7 @@
                             <td class="px-4 py-3 text-xs text-gray-600 max-w-[240px] truncate" title="${r.reason}">${r.reason}</td>
                             <td class="px-4 py-3"><span class="px-2 py-1 rounded text-[10px] font-bold border ${badge}">${r.status}</span></td>
                         </tr>`;
-                    }).join('') || `<tr><td colspan="4" class="p-6 text-center text-gray-500">Belum ada pengajuan izin di tahun ${year}.</td></tr>`;
+                    }).join('') || `<tr><td colspan="4" class="p-0">${umarEmptyState({icon: 'calendar-check-2', title: 'Belum ada pengajuan izin', hint: `Belum ada pengajuan izin di tahun ${year}. Isi form di atas untuk mengajukan cuti/izin.`})}</td></tr>`;
                 }
 
                 const reviewSection = document.getElementById('leave-review-section');
@@ -6291,7 +6291,7 @@
                                 <td class="px-4 py-3"><span class="px-2 py-1 rounded text-[10px] font-bold border ${badge}">${r.status}</span></td>
                                 <td class="px-4 py-3 text-center">${actions}</td>
                             </tr>`;
-                        }).join('') || '<tr><td colspan="6" class="p-6 text-center text-gray-500">Belum ada pengajuan izin dari karyawan.</td></tr>';
+                        }).join('') || `<tr><td colspan="6" class="p-0">${umarEmptyState({icon: 'inbox', title: 'Inbox review kosong', hint: 'Belum ada pengajuan izin karyawan yang perlu direview di tahun ini.'})}</td></tr>`;
                     }
                 }
                 if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -6761,7 +6761,7 @@
                         <td class="px-4 py-3"><span class="px-2 py-1 rounded text-[10px] font-bold border ${badge}">${c.status}</span></td>
                         <td class="px-4 py-3 text-center">${actions}</td>
                     </tr>`;
-                }).join('') || '<tr><td colspan="6" class="p-6 text-center text-gray-500">Belum ada klaim komisi.</td></tr>';
+                }).join('') || `<tr><td colspan="6" class="p-0">${umarEmptyState({icon: 'hand-coins', title: 'Belum ada klaim komisi', hint: 'Klaim komisi otomatis dibuat saat jamaah pertama kali Lunas. Setelah itu perlu disetujui management, lalu dicairkan finance.'})}</td></tr>`;
             } catch (e) { console.error('Gagal memuat klaim komisi', e); }
         }
         async function reviewCommissionClaim(id, action) {
@@ -6908,7 +6908,7 @@
                     <td class="px-4 py-3"><span class="px-2 py-1 rounded text-[10px] font-bold border ${badge}">${p.status}</span></td>
                     <td class="px-4 py-3"><div class="flex items-center justify-end gap-1.5">${procurementActionsHtml(p, 'tbl')}</div></td>
                 </tr>`;
-            }).join('') || '<tr><td colspan="8" class="p-6 text-center text-gray-500"><i data-lucide="inbox" class="w-8 h-8 text-gray-300 mx-auto mb-2"></i>Belum ada kontrak vendor tercatat.</td></tr>';
+            }).join('') || `<tr><td colspan="8" class="p-0">${umarEmptyState({icon: 'briefcase-business', title: 'Belum ada kontrak vendor', hint: 'Catat kontrak vendor (hotel, maskapai, bus, muthawif) di sini. Kontrak menunggu approval sebelum pembayaran bisa dicatat & memotong Kas.'})}</td></tr>`;
         }
         function renderProcurementCards(proc) {
             const canReview = ['admin', 'management'].includes(currentUser.role);
@@ -6935,7 +6935,7 @@
                     </div>
                     <div class="flex items-center gap-1.5 pl-6">${procurementActionsHtml(p, 'card')}</div>
                 </div>`;
-            }).join('') || '<div class="p-6 text-center text-gray-500"><i data-lucide="inbox" class="w-8 h-8 text-gray-300 mx-auto mb-2"></i>Belum ada kontrak vendor tercatat.</div>';
+            }).join('') || umarEmptyState({icon: 'briefcase-business', title: 'Belum ada kontrak vendor', hint: 'Catat kontrak vendor (hotel, maskapai, bus, muthawif) di sini. Kontrak menunggu approval sebelum pembayaran bisa dicatat & memotong Kas.'});
         }
         function renderProcurement() {
             if (procurementView === 'table') renderProcurementTable(procurementCache);
@@ -7110,13 +7110,15 @@
             document.getElementById('user-detail-name').innerText = x.name || '-';
             document.getElementById('user-detail-role').innerText = x.role || '-';
             const row = (label, val) => `<div><span class="text-gray-400 text-xs block">${label}</span><span class="font-medium text-gray-800">${val || '-'}</span></div>`;
+            const lastLogin = x.last_login_at ? new Date(x.last_login_at.replace(' ', 'T') + 'Z').toLocaleString('id-ID', {dateStyle: 'medium', timeStyle: 'short'}) : 'Belum pernah login';
             document.getElementById('user-detail-body').innerHTML =
                 row('Username', x.username) + row('No. HP', x.phone) +
                 row('Email Pribadi', x.personal_email) + row('NIK', x.nik) +
                 row('Tanggal Lahir', x.birth_date) + row('Gaji Pokok', formatRp(x.base_salary)) +
                 `<div class="col-span-2">${row('Alamat', x.address)}</div>` +
                 row('Pendidikan Terakhir', x.last_education) + row('Jurusan', x.education_major) +
-                `<div class="col-span-2">${row('Institusi', x.education_institution)}</div>`;
+                `<div class="col-span-2">${row('Institusi', x.education_institution)}</div>` +
+                `<div class="col-span-2">${row('Login Terakhir', lastLogin)}</div>`;
             openModal('modal-user-detail');
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
