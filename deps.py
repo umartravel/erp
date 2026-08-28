@@ -6,11 +6,21 @@ Tujuan: hindari circular import ke app.py. Router files hanya boleh import dari
 
 Re-export authenticate_token dan notify untuk kenyamanan (satu import di router).
 """
+import os
+
 from fastapi import Depends, HTTPException, Request
 
 import db
 from auth import authenticate_token
 from realtime import notify
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PUBLIC_DIR = os.path.join(BASE_DIR, "public")
+
+
+def get_setting(key, default=None):
+    row = db.query_one("SELECT value FROM settings WHERE key = ?", (key,))
+    return row["value"] if row and row["value"] is not None else default
 
 
 async def json_body(request: Request) -> dict:
@@ -128,4 +138,5 @@ __all__ = [
     "json_body", "require_role", "log_action",
     "parse_int", "_derive_status", "sync_status_mirror", "status_to_dims",
     "_field_change", "assert_jamaah_access",
+    "get_setting", "PUBLIC_DIR", "BASE_DIR",
 ]
