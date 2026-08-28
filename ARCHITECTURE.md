@@ -10,9 +10,16 @@ app.py                    # 170 baris. Bootstrap: FastAPI + lifespan + exception
                           # handler + include_router x 22 + StaticFiles + Socket.IO
                           # wrap. TIDAK ada logika bisnis di sini.
 
-deps.py                   # Shared helpers + konstanta path yang dipakai lintas
+deps/                     # Shared helpers + konstanta path yang dipakai lintas
                           # router. Semua router import dari sini (bukan app.py)
                           # untuk hindari circular import.
+  __init__.py             # Re-export shim (backwards-compat: `from deps import X`)
+  paths.py                # BASE_DIR, PUBLIC_DIR, UPLOAD_DIR, BRANDING_DIR
+  http.py                 # json_body, require_role
+  utils.py                # parse_int, fmt_id, fire_and_forget
+  audit.py                # get_setting, log_action (satu-satunya yg tulis DB)
+  jamaah_status.py        # _derive_status, sync_status_mirror, status_to_dims,
+                          # _field_change, assert_jamaah_access
 
 routes/                   # 22 file router, satu domain per file.
   __init__.py             # Package marker.
@@ -108,33 +115,23 @@ async def handler(user=Depends(authenticate_token)):
 6. **Log action:** untuk tiap aksi write yang bermakna bisnis, `log_action(user, "TAG", "detail")`
    -> masuk `audit_logs` yang dilihat di `/audit-logs`.
 
-## Deps.py: shared helpers
+## Deps package: shared helpers
 
-Berisi:
+`deps/` adalah package dengan 5 sub-modul fokus + `__init__.py` shim yang
+re-export semuanya. Router boleh tetap pakai `from deps import X`
+(backwards-compat) atau import langsung dari sub-modul.
 
-**Konstanta path:**
-- `BASE_DIR`, `PUBLIC_DIR`, `UPLOAD_DIR`, `BRANDING_DIR`
+| Sub-modul               | Isi                                                                       |
+|-------------------------|---------------------------------------------------------------------------|
+| `deps.paths`            | `BASE_DIR`, `PUBLIC_DIR`, `UPLOAD_DIR`, `BRANDING_DIR`                    |
+| `deps.http`             | `json_body(request)`, `require_role(user, *roles)`                        |
+| `deps.utils`            | `parse_int(value, field)`, `fmt_id(n)`, `fire_and_forget(coro)`           |
+| `deps.audit`            | `get_setting(key, default)`, `log_action(user, action, details)` -- satu-satunya sub-modul yg tulis DB |
+| `deps.jamaah_status`    | `_derive_status`, `sync_status_mirror`, `status_to_dims`, `_field_change`, `assert_jamaah_access` |
 
-**HTTP helpers:**
-- `json_body(request)` -- body parser longgar (dipakai lewat `Depends`).
-- `require_role(user, *roles)` -- RBAC guard.
-- `authenticate_token`, `notify` re-export biar router 1x import.
-
-**Audit & settings:**
-- `log_action(user, action, details)` -- INSERT ke audit_logs + notify.
-- `get_setting(key, default)` -- baca `settings` table (key/value).
-
-**Utility:**
-- `parse_int(value, field)` -- raise HTTP 400 jika bukan angka.
-- `fmt_id(n)` -- format "1.000.000" (locale ID).
-- `fire_and_forget(coro)` -- asyncio.create_task wrapper untuk WA async.
-
-**Jamaah status system (4 dimensi):**
-- `_derive_status(pipeline, payment, visa, trip)` -> label legacy string.
-- `sync_status_mirror(jid)` -- recompute jamaah.status dari 4 dimensi.
-- `status_to_dims(status_legacy, paid, total)` -> 3-tuple pipeline/payment/trip.
-- `_field_change(label, old, new)` -- string "Label (X -> Y)" untuk audit trail.
-- `assert_jamaah_access(jid, user)` -- sales hanya boleh akses jamaah miliknya.
+`deps/__init__.py` juga re-export `Depends`, `HTTPException` (dari fastapi),
+`authenticate_token` (dari auth), `notify` (dari realtime) supaya router 1x
+import statement cukup untuk semua helper standard.
 
 ## Jamaah status system
 
