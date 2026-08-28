@@ -1,16 +1,17 @@
 """
-Router Jamaah (subset iterasi 2C): CRUD ringan + sub-resource jamaah.
+Router Jamaah Actions: sub-resource jamaah + refund workflow.
 
-Fokus sub-cluster ini:
+Cakupan:
 - delete/cancel jamaah (permission jamaah scope)
 - comments internal + activities (lead follow-up)
 - payments history read-only
 - refund-requests suite (ajukan CS -> review Mgmt -> disburse Finance)
-- bulk-ops (ops team edit multi-jamaah sekaligus)
 
-PUT /api/jamaah/{id} yang besar (payment side-effect + status recalc) + endpoint
-doc/payment/check-visa/ops verbs SENGAJA DIBIARKAN di app.py untuk iterasi
-terpisah -- side-effect ke transactions + agent commission masih perlu review.
+Router lain untuk jamaah (per split iterasi 7):
+- routes/jamaah_read.py  : GET + POST /api/jamaah (list + create)
+- routes/jamaah_write.py : bulk-ops + PUT/{jid} big + doc + documents + payment
+                           + check-visa + ops verbs (paling sensitif; auto-create
+                           commission_claim di payment endpoint)
 """
 from fastapi import APIRouter
 
@@ -28,7 +29,7 @@ from deps import (
     sync_status_mirror,
 )
 
-router = APIRouter(tags=["jamaah"])
+router = APIRouter(tags=["jamaah-actions"])
 
 
 # ===========================================================================

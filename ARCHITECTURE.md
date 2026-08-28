@@ -22,7 +22,7 @@ routes/                   # 22 file router, satu domain per file.
   mgmt.py                 # M-A, M-C, M-D, M-E: Home Mgmt, PDF, targets, risk
   ops.py                  # O-A + incidents + package ops verbs (feedback/debrief/vendor/checklist)
   sales.py                # S-A: Home Sales + targets + performance + followups
-  jamaah.py               # Jamaah sub-resource: cancel/comments/activities/refund/bulk-ops
+  jamaah_actions.py       # Jamaah sub-resource: cancel/comments/activities/refund
   jamaah_read.py          # GET + POST /api/jamaah
   jamaah_write.py         # 7 endpoint write: PUT/{jid} big update + payment + doc + check-visa + ops
   packages.py             # Master Paket CRUD + staff + room-groups + 3 PDF

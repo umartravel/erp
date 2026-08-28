@@ -117,7 +117,7 @@ from routes.finance import router as finance_router  # noqa: E402
 from routes.mgmt import router as mgmt_router  # noqa: E402
 from routes.ops import router as ops_router  # noqa: E402
 from routes.sales import router as sales_router  # noqa: E402
-from routes.jamaah import router as jamaah_router  # noqa: E402
+from routes.jamaah_actions import router as jamaah_actions_router  # noqa: E402
 from routes.packages import router as packages_router  # noqa: E402
 from routes.inventory import router as inventory_router  # noqa: E402
 from routes.marketing import router as marketing_router  # noqa: E402
@@ -138,7 +138,7 @@ app.include_router(finance_router)
 app.include_router(mgmt_router)
 app.include_router(ops_router)
 app.include_router(sales_router)
-app.include_router(jamaah_router)
+app.include_router(jamaah_actions_router)
 app.include_router(packages_router)
 app.include_router(inventory_router)
 app.include_router(marketing_router)
