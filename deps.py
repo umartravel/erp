@@ -19,6 +19,9 @@ PUBLIC_DIR = os.path.join(BASE_DIR, "public")
 # Dokumen PII (KTP/KK/Paspor/vaksin) & media WA disimpan di folder PRIVAT --
 # di luar direktori statis publik -- dan hanya dilayani lewat route ber-token.
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploads_private")
+# Logo BUKAN PII & harus tampil di layar login (pra-autentikasi), jadi disimpan
+# di direktori publik.
+BRANDING_DIR = os.path.join(PUBLIC_DIR, "branding")
 
 
 def get_setting(key, default=None):
@@ -141,5 +144,5 @@ __all__ = [
     "json_body", "require_role", "log_action",
     "parse_int", "_derive_status", "sync_status_mirror", "status_to_dims",
     "_field_change", "assert_jamaah_access",
-    "get_setting", "PUBLIC_DIR", "BASE_DIR", "UPLOAD_DIR",
+    "get_setting", "PUBLIC_DIR", "BASE_DIR", "UPLOAD_DIR", "BRANDING_DIR",
 ]
