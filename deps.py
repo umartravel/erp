@@ -64,6 +64,14 @@ def parse_int(value, field="nilai"):
         raise HTTPException(status_code=400, detail=f"Input {field} harus berupa angka yang valid.")
 
 
+def fmt_id(n) -> str:
+    """Format angka ala toLocaleString('id-ID'): 1000000 -> '1.000.000'."""
+    try:
+        return f"{int(n):,}".replace(",", ".")
+    except (TypeError, ValueError):
+        return str(n)
+
+
 def _derive_status(pipeline, payment, visa, trip):
     """Hasilkan label `status` legacy (kompatibel frontend) dari 4 dimensi bersih."""
     if trip == "OnTrip":
@@ -142,7 +150,7 @@ __all__ = [
     "Depends", "HTTPException",
     "authenticate_token", "notify",
     "json_body", "require_role", "log_action",
-    "parse_int", "_derive_status", "sync_status_mirror", "status_to_dims",
+    "parse_int", "fmt_id", "_derive_status", "sync_status_mirror", "status_to_dims",
     "_field_change", "assert_jamaah_access",
     "get_setting", "PUBLIC_DIR", "BASE_DIR", "UPLOAD_DIR", "BRANDING_DIR",
 ]

@@ -43,6 +43,7 @@ from deps import (
     _derive_status,
     _field_change,
     assert_jamaah_access,
+    fmt_id,
     parse_int,
     status_to_dims,
     sync_status_mirror,
@@ -97,14 +98,6 @@ async def validation_exc_handler(request: Request, exc: RequestValidationError):
 
 
 # --- Helper umum ---
-def fmt_id(n) -> str:
-    """Format angka ala toLocaleString('id-ID'): 1000000 -> '1.000.000'."""
-    try:
-        return f"{int(n):,}".replace(",", ".")
-    except (TypeError, ValueError):
-        return str(n)
-
-
 def get_setting(key, default=None):
     row = db.query_one("SELECT value FROM settings WHERE key = ?", (key,))
     return row["value"] if row and row["value"] is not None else default
@@ -151,99 +144,6 @@ async def login(body: dict = Depends(json_body)):
 
 
 
-# ===========================================================================
-# MANAJEMEN WHATSAPP
-# ===========================================================================
-@app.get("/api/wa/status")
-async def wa_status(user=Depends(authenticate_token)):
-    return wa.get_status()
-
-
-@app.post("/api/wa/connect")
-async def wa_connect(user=Depends(authenticate_token)):
-    wa.connect_to_whatsapp()
-    return {"message": "Membuka koneksi WhatsApp..."}
-
-
-@app.post("/api/wa/logout")
-async def wa_logout(user=Depends(authenticate_token)):
-    await wa.logout_whatsapp()
-    return {"message": "WhatsApp berhasil diputus. Silakan scan ulang."}
-
-
-@app.post("/api/wa/send")
-async def wa_send(body: dict = Depends(json_body), user=Depends(authenticate_token)):
-    target = body.get("target")
-    message = body.get("message")
-    if wa.get_status()["status"] != "connected":
-        raise HTTPException(status_code=400, detail="WhatsApp belum terhubung!")
-
-    if target == "all":
-        rows = db.query_all("SELECT phone FROM jamaah", ())
-        count = 0
-        for row in rows:
-            if row["phone"]:
-                await wa.send_message(row["phone"], message)
-                count += 1
-                await asyncio.sleep(1.5)  # jeda anti-banned
-        return {"message": f"Broadcast berhasil dikirim ke {count} jamaah."}
-    else:
-        success = await wa.send_message(target, message)
-        if success:
-            return {"message": "Pesan berhasil terkirim."}
-        raise HTTPException(status_code=500, detail="Gagal mengirim pesan.")
-
-
-@app.post("/api/wa/remind-payment")
-async def wa_remind_payment(user=Depends(authenticate_token)):
-    # FIX (integritas): jangkau SEMUA jamaah dengan sisa tagihan & booking aktif,
-    # bukan hanya status 'Terdaftar'. Sebelumnya jamaah ber-status 'Lead'/'Waitlisted'
-    # yang sudah berutang tidak pernah dapat pengingat.
-    rows = db.query_all(
-        "SELECT name, phone, total_price, paid_amount FROM jamaah "
-        "WHERE total_price > paid_amount "
-        "AND status NOT IN ('Lead - Follow Up', 'Cancelled', 'Lunas')",
-        (),
-    )
-    count = 0
-    for j in rows:
-        if j["phone"]:
-            sisa = (j["total_price"] or 0) - (j["paid_amount"] or 0)
-            msg = (
-                f"Assalamu'alaikum Bpk/Ibu {j['name']},\n\n"
-                f"Kami dari *Umar Travel* ingin menginformasikan bahwa paket Umroh Anda "
-                f"masih memiliki sisa tagihan sebesar *Rp {fmt_id(sisa)}*.\n\n"
-                f"Mohon segera melengkapi pembayaran agar proses Visa dan manifestasi "
-                f"penerbangan dapat segera kami proses. Jazakumullah khairan."
-            )
-            if wa.get_status()["status"] == "connected":
-                await wa.send_message(j["phone"], msg)
-                count += 1
-                await asyncio.sleep(1.5)
-    return {"message": f"Pengingat otomatis berhasil dikirim ke {count} jamaah yang belum lunas."}
-
-
-# ===========================================================================
-# LIVE CHAT WA (MULTI-AGENT)
-# ===========================================================================
-@app.get("/api/wa/templates")
-async def wa_templates(user=Depends(authenticate_token)):
-    return db.query_all("SELECT * FROM wa_templates", ()) or []
-
-
-@app.post("/api/wa/templates")
-async def wa_template_create(body: dict = Depends(json_body), user=Depends(authenticate_token)):
-    last_id, _ = db.execute(
-        "INSERT INTO wa_templates (title, content) VALUES (?, ?)",
-        (body.get("title"), body.get("content")),
-    )
-    return {"id": last_id}
-
-
-@app.delete("/api/wa/templates/{tid}")
-async def wa_template_delete(tid: int, user=Depends(authenticate_token)):
-    db.execute("DELETE FROM wa_templates WHERE id = ?", (tid,))
-    return {"success": True}
 
 
 # ===========================================================================
@@ -999,6 +899,7 @@ from routes.procurement import router as procurement_router  # noqa: E402
 from routes.finance_tx import router as finance_tx_router  # noqa: E402
 from routes.hr import router as hr_router  # noqa: E402
 from routes.settings import router as settings_router  # noqa: E402
+from routes.wa import router as wa_router  # noqa: E402
 app.include_router(reconcile_router)
 app.include_router(finance_router)
 app.include_router(mgmt_router)
@@ -1015,6 +916,7 @@ app.include_router(procurement_router)
 app.include_router(finance_tx_router)
 app.include_router(hr_router)
 app.include_router(settings_router)
+app.include_router(wa_router)
 
 
 # Static files (public/) dipasang TERAKHIR agar route /api, /panduan, /uploads menang.
