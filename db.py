@@ -11,7 +11,11 @@ import threading
 
 import bcrypt
 
-DB_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "umar_crm.db")
+# Path DB bisa di-override via env var UMAR_DB_FILE -- dipakai oleh test suite
+# (tests/conftest.py) untuk isolasi total dari umar_crm.db produksi.
+DB_FILE = os.environ.get("UMAR_DB_FILE") or os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "umar_crm.db"
+)
 
 # check_same_thread=False agar koneksi bisa dipakai dari beberapa thread
 # (FastAPI threadpool + background thread WhatsApp). Semua tulis dilindungi lock.

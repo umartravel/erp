@@ -3,6 +3,10 @@
 __pycache__/
 *.pyc
 
+# pytest test DB (dibuat baru tiap run, isolated dari umar_crm.db produksi)
+tests/.test_db.sqlite*
+.pytest_cache/
+
 # ===== Basis data & sesi runtime (data lokal, dibuat otomatis saat dijalankan) =====
 # Pattern `umar_crm.db*` mencakup DB utama, shm/wal, dan backup snapshot
 # (umar_crm.db.before-migration-*, umar_crm.db.before-backfill-*, dst).

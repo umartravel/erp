@@ -261,10 +261,30 @@ thread-safe: schedule ke event loop utama via `set_loop` di lifespan).
 
 ## Testing
 
-Belum ada test suite formal. Verifikasi manual pola:
-1. `.venv/Scripts/python.exe -c "import app; print('OK')"` -- smoke import.
-2. `.venv/Scripts/python.exe app.py &` + curl endpoint kritis dengan token.
-3. Route registration check via `app.app.routes` introspection.
+Suite pytest di `tests/` folder. Berjalan pada DB terisolir (env var
+`UMAR_DB_FILE` di-set di `tests/conftest.py`) -- ZERO sentuhan ke
+`umar_crm.db` produksi.
+
+```bash
+.venv/Scripts/python.exe -m pytest tests/          # jalankan semua
+.venv/Scripts/python.exe -m pytest tests/ -v       # verbose
+.venv/Scripts/python.exe -m pytest tests/test_auth.py::test_login_admin_ok  # satu test
+```
+
+**File:**
+- `tests/conftest.py` -- fixtures: `client` (TestClient), `admin_token`,
+  `sales_token`, `finance_token`, `ops_token`. Session-scoped, sekali init DB.
+- `tests/test_auth.py` -- login flow (valid + invalid credentials), RBAC dasar.
+- `tests/test_smoke.py` -- 43 endpoint GET dengan admin token → 200; 9 endpoint
+  tanpa token → 401; RBAC per-role (sales/ops/finance); regression check
+  routing order (`bulk-ops` tidak di-shadow oleh `{jid}`, `/uploads` gated).
+- `tests/test_jamaah_lifecycle.py` -- alur kritis: create + gatekeeper harga/NIK,
+  payment triggers auto commission_claim (Lunas + agent_id), partial payment
+  tidak trigger commission, `sync_status_mirror` update kolom `status` legacy.
+
+**Bug yang kedeteksi selama setup tests:** kolom `jamaah.external_id` ada di
+production DB (hasil CSV import lama) tapi tidak di `db.SCHEMA` atau migration.
+Fix: `migrations/002_formalize_jamaah_external_id.py`.
 
 ## Add feature checklist
 
