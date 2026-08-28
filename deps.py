@@ -6,6 +6,7 @@ Tujuan: hindari circular import ke app.py. Router files hanya boleh import dari
 
 Re-export authenticate_token dan notify untuk kenyamanan (satu import di router).
 """
+import asyncio
 import os
 
 from fastapi import Depends, HTTPException, Request
@@ -62,6 +63,11 @@ def parse_int(value, field="nilai"):
         return int(float(value))
     except (TypeError, ValueError):
         raise HTTPException(status_code=400, detail=f"Input {field} harus berupa angka yang valid.")
+
+
+def fire_and_forget(coro):
+    """Kirim WA tanpa menunggu (mirip pemanggilan wa.sendMessage tanpa await)."""
+    asyncio.create_task(coro)
 
 
 def fmt_id(n) -> str:
@@ -150,7 +156,7 @@ __all__ = [
     "Depends", "HTTPException",
     "authenticate_token", "notify",
     "json_body", "require_role", "log_action",
-    "parse_int", "fmt_id", "_derive_status", "sync_status_mirror", "status_to_dims",
+    "parse_int", "fmt_id", "fire_and_forget", "_derive_status", "sync_status_mirror", "status_to_dims",
     "_field_change", "assert_jamaah_access",
     "get_setting", "PUBLIC_DIR", "BASE_DIR", "UPLOAD_DIR", "BRANDING_DIR",
 ]
