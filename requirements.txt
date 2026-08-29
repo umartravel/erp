@@ -1,26 +1,39 @@
 # ===== Umar CRM - Python Backend Dependencies =====
+# Versi minimum di-pin untuk menutup CVE hasil `pip-audit` (Aug 2026).
+# Detail patch: PyJWT (algo confusion), python-multipart (DoS boundary parsing),
+# starlette (via fastapi>=0.118), Pillow (image parser), python-socketio.
+#
 # Web framework + ASGI server
-fastapi==0.115.6
-uvicorn[standard]==0.34.0
-python-multipart==0.0.20
+fastapi>=0.141.0
+# starlette di-pin ekstra: fastapi tidak auto-upgrade transitive dep ini walau
+# range-nya `>=0.40,<1.x`. Tanpa pin eksplisit di sini, resolver bisa install
+# starlette 0.41.x yg masih rentan (PYSEC-2026-161, 248, 249, 1941, 1942, 2280, 2281).
+starlette>=0.49.1
+uvicorn[standard]>=0.34.0
+python-multipart>=0.0.31
+# aiohttp transitive dep dari neonize (WhatsApp). Pin ekstra untuk close CVE
+# PYSEC-2026-3545/3546/3547 (fix 3.14.3).
+aiohttp>=3.14.3
 
 # Real-time (Socket.IO) - kompatibel dengan socket.io client v4 di frontend
-python-socketio==5.12.1
+python-socketio>=5.16.2
 
 # Auth
-PyJWT==2.10.1
-bcrypt==4.2.1
+PyJWT>=2.13.0
+bcrypt>=4.2.1
 
 # Pembuatan QR code data-URL untuk login WhatsApp via UI
-qrcode[pil]==8.0
+# Note: qrcode[pil] pull Pillow -- version constraint eksplisit untuk CVE fix.
+qrcode[pil]>=8.0
+Pillow>=12.3.0
 
 # Automasi cek visa (pengganti Playwright Node)
-playwright==1.49.1
+playwright>=1.49.1
 
 # Generate PDF Expense Report (hardcopy)
-reportlab==4.2.5
+reportlab>=4.2.5
 
 # WhatsApp (pengganti Baileys). Opsional: jika tidak terpasang,
 # whatsapp.py otomatis memakai backend stub agar aplikasi tetap berjalan.
 # neonize berbasis whatsmeow (Go) - mendukung multi-device, QR, media.
-neonize==0.3.5
+neonize>=0.3.5

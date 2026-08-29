@@ -293,13 +293,18 @@ def _get_backend():
     global _backend
     if _backend is not None:
         return _backend
+    # WA_SIMULATE=1 -> PAKSA StubBackend, jangan colek neonize sama sekali.
+    # Penting utk pytest/CI: neonize versi baru bs instantiate sukses lalu
+    # BLOCK di connect() menunggu QR/network -> pytest hang.
+    if SIMULATE:
+        _backend = StubBackend()
+        return _backend
     try:
         _backend = NeonizeBackend()
         print("[WA] Backend WhatsApp: neonize (asli).")
     except Exception as e:  # noqa: BLE001  (import gagal / neonize tidak ada)
         _backend = StubBackend()
-        if not SIMULATE:
-            print(f"[WA] neonize tidak tersedia ({e}). Memakai backend stub.")
+        print(f"[WA] neonize tidak tersedia ({e}). Memakai backend stub.")
     return _backend
 
 

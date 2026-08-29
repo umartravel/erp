@@ -14,7 +14,9 @@ from fastapi import Header, HTTPException, Query
 
 # Kunci JWT. Untuk produksi/VPS, set variabel lingkungan JWT_SECRET agar tidak
 # memakai nilai default. Default disediakan agar tetap jalan langsung saat lokal.
-JWT_SECRET = os.environ.get("JWT_SECRET", "umar_crm_super_secret_key_2026")
+# NB: minimal 32 bytes utk HS256 (RFC 7518 Section 3.2) -- PyJWT >=2.13 warn
+# di bawah ambang ini. Default lama "umar_crm_super_secret_key_2026" = 30 bytes.
+JWT_SECRET = os.environ.get("JWT_SECRET", "umar_crm_super_secret_key_2026_v2!!")
 JWT_ALGO = "HS256"
 TOKEN_TTL_HOURS = 8
 
