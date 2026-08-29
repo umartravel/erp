@@ -359,6 +359,9 @@
                 <a href="#" id="nav-whatsapp" onclick="showPage('whatsapp')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150">
                     <i data-lucide="message-square" class="w-4 h-4"></i> WhatsApp Gateway
                 </a>
+                <a href="#" id="nav-boq" onclick="showPage('boq')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
+                    <i data-lucide="calculator" class="w-4 h-4"></i> Simulasi Paket (BOQ)
+                </a>
                 <a href="#" id="nav-packages" onclick="showPage('packages')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
                     <i data-lucide="package" class="w-4 h-4"></i> Master Paket
                 </a>
@@ -709,6 +712,47 @@
                                 </tr>
                             </thead>
                             <tbody id="table-incidents" class="divide-y"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE: SIMULASI PAKET (BOQ) -->
+            <div id="page-boq" class="page-content hidden space-y-4">
+                <div class="bg-white rounded-xl shadow-sm border p-6">
+                    <div class="flex flex-wrap justify-between items-center gap-3 border-b pb-4 mb-4">
+                        <div>
+                            <h3 class="font-semibold text-gray-800 flex items-center gap-2"><i data-lucide="calculator" class="w-5 h-5 text-emerald-600"></i>Simulasi Paket (BOQ = Bill of Quantities)</h3>
+                            <p class="text-xs text-gray-500 mt-1">Breakdown biaya per item + margin -&gt; harga per pax. Sales bikin -&gt; Draft -&gt; Submit -&gt; Management Approve. Mgmt/Admin bikin -&gt; auto-Approved.</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label class="text-xs text-gray-500">Paket:</label>
+                            <select id="boq-filter-package" onchange="__boqFilterPackage=this.value; fetchBoqList()" class="border rounded-lg px-2 py-1.5 text-sm"></select>
+                            <label class="text-xs text-gray-500">Status:</label>
+                            <select id="boq-filter-status" onchange="__boqFilterStatus=this.value; fetchBoqList()" class="border rounded-lg px-2 py-1.5 text-sm">
+                                <option value="">Semua</option>
+                                <option value="Draft">Draft</option>
+                                <option value="Pending Approval">Pending</option>
+                                <option value="Approved">Approved</option>
+                                <option value="Rejected">Rejected</option>
+                            </select>
+                            <button id="boq-add-btn" onclick="openAddBoq()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1"><i data-lucide="plus" class="w-3.5 h-3.5"></i>Tambah BOQ</button>
+                        </div>
+                    </div>
+                    <div class="overflow-auto rounded-lg border">
+                        <table class="w-full text-sm">
+                            <thead class="text-xs uppercase bg-gray-50 text-gray-500">
+                                <tr>
+                                    <th class="px-3 py-2 text-left">Nama BOQ</th>
+                                    <th class="px-3 py-2 text-left">Paket Master</th>
+                                    <th class="px-3 py-2 text-left">Status</th>
+                                    <th class="px-3 py-2 text-center">Items</th>
+                                    <th class="px-3 py-2 text-right">Target Pax/Margin</th>
+                                    <th class="px-3 py-2 text-left">Update</th>
+                                    <th class="px-3 py-2 text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-boq" class="divide-y"></tbody>
                         </table>
                     </div>
                 </div>
@@ -3252,6 +3296,141 @@
         </div>
     </div>
 
+    <!-- ==================== BOQ MODALS ==================== -->
+    <!-- Modal: Add/Edit BOQ header + optional items repeater -->
+    <div id="modal-boq-form" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto p-6">
+            <h3 class="font-bold text-lg mb-4 border-b pb-2 flex items-center gap-2">
+                <i data-lucide="calculator" class="w-5 h-5 text-emerald-600"></i>
+                <span id="boq-modal-title">Tambah BOQ Baru</span>
+            </h3>
+            <input type="hidden" id="boq-form-id"/>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm mb-4">
+                <div class="md:col-span-2">
+                    <label class="text-xs font-medium">Nama BOQ *</label>
+                    <input id="boq-form-name" type="text" class="w-full border p-2 rounded" placeholder="mis. Ramadhan 2027 - Reguler"/>
+                </div>
+                <div>
+                    <label class="text-xs font-medium">Paket Master (opsional)</label>
+                    <select id="boq-form-package" class="w-full border p-2 rounded bg-gray-50"></select>
+                    <p class="text-[10px] text-gray-500 mt-1">Kosongkan kalau BOQ untuk paket baru (belum ada di Master).</p>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-xs font-medium">Target Pax</label>
+                        <input id="boq-form-pax" type="number" class="w-full border p-2 rounded" value="45" oninput="_renderBoqFormTotals()"/>
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium">Target Margin (%)</label>
+                        <input id="boq-form-margin" type="number" step="0.1" class="w-full border p-2 rounded" value="15" oninput="_renderBoqFormTotals()"/>
+                    </div>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="text-xs font-medium">Catatan</label>
+                    <textarea id="boq-form-notes" class="w-full border p-2 rounded" rows="2"></textarea>
+                </div>
+            </div>
+
+            <div id="boq-form-items-wrapper">
+                <div class="flex items-center justify-between border-t pt-3 mb-2">
+                    <h4 class="text-sm font-bold text-gray-700">Line Items (breakdown biaya)</h4>
+                    <button type="button" onclick="addBoqFormItem()" class="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200"><i data-lucide="plus" class="w-3 h-3 inline"></i> Tambah Item</button>
+                </div>
+                <div class="overflow-auto border rounded">
+                    <table class="w-full text-xs">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-1 py-1 text-left">Kategori</th>
+                                <th class="px-1 py-1 text-left">Nama Item</th>
+                                <th class="px-1 py-1 text-left">Unit</th>
+                                <th class="px-1 py-1 text-right">Qty</th>
+                                <th class="px-1 py-1 text-right">Harga Satuan</th>
+                                <th class="px-1 py-1 text-right">Subtotal</th>
+                                <th class="px-1 py-1 w-8"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="boq-form-items" class="divide-y"></tbody>
+                    </table>
+                </div>
+                <div id="boq-form-totals" class="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm justify-end"></div>
+            </div>
+
+            <div class="flex justify-end gap-2 mt-6 border-t pt-4">
+                <button type="button" onclick="closeModal('modal-boq-form')" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm">Batal</button>
+                <button type="button" onclick="saveBoq()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Detail BOQ + items CRUD + workflow buttons -->
+    <div id="modal-boq-detail" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[92vh] overflow-y-auto p-6">
+            <div id="boq-detail-header" class="mb-4 border-b pb-3"></div>
+
+            <div class="flex items-center justify-between mb-2">
+                <h4 class="text-sm font-bold text-gray-700">Line Items</h4>
+                <button id="boq-detail-add-item-btn" onclick="addBoqDetailItem()" class="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200"><i data-lucide="plus" class="w-3 h-3 inline"></i> Tambah Item</button>
+            </div>
+            <div class="overflow-auto border rounded">
+                <table class="w-full text-xs">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-2 py-1 text-left">Kategori</th>
+                            <th class="px-2 py-1 text-left">Nama</th>
+                            <th class="px-2 py-1 text-left">Unit</th>
+                            <th class="px-2 py-1 text-right">Qty</th>
+                            <th class="px-2 py-1 text-right">Harga</th>
+                            <th class="px-2 py-1 text-right">Subtotal</th>
+                            <th class="px-2 py-1 text-left">Vendor</th>
+                            <th class="px-2 py-1 w-16"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="boq-detail-items" class="divide-y"></tbody>
+                </table>
+            </div>
+            <div id="boq-detail-totals" class="mt-3 border-t pt-3"></div>
+
+            <div class="flex justify-between items-center mt-6 border-t pt-4">
+                <button type="button" onclick="closeModal('modal-boq-detail')" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm">Tutup</button>
+                <div id="boq-detail-actions" class="flex flex-wrap gap-2 justify-end"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Add/Edit single item -->
+    <div id="modal-boq-item" class="fixed inset-0 modal-bg z-[60] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
+            <h3 class="font-bold text-lg mb-4 border-b pb-2"><span id="boq-item-modal-title">Tambah Item</span></h3>
+            <input type="hidden" id="boq-item-id"/>
+            <div class="grid grid-cols-2 gap-3 text-sm">
+                <div><label class="text-xs font-medium">Kategori</label><select id="boq-item-category" class="w-full border p-2 rounded"></select></div>
+                <div><label class="text-xs font-medium">Unit</label><select id="boq-item-unit" class="w-full border p-2 rounded"></select></div>
+                <div class="col-span-2"><label class="text-xs font-medium">Nama Item *</label><input type="text" id="boq-item-name" class="w-full border p-2 rounded"/></div>
+                <div><label class="text-xs font-medium">Quantity</label><input type="number" step="0.01" id="boq-item-qty" class="w-full border p-2 rounded" value="1"/></div>
+                <div><label class="text-xs font-medium">Harga Satuan (Rp)</label><input type="number" id="boq-item-price" class="w-full border p-2 rounded" value="0"/></div>
+                <div class="col-span-2"><label class="text-xs font-medium">Vendor</label><input type="text" id="boq-item-vendor" class="w-full border p-2 rounded" placeholder="mis. PT Anjum Hotel"/></div>
+                <div class="col-span-2"><label class="text-xs font-medium">Catatan</label><input type="text" id="boq-item-note" class="w-full border p-2 rounded"/></div>
+            </div>
+            <div class="flex justify-end gap-2 mt-4 border-t pt-3">
+                <button onclick="closeModal('modal-boq-item')" class="px-4 py-2 bg-gray-100 rounded text-sm">Batal</button>
+                <button onclick="saveBoqItem()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-sm font-bold">Simpan Item</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Approve / Reject review -->
+    <div id="modal-boq-review" class="fixed inset-0 modal-bg z-[60] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
+            <h3 id="boq-review-title" class="font-bold text-lg mb-4 border-b pb-2">Approve BOQ</h3>
+            <label id="boq-review-note-label" class="text-xs font-medium">Catatan (opsional):</label>
+            <textarea id="boq-review-note" class="w-full border p-2 rounded mt-1 text-sm" rows="4" placeholder="Masukkan catatan review..."></textarea>
+            <div class="flex justify-end gap-2 mt-4">
+                <button onclick="closeModal('modal-boq-review')" class="px-4 py-2 bg-gray-100 rounded text-sm">Batal</button>
+                <button id="boq-review-submit-btn" onclick="submitBoqReview()">Approve</button>
+            </div>
+        </div>
+    </div>
+
     <!-- NOTIFICATION TOAST -->
     <div id="toast" class="fixed bottom-5 right-5 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-lg transform transition-transform translate-y-20 opacity-0 duration-300 z-[101] flex items-center gap-3">Message</div>
 
@@ -4210,6 +4389,10 @@
                 document.getElementById('nav-marketing').classList.remove('hidden');
             }
 
+            // Modul BOQ (Simulasi Paket) visible utk semua role -- finance view-only,
+            // tombol Add di-disable di initBoqPage kalau bukan author role.
+            document.getElementById('nav-boq').classList.remove('hidden');
+
             // Apply Role-Based Access
             if (currentUser.role === 'admin') {
                 document.getElementById('nav-packages').classList.remove('hidden');
@@ -4338,7 +4521,7 @@
             return false;
         }
 
-        const pageTitles = { 'dashboard': 'Dashboard', 'pendaftaran': 'Pendaftaran Baru', 'jamaah': 'Master Data Jamaah', 'finance': 'Keuangan & P&L', 'operasional': 'Operasional & Logistik', 'whatsapp': 'Manajemen WA', 'users': 'Master Data Karyawan', 'packages': 'Master Paket Umroh', 'agents': 'Manajemen Keagenan', 'tactical': 'Kesiapan Operasional & Audit', 'procurement': 'Manajemen Vendor / Procurement', 'settings': 'Pengaturan Aplikasi', 'followup': 'Follow-up Lead (CRM Sales)', 'expense': 'Expense Report', 'inbox': 'Kotak Masuk Pendaftaran Publik', 'leave': 'Ajukan Izin', 'marketing': 'Marketing Analytics', 'sales-home': 'Home Sales', 'ops-home': 'Home Ops', 'incidents': 'Insiden Lapangan', 'finance-home': 'Home Finance', 'mgmt-home': 'Home Management', 'aged-receivable': 'Aged Receivable', 'reconcile': 'Rekonsiliasi Bank', 'risk-register': 'Risk Register' };
+        const pageTitles = { 'dashboard': 'Dashboard', 'pendaftaran': 'Pendaftaran Baru', 'jamaah': 'Master Data Jamaah', 'finance': 'Keuangan & P&L', 'operasional': 'Operasional & Logistik', 'whatsapp': 'Manajemen WA', 'users': 'Master Data Karyawan', 'packages': 'Master Paket Umroh', 'agents': 'Manajemen Keagenan', 'tactical': 'Kesiapan Operasional & Audit', 'procurement': 'Manajemen Vendor / Procurement', 'settings': 'Pengaturan Aplikasi', 'followup': 'Follow-up Lead (CRM Sales)', 'expense': 'Expense Report', 'inbox': 'Kotak Masuk Pendaftaran Publik', 'leave': 'Ajukan Izin', 'marketing': 'Marketing Analytics', 'sales-home': 'Home Sales', 'ops-home': 'Home Ops', 'incidents': 'Insiden Lapangan', 'finance-home': 'Home Finance', 'mgmt-home': 'Home Management', 'aged-receivable': 'Aged Receivable', 'reconcile': 'Rekonsiliasi Bank', 'risk-register': 'Risk Register', 'boq': 'Simulasi Paket (BOQ)' };
 
         // --- SIDEBAR: kategori yang bisa dilipat (accordion), status tersimpan per browser ---
         const NAV_GROUPS = ['crm', 'finance', 'ops', 'tools'];
@@ -4347,7 +4530,7 @@
             'sales-home': 'crm',
             'finance-home': 'finance', 'mgmt-home': 'finance', finance: 'finance', expense: 'finance', reconcile: 'finance', 'aged-receivable': 'finance', 'risk-register': 'finance',
             operasional: 'ops', procurement: 'ops', 'ops-home': 'ops', incidents: 'ops',
-            leave: 'tools', tactical: 'tools', whatsapp: 'tools', packages: 'tools', users: 'tools', settings: 'tools',
+            leave: 'tools', tactical: 'tools', whatsapp: 'tools', packages: 'tools', boq: 'tools', users: 'tools', settings: 'tools',
         };
         function toggleNavGroup(key, forceOpen) {
             const el = document.getElementById(`navgroup-${key}`);
@@ -4438,6 +4621,7 @@
             if(id === 'aged-receivable' && typeof initAgedReceivable === 'function') initAgedReceivable();
             if(id === 'reconcile' && typeof initReconcile === 'function') initReconcile();
             if(id === 'risk-register' && typeof initRiskRegister === 'function') initRiskRegister();
+            if(id === 'boq' && typeof initBoqPage === 'function') initBoqPage();
 
             clearInterval(waPollInterval);
             if(id === 'whatsapp') { checkWaStatus(); waPollInterval = setInterval(checkWaStatus, 3000); } 
@@ -8109,5 +8293,6 @@
     <script src="js/ops-home.js?v=20260827e"></script>
     <script src="js/finance-home.js?v=20260827e"></script>
     <script src="js/mgmt-home.js?v=20260827e"></script>
+    <script src="js/boq.js?v=20260830a"></script>
 </body>
 </html>
