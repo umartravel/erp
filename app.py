@@ -114,8 +114,15 @@ async def validation_exc_handler(request: Request, exc: RequestValidationError):
 # Setiap router mendaftar endpoint-nya sendiri lewat APIRouter + include_router.
 from routes.reconcile import router as reconcile_router  # noqa: E402
 from routes.finance import router as finance_router  # noqa: E402
-from routes.mgmt import router as mgmt_router  # noqa: E402
-from routes.ops import router as ops_router  # noqa: E402
+from routes.mgmt_home import router as mgmt_home_router  # noqa: E402
+from routes.mgmt_reports import router as mgmt_reports_router  # noqa: E402
+from routes.mgmt_targets import router as mgmt_targets_router  # noqa: E402
+from routes.mgmt_risk import router as mgmt_risk_router  # noqa: E402
+from routes.ops_incidents import router as ops_incidents_router  # noqa: E402
+from routes.ops_home import router as ops_home_router  # noqa: E402
+from routes.ops_feedback import router as ops_feedback_router  # noqa: E402
+from routes.ops_vendors import router as ops_vendors_router  # noqa: E402
+from routes.ops_checklist import router as ops_checklist_router  # noqa: E402
 from routes.sales import router as sales_router  # noqa: E402
 from routes.jamaah_actions import router as jamaah_actions_router  # noqa: E402
 from routes.packages import router as packages_router  # noqa: E402
@@ -135,8 +142,15 @@ from routes.jamaah_write import router as jamaah_write_router  # noqa: E402
 from routes.static_pages import router as static_pages_router  # noqa: E402
 app.include_router(reconcile_router)
 app.include_router(finance_router)
-app.include_router(mgmt_router)
-app.include_router(ops_router)
+app.include_router(mgmt_home_router)
+app.include_router(mgmt_reports_router)
+app.include_router(mgmt_targets_router)
+app.include_router(mgmt_risk_router)
+app.include_router(ops_incidents_router)
+app.include_router(ops_home_router)
+app.include_router(ops_feedback_router)
+app.include_router(ops_vendors_router)
+app.include_router(ops_checklist_router)
 app.include_router(sales_router)
 app.include_router(jamaah_actions_router)
 app.include_router(packages_router)
