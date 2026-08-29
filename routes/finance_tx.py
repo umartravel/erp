@@ -29,6 +29,9 @@ router = APIRouter(tags=["finance-tx"])
 # ===========================================================================
 @router.get("/api/reports/pnl")
 async def reports_pnl(user=Depends(authenticate_token)):
+    # SECURITY: omzet + expense per paket, angka finansial. Sales/ops tidak
+    # perlu lihat -- restrict ke admin/finance/management.
+    require_role(user, "admin", "finance", "management")
     return db.query_all(
         "SELECT p.name as package_name, "
         "COALESCE((SELECT SUM(total_price) FROM jamaah WHERE package_type = p.name "

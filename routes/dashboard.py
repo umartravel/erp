@@ -58,6 +58,9 @@ def _total_piutang():
 
 @router.get("/api/dashboard/super")
 async def dashboard_super(user=Depends(authenticate_token)):
+    # SECURITY: dashboard funnel & visa summary all-jamaah. Sales biasa tidak
+    # boleh lihat lead/pipeline agen lain. Restrict ke admin/mgmt/ops.
+    require_role(user, "admin", "management", "ops")
     funnel = db.query_all("SELECT status, COUNT(*) as count FROM jamaah GROUP BY status")
     visa = db.query_all(
         "SELECT visa_status, COUNT(*) as count FROM jamaah "

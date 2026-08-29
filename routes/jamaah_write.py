@@ -224,9 +224,13 @@ async def jamaah_doc_completeness(
 async def jamaah_documents(jid: int, body: dict = Depends(json_body), user=Depends(authenticate_token)):
     doc_type = body.get("docType")
     file_base64 = body.get("fileBase64", "")
-    ext = body.get("ext")
+    ext = (body.get("ext") or "").lower().lstrip(".")
     if doc_type not in ("ktp", "kk", "passport", "vaccine"):
         raise HTTPException(status_code=400, detail="Tipe dokumen tidak valid")
+    # SECURITY: allowlist ext -- tanpa ini user bisa set ext="jpg/../../evil"
+    # -> path traversal keluar UPLOAD_DIR saat os.path.join+open dieksekusi.
+    if ext not in ("png", "jpg", "jpeg", "webp", "pdf"):
+        raise HTTPException(status_code=400, detail="Format file harus png/jpg/webp/pdf.")
 
     file_name = f"doc_{doc_type}_{jid}_{int(asyncio.get_event_loop().time()*1000)}.{ext}"
     os.makedirs(UPLOAD_DIR, exist_ok=True)

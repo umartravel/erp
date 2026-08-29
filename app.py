@@ -50,6 +50,11 @@ async def lifespan(_app: FastAPI):
     db.init_db()
     realtime.set_loop(asyncio.get_running_loop())
     wa.connect_to_whatsapp()
+    # SECURITY: warn kalau JWT_SECRET default terpakai. Kalau prod deploy tanpa
+    # set env var, attacker yang tau string ini bisa forge token siapapun.
+    from auth import JWT_SECRET as _js
+    if _js == "umar_crm_super_secret_key_2026":
+        print("[WARN] JWT_SECRET pakai default -- set env var JWT_SECRET untuk produksi!")
     print(f"🚀 Server Backend CRM Umar berjalan di port {PORT} (Python/FastAPI - Local & VPS)")
     yield
 

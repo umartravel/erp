@@ -19,6 +19,7 @@ from deps import (
     authenticate_token,
     fmt_id,
     json_body,
+    require_role,
 )
 
 router = APIRouter(tags=["wa"])
@@ -31,18 +32,25 @@ async def wa_status(user=Depends(authenticate_token)):
 
 @router.post("/api/wa/connect")
 async def wa_connect(user=Depends(authenticate_token)):
+    # SECURITY: buka koneksi WA -- restrict ke admin/management (bukan random staff).
+    require_role(user, "admin", "management")
     wa.connect_to_whatsapp()
     return {"message": "Membuka koneksi WhatsApp..."}
 
 
 @router.post("/api/wa/logout")
 async def wa_logout(user=Depends(authenticate_token)):
+    # SECURITY: putus koneksi WA = DoS potential (broadcast/invoice mati) -- admin only.
+    require_role(user, "admin", "management")
     await wa.logout_whatsapp()
     return {"message": "WhatsApp berhasil diputus. Silakan scan ulang."}
 
 
 @router.post("/api/wa/send")
 async def wa_send(body: dict = Depends(json_body), user=Depends(authenticate_token)):
+    # SECURITY: kirim pesan WA ke target manapun / broadcast semua jamaah --
+    # PHISHING risk kalau siapapun bisa akses. Restrict ke admin/sales/finance.
+    require_role(user, "admin", "sales", "finance", "management")
     target = body.get("target")
     message = body.get("message")
     if wa.get_status()["status"] != "connected":
@@ -66,6 +74,8 @@ async def wa_send(body: dict = Depends(json_body), user=Depends(authenticate_tok
 
 @router.post("/api/wa/remind-payment")
 async def wa_remind_payment(user=Depends(authenticate_token)):
+    # SECURITY: mass broadcast pengingat -- customer spam risk kalau bebas dipanggil.
+    require_role(user, "admin", "finance", "sales", "management")
     # FIX (integritas): jangkau SEMUA jamaah dengan sisa tagihan & booking aktif,
     # bukan hanya status 'Terdaftar'. Sebelumnya jamaah ber-status 'Lead'/'Waitlisted'
     # yang sudah berutang tidak pernah dapat pengingat.

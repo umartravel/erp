@@ -253,6 +253,10 @@ async def expense_lines_create(rid: int, body: dict = Depends(json_body), user=D
     file_base64 = g("receiptBase64")
     if file_base64:
         ext = (g("ext") or "jpg").lower().lstrip(".")
+        # SECURITY: allowlist ext -- .lstrip('.') sendirinya tidak stop 'jpg/../evil'
+        # (path traversal). Batasi ke ekstensi struk yang wajar.
+        if ext not in ("png", "jpg", "jpeg", "webp", "pdf"):
+            raise HTTPException(status_code=400, detail="Format struk harus png/jpg/webp/pdf.")
         file_name = f"expline_{rid}_{int(asyncio.get_event_loop().time()*1000)}.{ext}"
         os.makedirs(UPLOAD_DIR, exist_ok=True)
         b64 = file_base64.split(",")[1] if "," in file_base64 else file_base64
