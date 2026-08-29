@@ -3431,6 +3431,63 @@
         </div>
     </div>
 
+    <!-- Modal: Convert BOQ Approved -> row packages baru (Phase 2) -->
+    <div id="modal-boq-convert" class="fixed inset-0 modal-bg z-[60] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6">
+            <h3 class="font-bold text-lg mb-1 border-b pb-2 flex items-center gap-2">
+                <i data-lucide="package-plus" class="w-5 h-5 text-amber-600"></i>Jadikan Paket dari BOQ
+            </h3>
+            <p class="text-xs text-gray-500 mb-3">BOQ ini akan diubah menjadi row baru di Master Paket. Setelah convert, BOQ akan ter-link ke paket tersebut.</p>
+            <div id="boq-conv-preview" class="text-xs bg-emerald-50 border-l-2 border-emerald-500 px-2 py-1 mb-3 rounded"></div>
+
+            <div class="grid grid-cols-2 gap-3 text-sm">
+                <div class="col-span-2">
+                    <label class="text-xs font-medium">Nama Paket *</label>
+                    <input id="boq-conv-name" type="text" class="w-full border p-2 rounded"/>
+                </div>
+                <div>
+                    <label class="text-xs font-medium">Tanggal Keberangkatan *</label>
+                    <input id="boq-conv-departure" type="date" class="w-full border p-2 rounded"/>
+                </div>
+                <div>
+                    <label class="text-xs font-medium">Tanggal Pulang</label>
+                    <input id="boq-conv-return" type="date" class="w-full border p-2 rounded"/>
+                </div>
+                <div>
+                    <label class="text-xs font-medium">Durasi (Hari) *</label>
+                    <input id="boq-conv-duration" type="number" class="w-full border p-2 rounded" value="9"/>
+                </div>
+                <div>
+                    <label class="text-xs font-medium">Kuota (Pax)</label>
+                    <input id="boq-conv-quota" type="number" class="w-full border p-2 rounded" value="45"/>
+                </div>
+                <div>
+                    <label class="text-xs font-medium">Hotel Mekkah</label>
+                    <input id="boq-conv-hotel-mekkah" type="text" class="w-full border p-2 rounded" placeholder="opsional"/>
+                </div>
+                <div>
+                    <label class="text-xs font-medium">Hotel Madinah</label>
+                    <input id="boq-conv-hotel-madinah" type="text" class="w-full border p-2 rounded" placeholder="opsional"/>
+                </div>
+                <div>
+                    <label class="text-xs font-medium">Rute</label>
+                    <select id="boq-conv-route" class="w-full border p-2 rounded">
+                        <option value="Direct">Direct</option>
+                        <option value="Transit">Transit</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs font-medium">Komisi Agen (Rp/pax)</label>
+                    <input id="boq-conv-commission" type="number" class="w-full border p-2 rounded" value="0"/>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 mt-4 border-t pt-3">
+                <button onclick="closeModal('modal-boq-convert')" class="px-4 py-2 bg-gray-100 rounded text-sm">Batal</button>
+                <button onclick="convertBoqToPackage()" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded text-sm font-bold"><i data-lucide="package-plus" class="w-4 h-4 inline"></i> Jadikan Paket</button>
+            </div>
+        </div>
+    </div>
+
     <!-- NOTIFICATION TOAST -->
     <div id="toast" class="fixed bottom-5 right-5 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-lg transform transition-transform translate-y-20 opacity-0 duration-300 z-[101] flex items-center gap-3">Message</div>
 
@@ -8293,6 +8350,6 @@
     <script src="js/ops-home.js?v=20260827e"></script>
     <script src="js/finance-home.js?v=20260827e"></script>
     <script src="js/mgmt-home.js?v=20260827e"></script>
-    <script src="js/boq.js?v=20260830a"></script>
+    <script src="js/boq.js?v=20260830b"></script>
 </body>
 </html>

@@ -358,6 +358,10 @@ function _renderBoqDetail() {
     if (isDraft && _isMgmt()) {
         btns += `<button onclick="_openReviewModal('approve')" class="px-3 py-1.5 rounded bg-emerald-500 hover:bg-emerald-600 text-white text-xs"><i data-lucide="fast-forward" class="w-3.5 h-3.5 inline"></i> Approve Langsung</button>`;
     }
+    // Phase 2: Convert to Package -- mgmt/admin only, hanya kalau Approved & belum linked.
+    if (b.status === 'Approved' && !b.package_id && _isMgmt()) {
+        btns += `<button onclick="openConvertBoqModal()" class="px-3 py-1.5 rounded bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold"><i data-lucide="package-plus" class="w-3.5 h-3.5 inline"></i> Jadikan Paket</button>`;
+    }
     if (_isAuthor()) {
         btns += `<button onclick="duplicateBoq(${b.id})" class="px-3 py-1.5 rounded bg-purple-100 text-purple-700 hover:bg-purple-200 text-xs"><i data-lucide="copy" class="w-3.5 h-3.5 inline"></i> Duplicate</button>`;
     }
@@ -473,6 +477,57 @@ async function submitBoqReview() {
         _toast('Gagal: ' + (e.message || e), 'error');
     }
 }
+
+/* ============================================================================
+ * Phase 2: Convert BOQ Approved -> row Master Paket baru
+ * ==========================================================================*/
+function openConvertBoqModal() {
+    const b = __boqCurrentDetail;
+    if (!b) return;
+    // Prefill dari BOQ + kalkulasi.
+    document.getElementById('boq-conv-name').value = b.name || '';
+    document.getElementById('boq-conv-departure').value = '';
+    document.getElementById('boq-conv-return').value = '';
+    document.getElementById('boq-conv-duration').value = 9;
+    document.getElementById('boq-conv-quota').value = b.target_pax || 45;
+    document.getElementById('boq-conv-hotel-mekkah').value = '';
+    document.getElementById('boq-conv-hotel-madinah').value = '';
+    document.getElementById('boq-conv-route').value = 'Direct';
+    document.getElementById('boq-conv-commission').value = 0;
+    const price = b.totals?.price_per_pax || 0;
+    document.getElementById('boq-conv-preview').innerText =
+        `Harga per pax dari BOQ ini: ${formatRp(price)} (akan di-set ke price_quad/triple/double paket baru)`;
+    openModal('modal-boq-convert');
+}
+
+async function convertBoqToPackage() {
+    const body = {
+        name: document.getElementById('boq-conv-name').value.trim(),
+        departure_date: document.getElementById('boq-conv-departure').value,
+        return_date: document.getElementById('boq-conv-return').value || null,
+        duration: parseInt(document.getElementById('boq-conv-duration').value) || 0,
+        quota: parseInt(document.getElementById('boq-conv-quota').value) || null,
+        hotel_mekkah: document.getElementById('boq-conv-hotel-mekkah').value.trim() || null,
+        hotel_madinah: document.getElementById('boq-conv-hotel-madinah').value.trim() || null,
+        route_type: document.getElementById('boq-conv-route').value,
+        default_commission_fee: parseInt(document.getElementById('boq-conv-commission').value) || 0,
+    };
+    if (!body.name) return _toast('Nama paket wajib.', 'error');
+    if (!body.departure_date) return _toast('Tanggal keberangkatan wajib.', 'error');
+    if (body.duration <= 0) return _toast('Durasi (hari) wajib > 0.', 'error');
+    try {
+        const r = await authFetch(`/boq/${__boqCurrentDetail.id}/convert-to-package`,
+            { method: 'POST', body: JSON.stringify(body) });
+        const j = await r.json();
+        _toast(`Paket #${j.package_id} berhasil dibuat dari BOQ ini.`, 'success');
+        closeModal('modal-boq-convert');
+        closeModal('modal-boq-detail');
+        await fetchBoqList();
+    } catch (e) {
+        _toast('Convert gagal: ' + (e.message || e), 'error');
+    }
+}
+
 
 async function duplicateBoq(bid) {
     const b = __boqList.find(x => x.id === bid) || __boqCurrentDetail;

@@ -250,6 +250,105 @@ def test_mgmt_can_delete_any_status(client, sales_token, management_token):
 # ---------------------------------------------------------------------------
 # item CRUD
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# convert-to-package (Phase 2)
+# ---------------------------------------------------------------------------
+def test_convert_approved_boq_creates_package(client, admin_token):
+    """BOQ Approved -> POST convert -> row packages baru + BOQ.package_id linked."""
+    b = _mk_boq(client, admin_token, name="TEST BOQ Convert Happy", target_pax=40, margin=15, items=[
+        {"category": "hotel_mekkah", "item_name": "Anjum", "unit": "per_pax",
+         "quantity": 1, "unit_price": 8_000_000},
+        {"category": "tiket", "item_name": "Saudia", "unit": "per_pax",
+         "quantity": 1, "unit_price": 12_000_000},
+    ])
+    assert b["status"] == "Approved"
+
+    r = client.post(f"/api/boq/{b['id']}/convert-to-package", json={
+        "departure_date": "2027-05-10", "duration": 9, "quota": 40,
+        "hotel_mekkah": "Anjum Hotel", "route_type": "Direct",
+    }, headers=bearer(admin_token))
+    assert r.status_code == 200, r.text
+    j = r.json()
+    pid = j["package_id"]
+
+    # Verify row packages ada + harga match kalkulasi (cost 20jt × 40 pax = 800jt group
+    # -> cost/pax 20jt + margin 15% = 23jt).
+    pkg = client.get(f"/api/packages", headers=bearer(admin_token)).json()
+    row = next((p for p in pkg if p["id"] == pid), None)
+    assert row is not None, "Paket hasil convert tidak ketemu di /api/packages"
+    assert row["price"] == 23_000_000
+    assert row["price_quad"] == 23_000_000
+    assert row["departure_date"] == "2027-05-10"
+    assert row["duration"] == 9
+    assert row["quota"] == 40
+
+    # Verify BOQ.package_id sekarang link ke paket baru + notes ada trace.
+    detail = client.get(f"/api/boq/{b['id']}", headers=bearer(admin_token)).json()
+    assert detail["package_id"] == pid
+    assert "Converted to Package" in (detail["notes"] or "")
+
+
+def test_convert_requires_mgmt(client, admin_token, sales_token):
+    """Sales tidak boleh convert -- keputusan Master Paket = mgmt/admin only."""
+    b = _mk_boq(client, admin_token, name="TEST BOQ Convert RBAC", items=[
+        {"category": "tiket", "item_name": "X", "unit": "per_pax",
+         "quantity": 1, "unit_price": 100},
+    ])
+    r = client.post(f"/api/boq/{b['id']}/convert-to-package",
+                    json={"departure_date": "2027-01-01", "duration": 9},
+                    headers=bearer(sales_token))
+    assert r.status_code == 403
+
+
+def test_convert_only_approved(client, sales_token, management_token):
+    """BOQ Draft/Pending tidak bisa di-convert -- harus Approved dulu."""
+    b = _mk_boq(client, sales_token, name="TEST BOQ Convert NotApproved", items=[
+        {"category": "tiket", "item_name": "X", "unit": "per_pax",
+         "quantity": 1, "unit_price": 100},
+    ])
+    # Status Draft -- convert ditolak.
+    r = client.post(f"/api/boq/{b['id']}/convert-to-package",
+                    json={"departure_date": "2027-01-01", "duration": 9},
+                    headers=bearer(management_token))
+    assert r.status_code == 400
+    assert "Approved" in r.json()["error"]
+
+
+def test_convert_blocks_if_already_linked(client, admin_token):
+    """BOQ sudah punya package_id != NULL -> tidak boleh convert lagi."""
+    # Bikin paket dummy dulu supaya bisa link.
+    pkg_r = client.post("/api/packages", json={
+        "name": "TEST BOQ Convert PreLinked",
+        "price": 20_000_000, "price_quad": 20_000_000,
+        "departure_date": "2027-01-01", "duration": 9, "quota": 30,
+    }, headers=bearer(admin_token))
+    pkg_id = pkg_r.json()["id"]
+
+    b = _mk_boq(client, admin_token, name="TEST BOQ Prelinked", package_id=pkg_id, items=[
+        {"category": "tiket", "item_name": "X", "unit": "per_pax",
+         "quantity": 1, "unit_price": 100},
+    ])
+    r = client.post(f"/api/boq/{b['id']}/convert-to-package",
+                    json={"departure_date": "2027-01-01", "duration": 9},
+                    headers=bearer(admin_token))
+    assert r.status_code == 400
+    assert "terikat" in r.json()["error"].lower()
+
+
+def test_convert_requires_departure_and_duration(client, admin_token):
+    """departure_date + duration wajib -- BOQ tidak simpan info itu."""
+    b = _mk_boq(client, admin_token, name="TEST BOQ Convert Missing", items=[
+        {"category": "tiket", "item_name": "X", "unit": "per_pax",
+         "quantity": 1, "unit_price": 100},
+    ])
+    r = client.post(f"/api/boq/{b['id']}/convert-to-package", json={},
+                    headers=bearer(admin_token))
+    assert r.status_code == 400
+    r = client.post(f"/api/boq/{b['id']}/convert-to-package",
+                    json={"departure_date": "2027-01-01"}, headers=bearer(admin_token))
+    assert r.status_code == 400  # duration masih kosong
+
+
 def test_add_item_updates_totals(client, admin_token):
     b = _mk_boq(client, admin_token, name="TEST BOQ ItemAdd", target_pax=1, margin=0)
     r = client.post(f"/api/boq/{b['id']}/items", json={

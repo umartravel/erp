@@ -467,6 +467,91 @@ async def boq_reject(bid: int, body: dict = Depends(json_body), user=Depends(aut
 
 
 # ---------------------------------------------------------------------------
+# convert BOQ Approved -> row packages baru (Phase 2)
+# ---------------------------------------------------------------------------
+@router.post("/api/boq/{bid}/convert-to-package")
+async def boq_convert_to_package(bid: int, body: dict = Depends(json_body), user=Depends(authenticate_token)):
+    """Konversi BOQ Approved (yang belum terikat paket) jadi row `packages` baru.
+
+    Guardrail:
+    - Mgmt/Admin only -- bikin row Master Paket = keputusan penting.
+    - Status HARUS Approved (Draft/Pending/Rejected ditolak).
+    - Kalau BOQ sudah terikat package_id != NULL -> ditolak (skenario multi-BOQ
+      per paket dilakukan lewat 'Duplicate' + link manual, bukan convert).
+    - `departure_date` + `duration` wajib di body -- BOQ tidak simpan info itu.
+
+    Setelah insert paket, BOQ.package_id di-link ke paket baru + notes ditambah
+    catatan trace 'Converted from BOQ #N'. Harga per tipe kamar semua di-set
+    sama dgn price_per_pax hasil kalkulasi BOQ (backend). Editor Master Paket
+    boleh differentiate quad/triple/double manual setelahnya.
+    """
+    require_role(user, *_MGMT_ROLES)
+    boq = _boq_or_404(bid)
+    if boq["status"] != "Approved":
+        raise HTTPException(status_code=400, detail="Hanya BOQ Approved yang bisa di-convert.")
+    if boq["package_id"] is not None:
+        raise HTTPException(status_code=400, detail="BOQ sudah terikat ke paket. Duplicate BOQ dulu untuk skenario baru.")
+
+    dep = (body.get("departure_date") or "").strip()
+    if not dep:
+        raise HTTPException(status_code=400, detail="departure_date wajib diisi.")
+    try:
+        duration = int(body.get("duration") or 0)
+    except (TypeError, ValueError):
+        duration = 0
+    if duration <= 0:
+        raise HTTPException(status_code=400, detail="duration (hari) wajib > 0.")
+
+    # Sanity: BOQ minimal punya 1 item -- convert BOQ kosong = paket tanpa harga.
+    n = db.query_one("SELECT COUNT(*) AS n FROM package_boq_items WHERE boq_id = ?", (bid,))
+    if not n or n["n"] == 0:
+        raise HTTPException(status_code=400, detail="BOQ kosong tidak bisa di-convert. Tambah item dulu.")
+
+    totals = _compute_totals(bid, boq["target_pax"], boq["target_margin_pct"])
+    price = int(totals.get("price_per_pax") or 0)
+    quota = int(body.get("quota") or boq["target_pax"] or 45)
+
+    # Nama paket: pakai override dari body kalau ada, else pakai nama BOQ.
+    pkg_name = (body.get("name") or boq["name"] or "").strip()
+    if not pkg_name:
+        raise HTTPException(status_code=400, detail="Nama paket kosong.")
+
+    # Insert dgn field hotel/airline dari body (kalau user isi), atau NULL.
+    pid, _ = db.execute(
+        "INSERT INTO packages (name, price, departure_date, duration, quota, "
+        " price_quad, price_triple, price_double, default_commission_fee, "
+        " hotel_mekkah, hotel_madinah, route_type, return_date) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            pkg_name, price, dep, duration, quota,
+            price, price, price,   # quad/triple/double sementara sama; editor boleh differentiate
+            int(body.get("default_commission_fee") or 0),
+            body.get("hotel_mekkah"), body.get("hotel_madinah"),
+            body.get("route_type") or "Direct",
+            body.get("return_date"),
+        ),
+    )
+
+    # Link BOQ ke paket baru + tambah audit note.
+    trace = f"[Converted to Package #{pid} on {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')} by {user['name']}]"
+    combined_notes = (boq["notes"] or "").rstrip()
+    combined_notes = (combined_notes + "\n\n" + trace).strip() if combined_notes else trace
+    db.execute(
+        "UPDATE package_boq SET package_id = ?, notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (pid, combined_notes, bid),
+    )
+
+    log_action(user, "BOQ_CONVERT", f"boq={bid} -> package={pid} price/pax={price}")
+    notify("data_updated", "boq")
+    notify("data_updated", "package")
+    return {
+        "package_id": pid,
+        "price_per_pax": price,
+        "message": f"BOQ berhasil di-convert jadi Paket #{pid}.",
+    }
+
+
+# ---------------------------------------------------------------------------
 # duplicate (utility -- clone jadi Draft baru)
 # ---------------------------------------------------------------------------
 @router.post("/api/boq/{bid}/duplicate")
