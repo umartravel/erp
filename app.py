@@ -33,6 +33,7 @@ import db
 import realtime
 import whatsapp as wa
 from realtime import sio
+from logging_config import RequestIdMiddleware, setup_logging
 from rate_limit import ApiRateLimitMiddleware
 from security_headers import SecurityHeadersMiddleware
 
@@ -46,9 +47,14 @@ UPLOAD_DIR = os.path.join(BASE_DIR, "uploads_private")
 BRANDING_DIR = os.path.join(PUBLIC_DIR, "branding")
 PORT = int(os.environ.get("PORT", 3000))
 
+import logging  # noqa: E402
+_log = logging.getLogger("app")
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     # Startup: init DB, simpan loop event (untuk emit dari thread), auto-connect WA
+    setup_logging()  # aktifkan formatter TS+level+request_id sedini mungkin
     db.init_db()
     realtime.set_loop(asyncio.get_running_loop())
     wa.connect_to_whatsapp()
@@ -56,8 +62,8 @@ async def lifespan(_app: FastAPI):
     # set env var, attacker yang tau string ini bisa forge token siapapun.
     from auth import JWT_SECRET as _js
     if _js == "umar_crm_super_secret_key_2026_v2!!":
-        print("[WARN] JWT_SECRET pakai default -- set env var JWT_SECRET untuk produksi!")
-    print(f"🚀 Server Backend CRM Umar berjalan di port {PORT} (Python/FastAPI - Local & VPS)")
+        _log.warning("JWT_SECRET pakai default -- set env var JWT_SECRET untuk produksi!")
+    _log.info("Server Backend CRM Umar berjalan di port %d (Python/FastAPI)", PORT)
     yield
 
 
@@ -70,6 +76,10 @@ app.add_middleware(SecurityHeadersMiddleware)
 # SECURITY: throttle /api/* umum. 300 req/menit per user (fallback IP). Login
 # punya rate limiter khusus di routes/dashboard.py, dilewatkan middleware ini.
 app.add_middleware(ApiRateLimitMiddleware)
+# OBSERVABILITY: assign X-Request-Id per request (echo di response header,
+# suntik ke setiap log line lewat contextvars). Register terakhir supaya jadi
+# middleware terluar -- request_id sudah ke-set sebelum middleware lain jalan.
+app.add_middleware(RequestIdMiddleware)
 
 
 # --- Konversi error FastAPI -> {"error": ...} agar kompatibel frontend ---
