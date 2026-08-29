@@ -279,10 +279,11 @@ Suite pytest di `tests/` folder. Berjalan pada DB terisolir (env var
 .venv/Scripts/python.exe -m pytest tests/test_auth.py::test_login_admin_ok  # satu test
 ```
 
-**File (47 test total, ~5 detik):**
+**File (73 test total, ~7 detik):**
 - `tests/conftest.py` -- fixtures: `client` (TestClient), `admin_token`,
   `sales_token`, `finance_token`, `ops_token`, `management_token`.
-  Session-scoped, sekali init DB.
+  Session-scoped, sekali init DB. Plus autouse `_reset_rate_limit` supaya
+  brute-force test tidak menumpuk ke test lain.
 - `tests/test_auth.py` (7) -- login flow (valid + invalid credentials), RBAC dasar.
 - `tests/test_smoke.py` (8) -- 43 endpoint GET dengan admin token → 200; 9 endpoint
   tanpa token → 401; RBAC per-role (sales/ops/finance); regression check
@@ -303,6 +304,17 @@ Suite pytest di `tests/` folder. Berjalan pada DB terisolir (env var
   tanpa error total.
 - `tests/test_payroll_idempotent.py` (4) -- monthly guard aktif, force=True
   lolos, RBAC admin/finance only.
+- `tests/test_expense_lifecycle.py` (7) -- Draft -> Submit -> Approve -> Paid
+  full flow, guard status transition, RBAC per-tahap.
+- `tests/test_procurement.py` (8) -- Pending -> Aktif -> multi-payment,
+  overshoot guard, delete-with-payment guard.
+- `tests/test_package_quota.py` (3) -- kuota penuh block sales, admin bypass,
+  jamaah Cancelled tidak dihitung ke filled.
+- `tests/test_rate_limit.py` (3) -- MAX_FAILURES kegagalan -> 429; login sukses
+  clear counter; kegagalan '404 user' juga dihitung (cegah username enumeration).
+- `tests/test_security_headers.py` (5) -- CSP + X-Frame-Options + X-Content-Type-Options
+  + Referrer-Policy + Permissions-Policy hadir di HTML root, JSON API,
+  response 401/404; HSTS default OFF.
 
 **Bug yang kedeteksi selama setup tests:** kolom `jamaah.external_id` ada di
 production DB (hasil CSV import lama) tapi tidak di `db.SCHEMA` atau migration.

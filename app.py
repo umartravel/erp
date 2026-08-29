@@ -33,6 +33,7 @@ import db
 import realtime
 import whatsapp as wa
 from realtime import sio
+from security_headers import SecurityHeadersMiddleware
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PUBLIC_DIR = os.path.join(BASE_DIR, "public")
@@ -60,6 +61,11 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(title="Umar CRM API", lifespan=lifespan)
+
+# SECURITY: pasang header defensif (CSP, X-Frame-Options, X-Content-Type-Options,
+# Referrer-Policy, Permissions-Policy, opsional HSTS). Registered SEBELUM router
+# supaya semua response -- termasuk exception handler -- kena middleware.
+app.add_middleware(SecurityHeadersMiddleware)
 
 
 # --- Konversi error FastAPI -> {"error": ...} agar kompatibel frontend ---
