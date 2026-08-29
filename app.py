@@ -33,6 +33,7 @@ import db
 import realtime
 import whatsapp as wa
 from realtime import sio
+from rate_limit import ApiRateLimitMiddleware
 from security_headers import SecurityHeadersMiddleware
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -66,6 +67,9 @@ app = FastAPI(title="Umar CRM API", lifespan=lifespan)
 # Referrer-Policy, Permissions-Policy, opsional HSTS). Registered SEBELUM router
 # supaya semua response -- termasuk exception handler -- kena middleware.
 app.add_middleware(SecurityHeadersMiddleware)
+# SECURITY: throttle /api/* umum. 300 req/menit per user (fallback IP). Login
+# punya rate limiter khusus di routes/dashboard.py, dilewatkan middleware ini.
+app.add_middleware(ApiRateLimitMiddleware)
 
 
 # --- Konversi error FastAPI -> {"error": ...} agar kompatibel frontend ---
