@@ -6,8 +6,8 @@ kode. Untuk cara menjalankan aplikasi, lihat [README_PYTHON.md](README_PYTHON.md
 ## Struktur repo (top-level)
 
 ```
-app.py                    # 170 baris. Bootstrap: FastAPI + lifespan + exception
-                          # handler + include_router x 22 + StaticFiles + Socket.IO
+app.py                    # ~185 baris. Bootstrap: FastAPI + lifespan + exception
+                          # handler + include_router x 28 + StaticFiles + Socket.IO
                           # wrap. TIDAK ada logika bisnis di sini.
 
 deps/                     # Shared helpers + konstanta path yang dipakai lintas
@@ -21,13 +21,20 @@ deps/                     # Shared helpers + konstanta path yang dipakai lintas
   jamaah_status.py        # _derive_status, sync_status_mirror, status_to_dims,
                           # _field_change, assert_jamaah_access
 
-routes/                   # 22 file router, satu domain per file.
+routes/                   # 28 file router, satu domain per file.
   __init__.py             # Package marker.
   reconcile.py            # F-E: bank mutation CSV import + match
   finance.py              # F-A, F-B, F-D: Home Finance, forecast, aged
   finance_tx.py           # Transactions Buku Kas + payroll + reports/pnl
-  mgmt.py                 # M-A, M-C, M-D, M-E: Home Mgmt, PDF, targets, risk
-  ops.py                  # O-A + incidents + package ops verbs (feedback/debrief/vendor/checklist)
+  mgmt_home.py            # M-A:  GET /api/mgmt/home (landing exec)
+  mgmt_reports.py         # M-C:  GET /api/mgmt/monthly-pdf
+  mgmt_targets.py         # M-D:  GET/POST /api/mgmt/company-targets
+  mgmt_risk.py            # M-E:  GET /api/mgmt/risk-register (cross-modul)
+  ops_home.py             # O-A:  GET /api/ops/home (landing ops)
+  ops_incidents.py        # /api/incidents CRUD + PATCH resolve
+  ops_feedback.py         # /api/packages/{pid}/feedback + /debriefs
+  ops_vendors.py          # vendor_bookings per paket (hotel/airline/bus)
+  ops_checklist.py        # pra-keberangkatan checklist per paket
   sales.py                # S-A: Home Sales + targets + performance + followups
   jamaah_actions.py       # Jamaah sub-resource: cancel/comments/activities/refund
   jamaah_read.py          # GET + POST /api/jamaah
@@ -54,7 +61,7 @@ whatsapp.py               # WA neonize backend + stub fallback + WA_SIMULATE mod
 visa_checker.py           # Playwright check visa (dengan fallback offline)
 reconcile_importer.py     # Bank CSV parser (BCA/Mandiri/Generic detect) + SHA1
 expense_pdf.py            # ReportLab: Expense Report PDF (routes/expense.py)
-mgmt_pdf.py               # ReportLab: Monthly Executive Report (routes/mgmt.py)
+mgmt_pdf.py               # ReportLab: Monthly Executive Report (routes/mgmt_reports.py)
 jamaah_docs_pdf.py        # ReportLab: Manifest/Roomlist/Absensi (routes/packages.py)
 migrate.py                # CLI: status | create <name> | up
 migrations/               # Migration files versioned by NNN prefix
@@ -63,7 +70,8 @@ migrations/               # Migration files versioned by NNN prefix
 
 ## Pola router (routes/*.py)
 
-Setiap file router memuat satu domain bisnis dan mengikuti pola:
+Setiap file router memuat satu domain bisnis (atau sub-domain kalau ukurannya
+besar -- lihat `mgmt_*.py` dan `ops_*.py`) dan mengikuti pola:
 
 ```python
 """
@@ -271,16 +279,30 @@ Suite pytest di `tests/` folder. Berjalan pada DB terisolir (env var
 .venv/Scripts/python.exe -m pytest tests/test_auth.py::test_login_admin_ok  # satu test
 ```
 
-**File:**
+**File (47 test total, ~5 detik):**
 - `tests/conftest.py` -- fixtures: `client` (TestClient), `admin_token`,
-  `sales_token`, `finance_token`, `ops_token`. Session-scoped, sekali init DB.
-- `tests/test_auth.py` -- login flow (valid + invalid credentials), RBAC dasar.
-- `tests/test_smoke.py` -- 43 endpoint GET dengan admin token → 200; 9 endpoint
+  `sales_token`, `finance_token`, `ops_token`, `management_token`.
+  Session-scoped, sekali init DB.
+- `tests/test_auth.py` (7) -- login flow (valid + invalid credentials), RBAC dasar.
+- `tests/test_smoke.py` (8) -- 43 endpoint GET dengan admin token → 200; 9 endpoint
   tanpa token → 401; RBAC per-role (sales/ops/finance); regression check
   routing order (`bulk-ops` tidak di-shadow oleh `{jid}`, `/uploads` gated).
-- `tests/test_jamaah_lifecycle.py` -- alur kritis: create + gatekeeper harga/NIK,
-  payment triggers auto commission_claim (Lunas + agent_id), partial payment
-  tidak trigger commission, `sync_status_mirror` update kolom `status` legacy.
+- `tests/test_jamaah_lifecycle.py` (6) -- alur kritis: create + gatekeeper
+  harga/NIK, payment triggers auto commission_claim (Lunas + agent_id), partial
+  payment tidak trigger commission, `sync_status_mirror` update kolom `status`
+  legacy.
+- `tests/test_transaction_lifecycle.py` (5) -- DELETE tx payment -> cascading
+  rollback jamaah.paid_amount, Lunas -> DP/Unpaid recompute, RBAC admin-only.
+- `tests/test_refund_flow.py` (5) -- request -> Disetujui -> Dicairkan (tx
+  expense + paid_amount -), guard nominal > paid, note wajib untuk reject,
+  cancel_booking -> pipeline_stage=Cancelled.
+- `tests/test_commission_approval.py` (6) -- Pending -> Disetujui -> Dicairkan
+  (tx expense category=commission), reject note guard, RBAC review/disburse.
+- `tests/test_jamaah_bulk_ops.py` (6) -- mass update ok, regression check
+  /bulk-ops tidak ke-shadow oleh /{jid}, RBAC admin/ops only, skip ID palsu
+  tanpa error total.
+- `tests/test_payroll_idempotent.py` (4) -- monthly guard aktif, force=True
+  lolos, RBAC admin/finance only.
 
 **Bug yang kedeteksi selama setup tests:** kolom `jamaah.external_id` ada di
 production DB (hasil CSV import lama) tapi tidak di `db.SCHEMA` atau migration.
@@ -291,10 +313,15 @@ Fix: `migrations/002_formalize_jamaah_external_id.py`.
 1. **Butuh kolom baru?** -> tambah migration file (`python migrate.py create`).
 2. **Butuh endpoint baru?** -> tambah di router yang paling relevan
    (`routes/<domain>.py`) atau bikin router baru + register di `app.py`.
-3. **Perlu helper share antar router?** -> tambah ke `deps.py` (dengan
-   `__all__` update).
+   Kalau router existing > ~300 baris, pertimbangkan split per sub-domain
+   (pola `mgmt_*.py`, `ops_*.py`).
+3. **Perlu helper share antar router?** -> tambah ke sub-modul yang cocok di
+   `deps/` (paths/http/utils/audit/jamaah_status). Re-export di `deps/__init__.py`
+   supaya router lama yang pakai `from deps import X` tetap jalan.
 4. **Perlu side-effect ke tabel lain?** -> cek "Alur data khusus" di atas
    supaya konsisten dengan pola cascading yang sudah ada.
 5. **Emit socket notify** untuk setiap tulisan DB yang mempengaruhi tampilan.
 6. **Log action** untuk semua aksi bermakna audit.
 7. **Cek routing order** kalau path punya kombinasi literal + `{id}`.
+8. **Tulis pytest** minimal untuk happy-path + guard 1 gagal utama. Runner
+   pakai DB terisolir via env var `UMAR_DB_FILE` (lihat `tests/conftest.py`).
