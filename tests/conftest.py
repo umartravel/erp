@@ -61,6 +61,11 @@ def ops_token(client):
     return _login(client, "ops1")
 
 
+@pytest.fixture(scope="session")
+def management_token(client):
+    return _login(client, "manager1")
+
+
 def bearer(token):
     """Helper: return dict header Authorization bearer."""
     return {"Authorization": f"Bearer {token}"}
