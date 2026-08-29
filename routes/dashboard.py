@@ -8,7 +8,7 @@ Router Landing & Utilities:
 
 Semua endpoint dulunya duduk di app.py. Pemindahan tidak mengubah kontrak API.
 """
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
 import db
 from auth import create_token, verify_password
@@ -19,6 +19,7 @@ from deps import (
     json_body,
     require_role,
 )
+from rate_limit import clear_login_failures, is_login_blocked, record_login_failure
 
 router = APIRouter(tags=["dashboard"])
 
@@ -27,14 +28,27 @@ router = APIRouter(tags=["dashboard"])
 # LOGIN (satu-satunya endpoint tanpa authenticate_token)
 # ===========================================================================
 @router.post("/api/login")
-async def login(body: dict = Depends(json_body)):
+async def login(request: Request, body: dict = Depends(json_body)):
+    # SECURITY: brute-force protection -- 10 gagal per IP dalam 5 menit -> 429.
+    # Login sukses langsung clear counter (lihat rate_limit.py).
+    client_ip = request.client.host if request.client else "unknown"
+    if is_login_blocked(client_ip):
+        raise HTTPException(
+            status_code=429,
+            detail="Terlalu banyak percobaan login. Coba lagi dalam 5 menit.",
+        )
+
     username = body.get("username")
     password = body.get("password")
     user = db.query_one("SELECT * FROM users WHERE username = ?", (username,))
     if not user:
+        record_login_failure(client_ip)
         raise HTTPException(status_code=404, detail="User tidak ditemukan")
     if not verify_password(password or "", user["password"]):
+        record_login_failure(client_ip)
         raise HTTPException(status_code=401, detail="Password salah")
+
+    clear_login_failures(client_ip)
     # Catat login sukses -- dipakai admin untuk audit user aktif.
     db.execute("UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?", (user["id"],))
     token = create_token(user["id"], user["role"], user["name"])

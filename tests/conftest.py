@@ -24,6 +24,16 @@ import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
 import app as _app_module  # noqa: E402
+import rate_limit as _rate_limit  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limit():
+    """Reset rate limiter sebelum setiap test -- kegagalan login test A
+    tidak boleh menumpuk ke test B, sekaligus supaya test_auth punya
+    'meja bersih' saat brute-force test lain menaikkan counter."""
+    _rate_limit.reset_all()
+    yield
 
 
 @pytest.fixture(scope="session")
