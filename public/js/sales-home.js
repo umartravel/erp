@@ -66,8 +66,10 @@ function shWireSocketAutoRefresh() {
 function renderSalesHome(data) {
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
 
-  set('sh-me-name', data.me?.name || '-');
-  set('sh-period', data.period || '-');
+  // Phase 5b: render shared welcome hero (Assalamu'alaikum + clock realtime + Islamic quote)
+  if (typeof umarRenderWelcomeHero === 'function') {
+    umarRenderWelcomeHero('sh-hero-mount', data.me?.name || 'Tim Sales');
+  }
 
   const k = data.kpi || {};
   set('sh-kpi-pipeline', (k.pipeline || 0).toLocaleString('id-ID'));

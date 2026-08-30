@@ -255,6 +255,10 @@
             const res = await mhFetch('/mgmt/home');
             if (!res.ok) throw new Error('Gagal memuat Home Management');
             const data = await res.json();
+            // Phase 5b: shared welcome hero
+            if (typeof umarRenderWelcomeHero === 'function') {
+                umarRenderWelcomeHero('mh-hero-mount', (typeof currentUser !== 'undefined' && currentUser?.name) || 'Manajemen');
+            }
             renderKPI(data.kpi || {});
             renderAttention(data.attention || []);
             renderSalesPerf(data.sales_performance || []);

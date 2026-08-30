@@ -559,14 +559,8 @@
 
             <!-- PAGE: HOME SALES (untuk role sales -- MY-scoped) -->
             <div id="page-sales-home" class="page-content hidden space-y-6">
-                <div class="rounded-2xl shadow-sm p-6 relative overflow-hidden" style="background:linear-gradient(135deg,#1D1D1B 0%, #3D2D0B 100%);">
-                    <div class="absolute -right-8 -top-8 opacity-10"><i data-lucide="target" class="w-40 h-40" style="color:#F8BE20;"></i></div>
-                    <h2 class="text-2xl font-black tracking-tight flex items-center gap-3" style="color:#F8BE20;">
-                        <i data-lucide="sun" class="w-6 h-6"></i>
-                        <span>Selamat datang, <span id="sh-me-name">Sales</span></span>
-                    </h2>
-                    <p class="text-xs mt-1" style="color:#F4F1EA;opacity:0.8;">Halaman ini menampilkan pipeline, closing, dan tugas <b>khusus milikmu</b> bulan berjalan (<span id="sh-period">-</span>).</p>
-                </div>
+                <!-- Phase 5b: shared welcome hero (Assalamu'alaikum + jam realtime + quote harian) -->
+                <div id="sh-hero-mount"></div>
 
                 <!-- Butuh Perhatian Hari Ini (hero): quick-scan aksi urgen -->
                 <div id="sh-attention" class="rounded-xl border shadow-sm p-4 hidden" style="background:linear-gradient(135deg,#FEF3C7 0%, #FFFDF7 100%);border-color:#F8BE20;">
@@ -695,14 +689,8 @@
 
             <!-- PAGE: HOME OPS (untuk role ops -- KPI + attention hero) -->
             <div id="page-ops-home" class="page-content hidden space-y-6">
-                <div class="rounded-2xl shadow-sm p-6 relative overflow-hidden" style="background:linear-gradient(135deg,#1D1D1B 0%, #3D2D0B 100%);">
-                    <div class="absolute -right-8 -top-8 opacity-10"><i data-lucide="box" class="w-40 h-40" style="color:#F8BE20;"></i></div>
-                    <h2 class="text-2xl font-black tracking-tight flex items-center gap-3" style="color:#F8BE20;">
-                        <i data-lucide="sun" class="w-6 h-6"></i>
-                        <span>Selamat datang, <span id="oh-me-name">Tim Ops</span></span>
-                    </h2>
-                    <p class="text-xs mt-1" style="color:#F4F1EA;opacity:0.8;">Ringkasan operasional lintas paket: keberangkatan mendatang, insiden, stok, paspor, handover.</p>
-                </div>
+                <!-- Phase 5b: shared welcome hero -->
+                <div id="oh-hero-mount"></div>
 
                 <!-- Butuh Perhatian Hari Ini (hero) -->
                 <div id="oh-attention" class="rounded-xl border shadow-sm p-4 hidden" style="background:linear-gradient(135deg,#FEF3C7 0%, #FFFDF7 100%);border-color:#F8BE20;">
@@ -904,29 +892,32 @@
 
             <!-- PAGE: DASHBOARD -->
             <div id="page-dashboard" class="page-content space-y-6">
-                <!-- SUPER COMMAND CENTER -->
+                <!-- Phase 5b: shared welcome hero -->
+                <div id="dash-hero-mount"></div>
+
+                <!-- SUPER COMMAND CENTER label -->
                 <div class="flex items-center justify-between border-b pb-2">
-                    <h2 class="text-2xl font-black text-gray-800 tracking-tight">Super Command Center</h2>
-                    <span class="bg-blue-100 text-blue-800 text-xs px-3 py-1 rounded-full font-bold animate-pulse shadow-sm">LIVE MONITORING A-Z</span>
+                    <h2 class="text-xl font-black text-gray-800 tracking-tight">Super Command Center</h2>
+                    <span class="text-xs px-3 py-1 rounded-full font-bold animate-pulse shadow-sm" style="background:var(--umar-gold);color:#1D1D1B;">LIVE MONITORING A-Z</span>
                 </div>
-            
-                <!-- 1. Executive Finance & Bottlenecks -->
+
+                <!-- 1. Executive Finance & Bottlenecks -- Phase 5b: seragam gold accent -->
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-emerald-500">
-                        <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Saldo Kas Aktif</p>
-                        <p class="text-2xl font-black text-gray-800 mt-1 truncate" id="super-kas">Rp 0</p>
+                    <div class="umar-kpi-card">
+                        <div class="umar-kpi-label">Saldo Kas Aktif</div>
+                        <div id="super-kas" class="umar-kpi-value truncate">Rp 0</div>
                     </div>
-                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-orange-500">
-                        <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Piutang / Kejar Tagihan</p>
-                        <p class="text-2xl font-black text-gray-800 mt-1 truncate" id="super-piutang">Rp 0</p>
+                    <div class="umar-kpi-card">
+                        <div class="umar-kpi-label">Piutang / Kejar Tagihan</div>
+                        <div id="super-piutang" class="umar-kpi-value truncate">Rp 0</div>
                     </div>
-                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-red-500">
-                        <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider" title="Jamaah yang sudah terdaftar lama tapi belum ada DP sama sekali">Follow Up Sales (No DP >14h)</p>
-                        <p class="text-2xl font-black text-red-600 mt-1" id="super-bn-pay">0 <span class="text-xs font-medium text-gray-600">Jamaah</span></p>
+                    <div class="umar-kpi-card">
+                        <div class="umar-kpi-label" title="Jamaah yang sudah terdaftar lama tapi belum ada DP sama sekali">Follow Up Sales (No DP >14h)</div>
+                        <div id="super-bn-pay" class="umar-kpi-value">0 <span class="text-xs font-medium text-gray-600">Jamaah</span></div>
                     </div>
-                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-purple-500">
-                        <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider" title="Jamaah sudah lunas tapi Visa tak kunjung diproses Ops">Stuck Visa (Lunas >7h)</p>
-                        <p class="text-2xl font-black text-purple-600 mt-1" id="super-bn-visa">0 <span class="text-xs font-medium text-gray-600">Jamaah</span></p>
+                    <div class="umar-kpi-card">
+                        <div class="umar-kpi-label" title="Jamaah sudah lunas tapi Visa tak kunjung diproses Ops">Stuck Visa (Lunas >7h)</div>
+                        <div id="super-bn-visa" class="umar-kpi-value">0 <span class="text-xs font-medium text-gray-600">Jamaah</span></div>
                     </div>
                 </div>
             
@@ -1280,6 +1271,9 @@
 
             <!-- PAGE: HOME FINANCE (F-A) — landing dashboard untuk role finance -->
             <div id="page-finance-home" class="page-content hidden space-y-6">
+                <!-- Phase 5b: shared welcome hero -->
+                <div id="fh-hero-mount"></div>
+
                 <!-- HERO: Butuh Perhatian Hari Ini -->
                 <div id="fh-attention" class="hidden bg-gradient-to-br from-amber-50 to-red-50 border-l-4 border-red-500 rounded-xl shadow-sm p-5">
                     <div class="flex items-start justify-between gap-4">
@@ -1293,27 +1287,27 @@
                     </div>
                 </div>
 
-                <!-- KPI GRID -->
+                <!-- KPI GRID -- Phase 5b: seragam gold accent, icons kasih clue kategori -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div class="bg-white rounded-xl shadow-sm border p-4">
-                        <div class="text-[10px] uppercase tracking-wider text-gray-500 mb-1 flex items-center gap-1.5"><i data-lucide="wallet" class="w-3 h-3"></i> Saldo Kas</div>
-                        <div id="fh-kpi-cash" class="text-2xl font-bold text-gray-800">Rp 0</div>
-                        <div class="text-[10px] text-gray-400 mt-1">dari buku kas (transactions)</div>
+                    <div class="umar-kpi-card">
+                        <div class="umar-kpi-label flex items-center gap-1.5"><i data-lucide="wallet" class="w-3 h-3" style="color:var(--umar-gold-deep);"></i> Saldo Kas</div>
+                        <div id="fh-kpi-cash" class="umar-kpi-value">Rp 0</div>
+                        <div class="umar-kpi-hint">dari buku kas (transactions)</div>
                     </div>
-                    <div class="bg-white rounded-xl shadow-sm border p-4">
-                        <div class="text-[10px] uppercase tracking-wider text-gray-500 mb-1 flex items-center gap-1.5"><i data-lucide="hand-coins" class="w-3 h-3 text-amber-600"></i> Piutang Jamaah</div>
-                        <div id="fh-kpi-piutang" class="text-2xl font-bold text-amber-700">Rp 0</div>
-                        <div class="text-[10px] text-gray-400 mt-1"><span id="fh-kpi-piutang-count">0</span> jamaah belum lunas</div>
+                    <div class="umar-kpi-card">
+                        <div class="umar-kpi-label flex items-center gap-1.5"><i data-lucide="hand-coins" class="w-3 h-3" style="color:var(--umar-gold-deep);"></i> Piutang Jamaah</div>
+                        <div id="fh-kpi-piutang" class="umar-kpi-value">Rp 0</div>
+                        <div class="umar-kpi-hint"><span id="fh-kpi-piutang-count">0</span> jamaah belum lunas</div>
                     </div>
-                    <div class="bg-white rounded-xl shadow-sm border p-4">
-                        <div class="text-[10px] uppercase tracking-wider text-gray-500 mb-1 flex items-center gap-1.5"><i data-lucide="building-2" class="w-3 h-3 text-indigo-600"></i> Utang Vendor</div>
-                        <div id="fh-kpi-utang" class="text-2xl font-bold text-indigo-700">Rp 0</div>
-                        <div class="text-[10px] text-gray-400 mt-1"><span id="fh-kpi-utang-count">0</span> booking belum dilunasi</div>
+                    <div class="umar-kpi-card">
+                        <div class="umar-kpi-label flex items-center gap-1.5"><i data-lucide="building-2" class="w-3 h-3" style="color:var(--umar-gold-deep);"></i> Utang Vendor</div>
+                        <div id="fh-kpi-utang" class="umar-kpi-value">Rp 0</div>
+                        <div class="umar-kpi-hint"><span id="fh-kpi-utang-count">0</span> booking belum dilunasi</div>
                     </div>
-                    <div class="bg-white rounded-xl shadow-sm border p-4">
-                        <div class="text-[10px] uppercase tracking-wider text-gray-500 mb-1 flex items-center gap-1.5"><i data-lucide="clipboard-check" class="w-3 h-3 text-emerald-600"></i> Antrian Approval</div>
-                        <div id="fh-kpi-queue" class="text-2xl font-bold text-emerald-700">0</div>
-                        <div class="text-[10px] text-gray-400 mt-1">expense + refund + komisi</div>
+                    <div class="umar-kpi-card">
+                        <div class="umar-kpi-label flex items-center gap-1.5"><i data-lucide="clipboard-check" class="w-3 h-3" style="color:var(--umar-gold-deep);"></i> Antrian Approval</div>
+                        <div id="fh-kpi-queue" class="umar-kpi-value">0</div>
+                        <div class="umar-kpi-hint">expense + refund + komisi</div>
                     </div>
                 </div>
 
@@ -1569,6 +1563,9 @@
 
             <!-- PAGE: HOME MANAGEMENT (M-A) — executive landing -->
             <div id="page-mgmt-home" class="page-content hidden space-y-6">
+                <!-- Phase 5b: shared welcome hero -->
+                <div id="mh-hero-mount"></div>
+
                 <div id="mh-attention" class="hidden bg-gradient-to-br from-purple-50 to-amber-50 border-l-4 border-purple-500 rounded-xl shadow-sm p-5">
                     <div class="flex items-start justify-between gap-4">
                         <div class="flex-1">
@@ -1594,27 +1591,27 @@
                     </div>
                 </div>
 
-                <!-- KPI 4 kartu utama -->
+                <!-- KPI 4 kartu utama -- Phase 5b: seragam gold accent -->
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div class="bg-white rounded-xl shadow-sm border p-4">
-                        <div class="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Omzet Bulan Ini</div>
-                        <div id="mh-kpi-omzet" class="text-xl font-bold text-emerald-700">Rp 0</div>
-                        <div class="text-[10px] text-gray-400 mt-1"><span id="mh-kpi-omzet-mom">-</span></div>
+                    <div class="umar-kpi-card">
+                        <div class="umar-kpi-label">Omzet Bulan Ini</div>
+                        <div id="mh-kpi-omzet" class="umar-kpi-value">Rp 0</div>
+                        <div class="umar-kpi-hint"><span id="mh-kpi-omzet-mom">-</span></div>
                     </div>
-                    <div class="bg-white rounded-xl shadow-sm border p-4">
-                        <div class="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Closing Bulan Ini</div>
-                        <div id="mh-kpi-closing" class="text-xl font-bold text-blue-700">0</div>
-                        <div class="text-[10px] text-gray-400 mt-1">jamaah</div>
+                    <div class="umar-kpi-card">
+                        <div class="umar-kpi-label">Closing Bulan Ini</div>
+                        <div id="mh-kpi-closing" class="umar-kpi-value">0</div>
+                        <div class="umar-kpi-hint">jamaah</div>
                     </div>
-                    <div class="bg-white rounded-xl shadow-sm border p-4">
-                        <div class="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Piutang Total</div>
-                        <div id="mh-kpi-piutang" class="text-xl font-bold text-amber-700">Rp 0</div>
-                        <div class="text-[10px] text-gray-400 mt-1"><span id="mh-kpi-piutang-count">0</span> jamaah</div>
+                    <div class="umar-kpi-card">
+                        <div class="umar-kpi-label">Piutang Total</div>
+                        <div id="mh-kpi-piutang" class="umar-kpi-value">Rp 0</div>
+                        <div class="umar-kpi-hint"><span id="mh-kpi-piutang-count">0</span> jamaah</div>
                     </div>
-                    <div class="bg-white rounded-xl shadow-sm border p-4">
-                        <div class="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Cash-on-Hand</div>
-                        <div id="mh-kpi-cash" class="text-xl font-bold text-indigo-700">Rp 0</div>
-                        <div class="text-[10px] text-gray-400 mt-1">buku kas</div>
+                    <div class="umar-kpi-card">
+                        <div class="umar-kpi-label">Cash-on-Hand</div>
+                        <div id="mh-kpi-cash" class="umar-kpi-value">Rp 0</div>
+                        <div class="umar-kpi-hint">buku kas</div>
                     </div>
                 </div>
 
@@ -4981,10 +4978,14 @@
 
         // --- FETCH DATA ---
         async function fetchStats() {
+            // Phase 5b: shared welcome hero (Assalamu'alaikum + clock + quote)
+            if (typeof umarRenderWelcomeHero === 'function') {
+                umarRenderWelcomeHero('dash-hero-mount', (currentUser?.name) || 'Administrator');
+            }
             try {
-                const res = await authFetch('/dashboard/super'); 
+                const res = await authFetch('/dashboard/super');
                 const data = await res.json();
-                
+
                 // 1. Executive
                 if (['admin', 'finance', 'management'].includes(currentUser.role)) {
                     document.getElementById('super-kas').innerText = formatRp(data.finance.balance);

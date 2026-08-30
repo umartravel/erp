@@ -440,6 +440,10 @@
             const res = await fhFetch('/finance/home');
             if (!res.ok) throw new Error('Gagal memuat Home Finance');
             const data = await res.json();
+            // Phase 5b: shared welcome hero
+            if (typeof umarRenderWelcomeHero === 'function') {
+                umarRenderWelcomeHero('fh-hero-mount', (typeof currentUser !== 'undefined' && currentUser?.name) || 'Tim Finance');
+            }
             renderKPI(data.kpi || {});
             renderAttention(data.attention || []);
             renderPiutang(data.piutang_jamaah || []);

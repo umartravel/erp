@@ -45,7 +45,10 @@ function ohWireSocketAutoRefresh() {
 
 function renderOpsHome(data) {
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-  set('oh-me-name', data.me?.name || '-');
+  // Phase 5b: shared welcome hero
+  if (typeof umarRenderWelcomeHero === 'function') {
+    umarRenderWelcomeHero('oh-hero-mount', data.me?.name || 'Tim Operasional');
+  }
 
   const k = data.kpi || {};
   set('oh-kpi-packages', (k.active_packages || 0).toLocaleString('id-ID'));
