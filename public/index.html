@@ -805,9 +805,19 @@
 
             <!-- PAGE: INSIDEN LAPANGAN (page-incidents) -->
             <div id="page-incidents" class="page-content hidden space-y-4">
+                <!-- Phase 5d: shared module hero -->
+                <div class="umar-module-hero">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="alert-triangle" class="w-6 h-6" style="color: var(--umar-gold);"></i>
+                        <div>
+                            <div class="umar-module-hero-title">Manajemen Insiden Lapangan</div>
+                            <div class="umar-module-hero-subtitle">Catat kejadian di lapangan (delay, medis, keluhan, dll) dan pantau resolusi. Attach jamaah + severity + assignee ops.</div>
+                        </div>
+                    </div>
+                </div>
                 <div class="bg-white rounded-xl shadow-sm border p-6">
                     <div class="flex flex-wrap justify-between items-center gap-3 border-b pb-4 mb-4">
-                        <h3 class="font-semibold text-gray-800 flex items-center gap-2"><i data-lucide="alert-triangle" class="w-5 h-5 text-red-600"></i>Manajemen Insiden Lapangan</h3>
+                        <div class="text-xs text-gray-500 font-medium">Filter &amp; aksi</div>
                         <div class="flex items-center gap-2">
                             <label class="text-xs text-gray-500">Status:</label>
                             <select id="inc-filter-status" onchange="__incFilterStatus=this.value; fetchIncidents()" class="border rounded-lg px-2 py-1.5 text-sm">
@@ -977,8 +987,18 @@
 
             <!-- PAGE: AJUKAN IZIN (SEMUA ROLE) -->
             <div id="page-leave" class="page-content hidden max-w-4xl mx-auto space-y-6">
+                <!-- Phase 5d: shared module hero -->
+                <div class="umar-module-hero">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="calendar-off" class="w-6 h-6" style="color: var(--umar-gold);"></i>
+                        <div>
+                            <div class="umar-module-hero-title">Surat Izin / Cuti</div>
+                            <div class="umar-module-hero-subtitle">Ajukan cuti tahunan, izin sakit, atau keperluan pribadi. Approval oleh Management / Admin.</div>
+                        </div>
+                    </div>
+                </div>
                 <div class="bg-white rounded-xl shadow-sm border p-6">
-                    <h3 class="font-semibold text-gray-800 flex items-center gap-2 mb-4 border-b pb-4"><i data-lucide="calendar-off" class="w-5 h-5 text-emerald-600"></i>Ajukan Surat Izin</h3>
+                    <h4 class="text-sm font-medium text-gray-600 mb-4 border-b pb-3">Formulir Pengajuan</h4>
                     <form id="form-leave-request" class="space-y-4">
                         <div class="grid grid-cols-2 gap-3">
                             <div>
@@ -1035,9 +1055,16 @@
 
             <!-- PAGE: TACTICAL ANALYTICS & AUDIT -->
             <div id="page-tactical" class="page-content hidden space-y-6 max-w-7xl mx-auto pb-10">
-                <div class="flex items-center justify-between border-b pb-3 mb-4">
-                    <h2 class="text-2xl font-black text-gray-800 tracking-tight flex items-center gap-2"><i data-lucide="clipboard-check" class="w-6 h-6 text-indigo-600"></i> Kesiapan Operasional & Audit</h2>
-                    <span class="bg-indigo-100 text-indigo-800 text-xs px-3 py-1 rounded-full font-bold shadow-sm flex items-center gap-1"><i data-lucide="shield-alert" class="w-3 h-3"></i> MANAGEMENT ONLY</span>
+                <!-- Phase 5d: shared module hero -->
+                <div class="umar-module-hero">
+                    <div class="flex items-center gap-3 flex-1 min-w-0">
+                        <i data-lucide="clipboard-check" class="w-6 h-6" style="color: var(--umar-gold);"></i>
+                        <div>
+                            <div class="umar-module-hero-title">Kesiapan Operasional &amp; Audit</div>
+                            <div class="umar-module-hero-subtitle">Analytics kesiapan paket, kontrol dokumen, dan audit trail lintas divisi.</div>
+                        </div>
+                    </div>
+                    <span class="text-[10px] px-3 py-1 rounded-full font-bold shrink-0" style="background:var(--umar-gold);color:#1D1D1B;"><i data-lucide="shield-alert" class="w-3 h-3 inline"></i> MANAGEMENT ONLY</span>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:shadow-md transition relative overflow-hidden group">
@@ -1087,7 +1114,17 @@
             </div>
 
             <!-- PAGE: WA MANAGEMENT -->
-            <div id="page-whatsapp" class="page-content hidden">
+            <div id="page-whatsapp" class="page-content hidden space-y-4">
+                <!-- Phase 5d: shared module hero -->
+                <div class="umar-module-hero">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="smartphone" class="w-6 h-6" style="color: var(--umar-gold);"></i>
+                        <div>
+                            <div class="umar-module-hero-title">WhatsApp Bot Manager</div>
+                            <div class="umar-module-hero-subtitle">Koneksi &amp; status bot WA UMAR untuk broadcast + auto-reply. Scan QR untuk konek nomor baru.</div>
+                        </div>
+                    </div>
+                </div>
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <!-- KONEKSI WA -->
                     <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col h-full">
@@ -1136,9 +1173,19 @@
             </div>
 
             <!-- PAGE: PENDAFTARAN -->
-            <div id="page-pendaftaran" class="page-content hidden max-w-3xl mx-auto">
+            <div id="page-pendaftaran" class="page-content hidden max-w-3xl mx-auto space-y-4">
+                <!-- Phase 5d: shared module hero -->
+                <div class="umar-module-hero">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="user-check" class="w-6 h-6" style="color: var(--umar-gold);"></i>
+                        <div>
+                            <div class="umar-module-hero-title">Pendaftaran Jamaah Baru</div>
+                            <div class="umar-module-hero-subtitle">Form input manual: identitas, kontak, paket + tipe kamar, BOQ (kalau paket punya). Terima Lead atau langsung Terdaftar.</div>
+                        </div>
+                    </div>
+                </div>
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-                    <h3 class="font-bold text-xl text-gray-800 border-b pb-4 mb-6 flex items-center gap-3"><i data-lucide="user-check" class="text-emerald-600"></i>Form Registrasi Jamaah</h3>
+                    <h4 class="text-sm font-medium text-gray-600 border-b pb-3 mb-6">Isi Form Registrasi</h4>
                     <form id="form-pendaftaran" class="space-y-8">
                         
                         <!-- Blok 1: Program -->
@@ -1227,12 +1274,22 @@
             </div>
 
             <!-- PAGE: KOTAK MASUK PENDAFTARAN PUBLIK -->
-            <div id="page-inbox" class="page-content hidden">
-                <div id="inbox-stats" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"></div>
+            <div id="page-inbox" class="page-content hidden space-y-4">
+                <!-- Phase 5d: shared module hero -->
+                <div class="umar-module-hero">
+                    <div class="flex items-center gap-3 flex-1 min-w-0">
+                        <i data-lucide="inbox" class="w-6 h-6" style="color: var(--umar-gold);"></i>
+                        <div>
+                            <div class="umar-module-hero-title">Kotak Masuk Pendaftaran Publik</div>
+                            <div class="umar-module-hero-subtitle">Data mentah dari form publik <code>/daftar</code> &mdash; belum tercatat sebagai jamaah sampai Anda <b>Terima</b>.</div>
+                        </div>
+                    </div>
+                    <a href="/daftar" target="_blank" class="text-[11px] px-3 py-1.5 rounded shrink-0" style="background:var(--umar-gold);color:#1D1D1B;font-weight:600;"><i data-lucide="external-link" class="w-3.5 h-3.5 inline"></i> Form Publik</a>
+                </div>
+                <div id="inbox-stats" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
                 <div class="bg-white rounded-xl shadow-sm border p-6">
                     <div class="flex justify-between items-center mb-4 border-b pb-4 gap-4">
-                        <h3 class="font-semibold text-gray-800 flex items-center gap-2"><i data-lucide="inbox" class="w-5 h-5 text-emerald-600"></i>Kotak Masuk Pendaftaran Publik</h3>
-                        <a href="/daftar" target="_blank" class="text-xs text-indigo-600 hover:underline flex items-center gap-1"><i data-lucide="external-link" class="w-3.5 h-3.5"></i>Buka Form Publik</a>
+                        <div class="text-xs text-gray-500 font-medium">Antrian Pendaftaran</div>
                     </div>
                     <p class="text-xs text-gray-500 mb-4">Data mentah dari form publik (<code>/daftar</code>) &mdash; belum tercatat sebagai jamaah sampai Anda <b>Terima</b>. Cocokkan &amp; lengkapi data sebelum diproses.</p>
                     <div class="overflow-auto rounded-lg border border-gray-100">
@@ -1386,11 +1443,21 @@
 
             <!-- PAGE: AGED RECEIVABLE (F-D) - Detail piutang jamaah by aging bucket -->
             <div id="page-aged-receivable" class="page-content hidden space-y-6">
+                <!-- Phase 5d: shared module hero -->
+                <div class="umar-module-hero">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="hand-coins" class="w-6 h-6" style="color: var(--umar-gold);"></i>
+                        <div>
+                            <div class="umar-module-hero-title">Aged Receivable</div>
+                            <div class="umar-module-hero-subtitle">Distribusi umur piutang jamaah + drill-down per bucket. Pantau jamaah aktif yang belum lunas &amp; risiko default.</div>
+                        </div>
+                    </div>
+                </div>
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                    <div class="bg-white rounded-xl shadow-sm border p-4 lg:col-span-1">
-                        <div class="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Total Piutang</div>
-                        <div id="ar-total" class="text-2xl font-bold text-amber-700">Rp 0</div>
-                        <div class="text-[10px] text-gray-400 mt-1"><span id="ar-count">0</span> jamaah aktif belum lunas</div>
+                    <div class="umar-kpi-card lg:col-span-1">
+                        <div class="umar-kpi-label">Total Piutang</div>
+                        <div id="ar-total" class="umar-kpi-value">Rp 0</div>
+                        <div class="umar-kpi-hint"><span id="ar-count">0</span> jamaah aktif belum lunas</div>
                     </div>
                     <div class="bg-white rounded-xl shadow-sm border p-4 lg:col-span-2">
                         <div class="text-[10px] uppercase tracking-wider text-gray-500 mb-2">Distribusi Aging</div>
@@ -1435,16 +1502,17 @@
 
             <!-- PAGE: REKONSILIASI BANK (F-E) — match CSV mutasi bank ke transactions -->
             <div id="page-reconcile" class="page-content hidden space-y-6">
-                <div class="bg-white rounded-xl shadow-sm p-5">
-                    <div class="flex items-center gap-3 mb-4">
-                        <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background:#F4F1EA;">
-                            <i data-lucide="git-merge" class="w-5 h-5" style="color:#B8860B;"></i>
-                        </div>
+                <!-- Phase 5d: shared module hero -->
+                <div class="umar-module-hero">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="git-merge" class="w-6 h-6" style="color: var(--umar-gold);"></i>
                         <div>
-                            <h2 class="font-bold text-lg" style="color:#1D1D1B;">Rekonsiliasi Bank</h2>
-                            <p class="text-xs text-gray-500">Upload mutasi rekening & cocokkan ke transaksi internal.</p>
+                            <div class="umar-module-hero-title">Rekonsiliasi Bank</div>
+                            <div class="umar-module-hero-subtitle">Upload mutasi rekening (BCA / Mandiri / generic CSV) &amp; cocokkan ke transaksi internal.</div>
                         </div>
                     </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-5">
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
                         <div class="lg:col-span-2 border-2 border-dashed border-gray-200 rounded-lg p-6 text-center">
                             <input type="file" id="rec-file" accept=".csv,text/csv" class="hidden">
@@ -1517,13 +1585,20 @@
 
             <!-- PAGE: RISK REGISTER (M-E) — executive aggregate risk view -->
             <div id="page-risk-register" class="page-content hidden space-y-6">
-                <div class="bg-gradient-to-br from-red-50 via-orange-50 to-amber-50 border-l-4 border-red-500 rounded-xl shadow-sm p-5">
+                <!-- Phase 5d: shared module hero -->
+                <div class="umar-module-hero">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="alert-triangle" class="w-6 h-6" style="color: var(--umar-gold);"></i>
+                        <div>
+                            <div class="umar-module-hero-title">Risk Register</div>
+                            <div class="umar-module-hero-subtitle">Konsolidasi risiko lintas divisi: finance, ops, compliance. Prioritas Critical/High untuk mitigasi manajemen.</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border p-5">
                     <div class="flex items-start justify-between gap-4 flex-wrap">
                         <div>
-                            <div class="text-xs font-bold text-red-700 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                                <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> Risk Register
-                            </div>
-                            <p id="rr-generated-at" class="text-xs text-gray-500"></p>
+                            <p id="rr-generated-at" class="text-xs text-gray-500">Ringkasan risiko real-time</p>
                         </div>
                         <div class="grid grid-cols-4 gap-3 text-center">
                             <div>
@@ -1794,7 +1869,17 @@
             </div>
 
             <!-- PAGE: OPS & LOGISTIK -->
-            <div id="page-operasional" class="page-content hidden">
+            <div id="page-operasional" class="page-content hidden space-y-4">
+                <!-- Phase 5d: shared module hero -->
+                <div class="umar-module-hero">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="plane-takeoff" class="w-6 h-6" style="color: var(--umar-gold);"></i>
+                        <div>
+                            <div class="umar-module-hero-title">Operasional &amp; Logistik</div>
+                            <div class="umar-module-hero-subtitle">Manajemen visa, rooming list, dokumen paspor, dan perlengkapan jamaah.</div>
+                        </div>
+                    </div>
+                </div>
                 <div class="space-y-6">
                     <!-- Section: Visa & Rooming -->
                     <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
@@ -1908,10 +1993,20 @@
             <!-- PAGE: LIVE CHAT WA (removed 2026-08-27; two-way chat via WA never used) -->
 
             <!-- PAGE: PROCUREMENT & VENDOR -->
-            <div id="page-procurement" class="page-content hidden">
+            <div id="page-procurement" class="page-content hidden space-y-4">
+                <!-- Phase 5d: shared module hero -->
+                <div class="umar-module-hero">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="building-2" class="w-6 h-6" style="color: var(--umar-gold);"></i>
+                        <div>
+                            <div class="umar-module-hero-title">Procurement &amp; Vendor Deposit</div>
+                            <div class="umar-module-hero-subtitle">Kontrak vendor (hotel, penerbangan, muassasah), deposit, dan pelunasan. Termasuk pemantauan due date pembayaran.</div>
+                        </div>
+                    </div>
+                </div>
                 <div class="bg-white rounded-xl shadow-sm border p-6">
                     <div class="flex justify-between items-center mb-4 border-b pb-4 gap-4 flex-wrap">
-                        <h3 class="font-semibold text-gray-800 flex items-center gap-2"><i data-lucide="building-2" class="w-5 h-5 text-indigo-600"></i>Manajemen Vendor & Deposit (Procurement)</h3>
+                        <div class="text-xs text-gray-500 font-medium">Daftar Kontrak &amp; Deposit</div>
                         <div class="flex items-center gap-2">
                             <div class="flex gap-0.5 bg-gray-100 rounded-lg p-0.5">
                                 <button id="btn-proc-view-table" onclick="switchProcurementView('table')" class="px-3 py-1.5 rounded-md text-xs font-medium bg-white shadow-sm">Tabel</button>
@@ -1966,7 +2061,17 @@
             </div>
 
             <!-- PAGE: PENGATURAN (ADMIN ONLY) -->
-            <div id="page-settings" class="page-content hidden">
+            <div id="page-settings" class="page-content hidden space-y-4">
+                <!-- Phase 5d: shared module hero -->
+                <div class="umar-module-hero">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="settings" class="w-6 h-6" style="color: var(--umar-gold);"></i>
+                        <div>
+                            <div class="umar-module-hero-title">Pengaturan Sistem</div>
+                            <div class="umar-module-hero-subtitle">Identitas perusahaan, target sales, kategori kas, opsi bank, dan konfigurasi umum ERP UMAR.</div>
+                        </div>
+                    </div>
+                </div>
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div class="bg-white rounded-xl shadow-sm border p-6">
                         <h3 class="font-semibold text-gray-800 flex items-center gap-2 mb-6 border-b pb-4"><i data-lucide="building-2" class="w-5 h-5 text-emerald-600"></i>Identitas Perusahaan</h3>
@@ -2062,11 +2167,21 @@
             </div>
 
             <!-- PAGE: FOLLOW-UP LEAD (SALES & ADMIN) -->
-            <div id="page-followup" class="page-content hidden">
-                <div id="followup-stats" class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6"></div>
+            <div id="page-followup" class="page-content hidden space-y-4">
+                <!-- Phase 5d: shared module hero -->
+                <div class="umar-module-hero">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="calendar-clock" class="w-6 h-6" style="color: var(--umar-gold);"></i>
+                        <div>
+                            <div class="umar-module-hero-title">Follow-up Lead</div>
+                            <div class="umar-module-hero-subtitle">Jadwal kontak jamaah Lead / Terdaftar yang perlu di-follow up hari ini. Merah = jatuh tempo / terlewat.</div>
+                        </div>
+                    </div>
+                </div>
+                <div id="followup-stats" class="grid grid-cols-2 lg:grid-cols-5 gap-4"></div>
                 <div class="bg-white rounded-xl shadow-sm border p-6">
                     <div class="flex justify-between items-center mb-4 border-b pb-4">
-                        <h3 class="font-semibold text-gray-800 flex items-center gap-2"><i data-lucide="calendar-clock" class="w-5 h-5 text-emerald-600"></i>Jadwal Follow-up Lead</h3>
+                        <div class="text-xs text-gray-500 font-medium">Jadwal Follow-up</div>
                         <span class="text-xs text-gray-400">Merah = jatuh tempo / terlewat</span>
                     </div>
                     <table class="w-full text-sm text-left">
@@ -2084,8 +2199,18 @@
             </div>
 
             <!-- PAGE: KEAGENAN -->
-            <div id="page-agents" class="page-content hidden">
-                <div id="agent-stats" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"></div>
+            <div id="page-agents" class="page-content hidden space-y-4">
+                <!-- Phase 5d: shared module hero -->
+                <div class="umar-module-hero">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="network" class="w-6 h-6" style="color: var(--umar-gold);"></i>
+                        <div>
+                            <div class="umar-module-hero-title">Keagenan (Mitra)</div>
+                            <div class="umar-module-hero-subtitle">Manajemen mitra / agen: pendaftaran publik, roster aktif, klaim komisi, dan produktivitas per agen.</div>
+                        </div>
+                    </div>
+                </div>
+                <div id="agent-stats" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
 
                 <div class="bg-white rounded-xl shadow-sm border p-6 mb-6">
                     <div class="flex justify-between items-center mb-4 border-b pb-4 gap-4">
@@ -2150,10 +2275,20 @@
             </div>
 
             <!-- PAGE: EXPENSE REPORT -->
-            <div id="page-expense" class="page-content hidden">
-                <div class="bg-white rounded-xl shadow-sm border p-6 mb-6">
+            <div id="page-expense" class="page-content hidden space-y-4">
+                <!-- Phase 5d: shared module hero -->
+                <div class="umar-module-hero">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="receipt" class="w-6 h-6" style="color: var(--umar-gold);"></i>
+                        <div>
+                            <div class="umar-module-hero-title">Expense Report</div>
+                            <div class="umar-module-hero-subtitle">Reimburse karyawan (Draft &rarr; Submit &rarr; Approve &rarr; Paid). Grouping per project untuk audit trail.</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border p-6">
                     <div class="flex justify-between items-center mb-4 border-b pb-3 gap-4">
-                        <h3 class="font-semibold text-gray-800 flex items-center gap-2"><i data-lucide="folder-kanban" class="w-5 h-5 text-emerald-600"></i>Project Label</h3>
+                        <div class="text-xs text-gray-500 font-medium flex items-center gap-2"><i data-lucide="folder-kanban" class="w-4 h-4"></i>Project Label</div>
                         <button id="btn-add-expense-project" onclick="openModal('modal-expense-project')" class="px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold hover:bg-emerald-200 hidden flex items-center gap-1"><i data-lucide="plus" class="w-3.5 h-3.5"></i>Tambah Project</button>
                     </div>
                     <div id="expense-project-list" class="flex flex-wrap gap-2"></div>
