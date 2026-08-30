@@ -18,12 +18,15 @@ from tests.conftest import bearer
 # ---------------------------------------------------------------------------
 # helpers
 # ---------------------------------------------------------------------------
-def _mk_boq(client, token, name="Skenario Reguler", package_id=None, items=None, target_pax=40, margin=15):
+def _mk_boq(client, token, name="Skenario Reguler", package_id=None, items=None,
+            target_pax=40, margin=15, extra_triple=0, extra_double=0):
     body = {
         "name": name,
         "package_id": package_id,
         "target_pax": target_pax,
         "target_margin_pct": margin,
+        "extra_triple": extra_triple,
+        "extra_double": extra_double,
         "items": items or [],
     }
     r = client.post("/api/boq", json=body, headers=bearer(token))
@@ -211,6 +214,77 @@ def test_compute_totals_per_pax_scaled(client, admin_token):
     assert t["cost_per_pax"] == 20_000_000
     assert t["margin_amount"] == 3_000_000
     assert t["price_per_pax"] == 23_000_000
+
+
+# ---------------------------------------------------------------------------
+# Room split (Phase 4a)
+# ---------------------------------------------------------------------------
+def test_split_default_zero_all_room_same(client, admin_token):
+    """Tanpa extra_triple/double -> price_quad = price_triple = price_double."""
+    b = _mk_boq(client, admin_token, name="TEST BOQ Split Flat", target_pax=10, margin=15, items=[
+        {"category": "tiket", "item_name": "Tiket", "unit": "per_pax",
+         "quantity": 1, "unit_price": 20_000_000},
+    ])
+    t = client.get(f"/api/boq/{b['id']}", headers=bearer(admin_token)).json()["totals"]
+    assert t["price_quad"] == 23_000_000
+    assert t["price_triple"] == 23_000_000
+    assert t["price_double"] == 23_000_000
+    assert t["extra_triple"] == 0 and t["extra_double"] == 0
+
+
+def test_split_extras_applied(client, admin_token):
+    """extra_triple 2jt + extra_double 4jt -> price_triple = base+2jt, price_double = base+4jt."""
+    b = _mk_boq(client, admin_token, name="TEST BOQ Split Extras",
+                target_pax=10, margin=15,
+                extra_triple=2_000_000, extra_double=4_000_000, items=[
+        {"category": "tiket", "item_name": "Tiket", "unit": "per_pax",
+         "quantity": 1, "unit_price": 20_000_000},
+    ])
+    t = client.get(f"/api/boq/{b['id']}", headers=bearer(admin_token)).json()["totals"]
+    assert t["price_quad"] == 23_000_000
+    assert t["price_triple"] == 25_000_000
+    assert t["price_double"] == 27_000_000
+    assert t["extra_triple"] == 2_000_000 and t["extra_double"] == 4_000_000
+
+
+def test_split_editable_via_put(client, admin_token):
+    """extra_triple bisa diubah via PUT header + reflected di totals."""
+    # margin=10 (bukan 0) menghindari pre-existing falsy-trap di update code
+    # `float(body.get("target_margin_pct") or 15)` -- 0 dianggap missing -> default 15.
+    b = _mk_boq(client, admin_token, name="TEST BOQ Split Edit", target_pax=10, margin=10, items=[
+        {"category": "tiket", "item_name": "Tiket", "unit": "per_pax",
+         "quantity": 1, "unit_price": 10_000_000},
+    ])
+    # Base price_quad = 10jt + 10% = 11jt
+    r = client.put(f"/api/boq/{b['id']}", json={"extra_triple": 1_500_000, "extra_double": 3_000_000},
+                   headers=bearer(admin_token))
+    assert r.status_code == 200
+    t = client.get(f"/api/boq/{b['id']}", headers=bearer(admin_token)).json()["totals"]
+    assert t["price_quad"] == 11_000_000
+    assert t["price_triple"] == 12_500_000
+    assert t["price_double"] == 14_000_000
+
+
+def test_convert_uses_split_prices(client, admin_token):
+    """Convert-to-package pakai price_quad/triple/double dari BOQ (bukan flat)."""
+    b = _mk_boq(client, admin_token, name="TEST BOQ Convert Split",
+                target_pax=40, margin=15,
+                extra_triple=2_000_000, extra_double=4_500_000, items=[
+        {"category": "hotel_mekkah", "item_name": "Anjum", "unit": "per_pax",
+         "quantity": 1, "unit_price": 8_000_000},
+        {"category": "tiket", "item_name": "Saudia", "unit": "per_pax",
+         "quantity": 1, "unit_price": 12_000_000},
+    ])
+    # Base = 20jt + margin 15% = 23jt
+    r = client.post(f"/api/boq/{b['id']}/convert-to-package", json={
+        "departure_date": "2027-05-10", "duration": 9, "quota": 40,
+    }, headers=bearer(admin_token))
+    assert r.status_code == 200
+    pid = r.json()["package_id"]
+    pkg = next(p for p in client.get("/api/packages", headers=bearer(admin_token)).json() if p["id"] == pid)
+    assert pkg["price_quad"] == 23_000_000
+    assert pkg["price_triple"] == 25_000_000
+    assert pkg["price_double"] == 27_500_000
 
 
 def test_compute_totals_per_group_flat(client, admin_token):

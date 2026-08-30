@@ -89,19 +89,29 @@ def _assert_editable(boq: dict, user: dict) -> None:
         )
 
 
-def _compute_totals(boq_id: int, target_pax: int | None, margin_pct: float | None) -> dict:
-    """Hitung total group cost + harga per pax dari items.
+def _compute_totals(
+    boq_id: int,
+    target_pax: int | None,
+    margin_pct: float | None,
+    extra_triple: int | None = None,
+    extra_double: int | None = None,
+) -> dict:
+    """Hitung total group cost + harga per pax + split per room type.
 
-    Aturan unit:
+    Aturan unit item:
       per_pax          -> subtotal utk 1 pax; total_group = subtotal * target_pax
       per_group        -> subtotal = total group (1x, mis. sewa bus)
       per_room_per_night -> total group (user isi quantity = rooms * nights)
       per_pax_per_day  -> subtotal * target_pax (asumsi quantity = hari)
 
-    Untuk MVP sederhana: subtotal disimpan apa adanya di items, total_group =
-    SUM(subtotal). User boleh interpretasi sendiri (misal: item konsumsi
-    per_pax_per_day, user isi quantity = 9 hari, unit_price = 50rb -> subtotal
-    450rb utk 1 pax; total_group = 450rb * target_pax).
+    Room split (Phase 4a): base price/pax dianggap = QUAD.
+      price_quad   = base
+      price_triple = base + extra_triple
+      price_double = base + extra_double
+    Kalau extra_* NULL/0, semua room type = base (flat, backward compat).
+
+    Parameter extra_triple/extra_double bisa dilewatkan langsung (untuk preview
+    di form) atau NULL -> fungsi ambil sendiri dari row package_boq.
     """
     items = db.query_all(
         "SELECT category, unit, subtotal FROM package_boq_items WHERE boq_id = ?",
@@ -119,11 +129,31 @@ def _compute_totals(boq_id: int, target_pax: int | None, margin_pct: float | Non
     cost_per_pax = total_group // pax if pax else 0
     margin_amt = int(cost_per_pax * (float(margin_pct or 0) / 100.0))
     price_per_pax = cost_per_pax + margin_amt
+
+    # Ambil extra_triple/extra_double dari row kalau caller tidak sediakan.
+    if extra_triple is None or extra_double is None:
+        row = db.query_one("SELECT extra_triple, extra_double FROM package_boq WHERE id = ?", (boq_id,))
+        if row:
+            if extra_triple is None:
+                extra_triple = row["extra_triple"] or 0
+            if extra_double is None:
+                extra_double = row["extra_double"] or 0
+    et = int(extra_triple or 0)
+    ed = int(extra_double or 0)
+    price_quad = price_per_pax
+    price_triple = price_per_pax + et
+    price_double = price_per_pax + ed
+
     return {
         "total_group_cost": total_group,
         "cost_per_pax": cost_per_pax,
         "margin_amount": margin_amt,
-        "price_per_pax": price_per_pax,
+        "price_per_pax": price_per_pax,  # alias price_quad (backward compat)
+        "price_quad": price_quad,
+        "price_triple": price_triple,
+        "price_double": price_double,
+        "extra_triple": et,
+        "extra_double": ed,
         "item_count": len(items),
     }
 
@@ -451,8 +481,8 @@ async def boq_create(body: dict = Depends(json_body), user=Depends(authenticate_
     bid, _ = db.execute(
         "INSERT INTO package_boq "
         "(package_id, name, status, target_pax, room_split, target_margin_pct, "
-        " notes, created_by, reviewed_by, reviewed_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        " extra_triple, extra_double, notes, created_by, reviewed_by, reviewed_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (
             body.get("package_id"),
             body.get("name").strip(),
@@ -460,6 +490,8 @@ async def boq_create(body: dict = Depends(json_body), user=Depends(authenticate_
             int(body.get("target_pax") or 45),
             room_split,
             float(body.get("target_margin_pct") or 15),
+            int(body.get("extra_triple") or 0),
+            int(body.get("extra_double") or 0),
             body.get("notes"),
             user["id"],
             reviewed_by,
@@ -515,7 +547,7 @@ async def boq_update(bid: int, body: dict = Depends(json_body), user=Depends(aut
     db.execute(
         "UPDATE package_boq SET "
         "  package_id = ?, name = ?, target_pax = ?, room_split = ?, "
-        "  target_margin_pct = ?, notes = ?, "
+        "  target_margin_pct = ?, extra_triple = ?, extra_double = ?, notes = ?, "
         "  updated_at = CURRENT_TIMESTAMP "
         "WHERE id = ?",
         (
@@ -524,6 +556,8 @@ async def boq_update(bid: int, body: dict = Depends(json_body), user=Depends(aut
             int(body.get("target_pax", boq["target_pax"]) or 45),
             room_split,
             float(body.get("target_margin_pct", boq["target_margin_pct"]) or 15),
+            int(body.get("extra_triple", boq["extra_triple"]) or 0),
+            int(body.get("extra_double", boq["extra_double"]) or 0),
             body.get("notes", boq["notes"]),
             bid,
         ),
@@ -733,7 +767,11 @@ async def boq_convert_to_package(bid: int, body: dict = Depends(json_body), user
         raise HTTPException(status_code=400, detail="BOQ kosong tidak bisa di-convert. Tambah item dulu.")
 
     totals = _compute_totals(bid, boq["target_pax"], boq["target_margin_pct"])
-    price = int(totals.get("price_per_pax") or 0)
+    # Phase 4a: 3 harga per room type dari BOQ (bukan lagi flat).
+    price_quad = int(totals.get("price_quad") or 0)
+    price_triple = int(totals.get("price_triple") or 0)
+    price_double = int(totals.get("price_double") or 0)
+    price = price_quad  # header packages.price = base (dipakai display list)
     quota = int(body.get("quota") or boq["target_pax"] or 45)
 
     # Nama paket: pakai override dari body kalau ada, else pakai nama BOQ.
@@ -749,7 +787,7 @@ async def boq_convert_to_package(bid: int, body: dict = Depends(json_body), user
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (
             pkg_name, price, dep, duration, quota,
-            price, price, price,   # quad/triple/double sementara sama; editor boleh differentiate
+            price_quad, price_triple, price_double,
             int(body.get("default_commission_fee") or 0),
             body.get("hotel_mekkah"), body.get("hotel_madinah"),
             body.get("route_type") or "Direct",

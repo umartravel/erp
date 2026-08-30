@@ -200,6 +200,8 @@ function openAddBoq() {
     document.getElementById('boq-form-package').value = '';
     document.getElementById('boq-form-pax').value = 45;
     document.getElementById('boq-form-margin').value = 15;
+    document.getElementById('boq-form-extra-triple').value = 0;
+    document.getElementById('boq-form-extra-double').value = 0;
     document.getElementById('boq-form-notes').value = '';
     document.getElementById('boq-form-items-wrapper').classList.remove('hidden');
     __boqFormItems = [_blankItem()];
@@ -216,6 +218,8 @@ function openEditBoq(bid) {
     document.getElementById('boq-form-package').value = b.package_id || '';
     document.getElementById('boq-form-pax').value = b.target_pax || 45;
     document.getElementById('boq-form-margin').value = b.target_margin_pct || 15;
+    document.getElementById('boq-form-extra-triple').value = b.extra_triple || 0;
+    document.getElementById('boq-form-extra-double').value = b.extra_double || 0;
     document.getElementById('boq-form-notes').value = b.notes || '';
     document.getElementById('boq-form-items-wrapper').classList.add('hidden');
     openModal('modal-boq-form');
@@ -228,6 +232,8 @@ async function saveBoq() {
         package_id: document.getElementById('boq-form-package').value ? parseInt(document.getElementById('boq-form-package').value) : null,
         target_pax: parseInt(document.getElementById('boq-form-pax').value) || 45,
         target_margin_pct: parseFloat(document.getElementById('boq-form-margin').value) || 0,
+        extra_triple: parseInt(document.getElementById('boq-form-extra-triple').value) || 0,
+        extra_double: parseInt(document.getElementById('boq-form-extra-double').value) || 0,
         notes: document.getElementById('boq-form-notes').value,
     };
     if (!body.name) return _toast('Nama BOQ wajib diisi.', 'error');
@@ -299,6 +305,8 @@ function _renderBoqFormItems() {
 function _renderBoqFormTotals() {
     const pax = Math.max(parseInt(document.getElementById('boq-form-pax').value) || 1, 1);
     const margin = parseFloat(document.getElementById('boq-form-margin').value) || 0;
+    const et = parseInt(document.getElementById('boq-form-extra-triple')?.value) || 0;
+    const ed = parseInt(document.getElementById('boq-form-extra-double')?.value) || 0;
     let totalGroup = 0;
     (__boqFormItems || []).forEach(it => {
         const sub = (it.quantity || 0) * (it.unit_price || 0);
@@ -307,13 +315,20 @@ function _renderBoqFormTotals() {
     });
     const costPerPax = Math.floor(totalGroup / pax);
     const marginAmt = Math.floor(costPerPax * (margin / 100));
-    const pricePerPax = costPerPax + marginAmt;
+    const priceQuad = costPerPax + marginAmt;
+    const priceTriple = priceQuad + et;
+    const priceDouble = priceQuad + ed;
     const el = document.getElementById('boq-form-totals');
     if (el) el.innerHTML = `
         <div><span class="text-gray-500">Total group:</span> <b class="tabular-nums">${formatRp(totalGroup)}</b></div>
         <div><span class="text-gray-500">Cost/pax:</span> <b class="tabular-nums">${formatRp(costPerPax)}</b></div>
         <div><span class="text-gray-500">Margin:</span> <b class="tabular-nums">${formatRp(marginAmt)}</b></div>
-        <div class="text-emerald-700 border-l pl-3"><span class="text-gray-500">Harga/pax:</span> <b class="tabular-nums text-base">${formatRp(pricePerPax)}</b></div>`;
+        <div class="text-emerald-700 border-l pl-3">
+            <div class="text-[10px] text-gray-500">Harga per pax</div>
+            <div class="tabular-nums text-sm">QUAD <b>${formatRp(priceQuad)}</b></div>
+            <div class="tabular-nums text-sm">TRIPLE <b>${formatRp(priceTriple)}</b>${et ? '' : '<span class="text-[10px] text-gray-400 ml-1">(= QUAD)</span>'}</div>
+            <div class="tabular-nums text-sm">DOUBLE <b>${formatRp(priceDouble)}</b>${ed ? '' : '<span class="text-[10px] text-gray-400 ml-1">(= QUAD)</span>'}</div>
+        </div>`;
 }
 
 
@@ -381,12 +396,20 @@ function _renderBoqDetail() {
     `).join('') || `<tr><td colspan="8" class="text-center py-4 text-xs text-gray-400">Belum ada item.</td></tr>`;
 
     const t = b.totals || {};
+    const hasSplit = (t.extra_triple || 0) > 0 || (t.extra_double || 0) > 0;
     document.getElementById('boq-detail-totals').innerHTML = `
-        <div class="grid grid-cols-4 gap-2 text-xs">
+        <div class="grid grid-cols-3 md:grid-cols-6 gap-2 text-xs">
             <div><span class="text-gray-500">Total group:</span> <b class="tabular-nums block">${formatRp(t.total_group_cost || 0)}</b></div>
             <div><span class="text-gray-500">Cost/pax:</span> <b class="tabular-nums block">${formatRp(t.cost_per_pax || 0)}</b></div>
             <div><span class="text-gray-500">Margin:</span> <b class="tabular-nums block">${formatRp(t.margin_amount || 0)}</b></div>
-            <div class="text-emerald-700"><span class="text-gray-500">Harga/pax:</span> <b class="tabular-nums block text-base">${formatRp(t.price_per_pax || 0)}</b></div>
+            <div class="text-emerald-700 col-span-3 md:col-span-3 border-l pl-3">
+                <div class="text-[10px] text-gray-500 mb-0.5">Harga per pax ${hasSplit ? '(split per room type)' : '<span class="text-gray-400">(flat, semua room sama)</span>'}</div>
+                <div class="grid grid-cols-3 gap-1 tabular-nums">
+                    <div>QUAD<br><b>${formatRp(t.price_quad || 0)}</b></div>
+                    <div>TRIPLE<br><b>${formatRp(t.price_triple || 0)}</b></div>
+                    <div>DOUBLE<br><b>${formatRp(t.price_double || 0)}</b></div>
+                </div>
+            </div>
         </div>`;
 
     const addItemBtn = document.getElementById('boq-detail-add-item-btn');
@@ -540,9 +563,17 @@ function openConvertBoqModal() {
     document.getElementById('boq-conv-hotel-madinah').value = '';
     document.getElementById('boq-conv-route').value = 'Direct';
     document.getElementById('boq-conv-commission').value = 0;
-    const price = b.totals?.price_per_pax || 0;
-    document.getElementById('boq-conv-preview').innerText =
-        `Harga per pax dari BOQ ini: ${formatRp(price)} (akan di-set ke price_quad/triple/double paket baru)`;
+    const t = b.totals || {};
+    const pq = t.price_quad || 0, pt = t.price_triple || 0, pd = t.price_double || 0;
+    const previewEl = document.getElementById('boq-conv-preview');
+    if (pq === pt && pq === pd) {
+        previewEl.innerHTML = `Harga per pax dari BOQ (flat, semua room type sama): <b>${formatRp(pq)}</b>`;
+    } else {
+        previewEl.innerHTML = `Harga split akan disalin ke paket:
+            QUAD <b>${formatRp(pq)}</b> &middot;
+            TRIPLE <b>${formatRp(pt)}</b> &middot;
+            DOUBLE <b>${formatRp(pd)}</b>`;
+    }
     openModal('modal-boq-convert');
 }
 
@@ -741,7 +772,9 @@ function _renderCompareBody(data) {
     html += totalRow('Total Group Cost', t => t.total_group_cost);
     html += totalRow('Cost per pax', t => t.cost_per_pax);
     html += totalRow('Margin', t => t.margin_amount);
-    html += totalRow('Harga per pax', t => t.price_per_pax, true);
+    html += totalRow('Harga QUAD /pax', t => t.price_quad, true);
+    html += totalRow('Harga TRIPLE /pax', t => t.price_triple, false);
+    html += totalRow('Harga DOUBLE /pax', t => t.price_double, false);
     html += `</tbody></table>`;
 
     if (!rows.length) {
