@@ -16,6 +16,7 @@ let __boqFilterPackage = '';
 let __boqFilterStatus = '';
 let __boqCurrentDetail = null;   // {id, ...detail} yg lagi dibuka di modal
 let __boqPackagesCache = null;   // list paket utk dropdown (lazy load)
+const __boqSelectedIds = new Set();   // Phase 3a: pilihan checkbox utk compare
 
 const BOQ_CATEGORIES = [
     'hotel_mekkah', 'hotel_madinah', 'tiket', 'visa', 'muthawwif',
@@ -100,14 +101,21 @@ async function fetchBoqList() {
 function _renderBoqTable() {
     const tbody = document.getElementById('table-boq');
     if (!tbody) return;
+    // Purge stale selections (BOQ deleted / filtered out) supaya count akurat.
+    const visibleIds = new Set(__boqList.map(b => b.id));
+    for (const id of Array.from(__boqSelectedIds)) if (!visibleIds.has(id)) __boqSelectedIds.delete(id);
+
     if (!__boqList.length) {
-        tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-gray-400 text-sm">
+        tbody.innerHTML = `<tr><td colspan="8" class="px-4 py-8 text-center text-gray-400 text-sm">
             Belum ada BOQ. Klik <b>+ Tambah BOQ</b> untuk mulai bikin skenario harga.</td></tr>`;
+        _updateCompareBtn();
         return;
     }
     tbody.innerHTML = __boqList.map(b => {
         const st = BOQ_STATUS_BADGE[b.status] || BOQ_STATUS_BADGE.Draft;
+        const checked = __boqSelectedIds.has(b.id) ? 'checked' : '';
         return `<tr class="hover:bg-emerald-50/40">
+            <td class="px-2 py-2 text-center"><input type="checkbox" ${checked} onchange="_toggleBoqSelect(${b.id}, this.checked)" title="Pilih utk bandingkan"/></td>
             <td class="px-3 py-2">
                 <div class="font-semibold text-gray-800">${_esc(b.name)}</div>
                 <div class="text-[11px] text-gray-500">by ${_esc(b.created_by_name || '-')}</div>
@@ -131,7 +139,42 @@ function _renderBoqTable() {
             </td>
         </tr>`;
     }).join('');
+    _updateCompareBtn();
+    const selectAll = document.getElementById('boq-select-all');
+    if (selectAll) selectAll.checked = __boqList.length > 0 && __boqSelectedIds.size === __boqList.length;
     if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+
+/* --- Phase 3a: multi-select + compare launcher --- */
+function _toggleBoqSelect(bid, checked) {
+    if (checked) __boqSelectedIds.add(bid); else __boqSelectedIds.delete(bid);
+    _updateCompareBtn();
+    const selectAll = document.getElementById('boq-select-all');
+    if (selectAll) selectAll.checked = __boqList.length > 0 && __boqSelectedIds.size === __boqList.length;
+}
+function _toggleBoqSelectAll(checked) {
+    if (checked) __boqList.forEach(b => __boqSelectedIds.add(b.id));
+    else __boqSelectedIds.clear();
+    _renderBoqTable();
+}
+function _updateCompareBtn() {
+    const btn = document.getElementById('boq-compare-btn');
+    const count = document.getElementById('boq-compare-count');
+    if (!btn) return;
+    const n = __boqSelectedIds.size;
+    if (count) count.innerText = n;
+    // Show hanya kalau 2-5 terpilih (endpoint validasi).
+    btn.classList.toggle('hidden', n < 2);
+    if (n > 5) {
+        btn.disabled = true;
+        btn.title = `Terpilih ${n}. Maksimal 5 BOQ per compare -- kurangi dulu.`;
+        btn.classList.add('opacity-60', 'cursor-not-allowed');
+    } else {
+        btn.disabled = false;
+        btn.title = '';
+        btn.classList.remove('opacity-60', 'cursor-not-allowed');
+    }
 }
 
 function _canEdit(b) {
@@ -554,6 +597,155 @@ async function deleteBoq(bid) {
     } catch (e) {
         _toast('Hapus gagal: ' + (e.message || e), 'error');
     }
+}
+
+
+/* ============================================================================
+ * Phase 3a: Compare modal (side-by-side)
+ * ==========================================================================*/
+async function openCompareBoqModal() {
+    const ids = Array.from(__boqSelectedIds);
+    if (ids.length < 2) return _toast('Pilih minimal 2 BOQ dulu.', 'error');
+    if (ids.length > 5) return _toast('Maksimal 5 BOQ per compare.', 'error');
+    try {
+        const r = await authFetch(`/boq/compare?ids=${ids.join(',')}`);
+        const j = await r.json();
+        if (!j || !j.boqs) throw new Error('Response invalid.');
+        _renderCompareBody(j);
+        openModal('modal-boq-compare');
+    } catch (e) {
+        _toast('Gagal load compare: ' + (e.message || e), 'error');
+    }
+}
+
+function _renderCompareBody(data) {
+    const boqs = data.boqs || [];
+    const badge = document.getElementById('boq-cmp-count-badge');
+    if (badge) badge.innerText = `${boqs.length} BOQ`;
+
+    // Warn kalau cross-package (bukan apples-to-apples).
+    const warn = document.getElementById('boq-cmp-warn');
+    if (warn) {
+        if (!data.same_package) {
+            warn.classList.remove('hidden');
+            warn.innerHTML = `<i data-lucide="alert-triangle" class="w-3.5 h-3.5 inline"></i>
+                Cross-package compare: BOQ berasal dari paket berbeda (atau tanpa paket). Bandingkan angka dgn hati-hati -- durasi/kualitas hotel bisa beda.`;
+        } else {
+            warn.classList.add('hidden');
+        }
+    }
+
+    // Kumpulkan semua (category, item_name) key across BOQs, urut per kategori.
+    const keyMap = new Map();   // "category|item_name" -> {category, item_name, order}
+    let order = 0;
+    for (const cat of BOQ_CATEGORIES) {
+        for (const b of boqs) {
+            for (const it of (b.items || [])) {
+                if (it.category !== cat) continue;
+                const k = `${it.category}|${(it.item_name || '').trim().toLowerCase()}`;
+                if (!keyMap.has(k)) {
+                    keyMap.set(k, { category: it.category, item_name: it.item_name, order: order++ });
+                }
+            }
+        }
+    }
+    const rows = Array.from(keyMap.values());
+
+    // Lookup subtotal per BOQ per key.
+    const subtotalFor = (b, cat, itemName) => {
+        const key = (itemName || '').trim().toLowerCase();
+        const hits = (b.items || []).filter(it => it.category === cat && (it.item_name || '').trim().toLowerCase() === key);
+        if (!hits.length) return null;
+        // Kalau ada > 1 item dengan nama sama (jarang), jumlahkan subtotal.
+        return hits.reduce((s, it) => s + (it.subtotal || 0), 0);
+    };
+
+    // Cheapest price/pax utk highlight winner.
+    const prices = boqs.map(b => (b.totals || {}).price_per_pax || 0).filter(p => p > 0);
+    const bestPrice = prices.length ? Math.min(...prices) : null;
+
+    // Group rows by category utk render header per section.
+    const rowsByCat = new Map();
+    for (const r of rows) {
+        if (!rowsByCat.has(r.category)) rowsByCat.set(r.category, []);
+        rowsByCat.get(r.category).push(r);
+    }
+
+    const colWidth = `${100 / (boqs.length + 1)}%`;
+    let html = `<table class="w-full border text-xs">
+        <thead class="bg-indigo-50 text-indigo-900 sticky top-0">
+            <tr>
+                <th class="border px-2 py-2 text-left" style="width:${colWidth}">Item / Kategori</th>
+                ${boqs.map(b => {
+                    const st = BOQ_STATUS_BADGE[b.status] || BOQ_STATUS_BADGE.Draft;
+                    return `<th class="border px-2 py-2 text-left align-top" style="width:${colWidth}">
+                        <div class="font-bold text-sm text-gray-800">${_esc(b.name)}</div>
+                        <div class="text-[10px] text-gray-500 font-normal mt-0.5">
+                            ${b.package_name ? _esc(b.package_name) : '<i>tanpa paket</i>'}
+                        </div>
+                        <div class="mt-1 flex flex-wrap items-center gap-1">
+                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] rounded ${st.cls}">${_esc(b.status)}</span>
+                            <span class="text-[10px] text-gray-500">${b.target_pax || 0} pax &middot; margin ${b.target_margin_pct || 0}%</span>
+                        </div>
+                    </th>`;
+                }).join('')}
+            </tr>
+        </thead>
+        <tbody>`;
+
+    for (const [cat, items] of rowsByCat) {
+        html += `<tr class="bg-gray-100">
+            <td class="border px-2 py-1 font-bold text-[11px] uppercase text-gray-600" colspan="${boqs.length + 1}">
+                ${_esc(BOQ_CATEGORY_LABEL[cat] || cat)}
+            </td>
+        </tr>`;
+        for (const row of items) {
+            html += `<tr>
+                <td class="border px-2 py-1 text-gray-700">${_esc(row.item_name)}</td>`;
+            const subs = boqs.map(b => subtotalFor(b, row.category, row.item_name));
+            const present = subs.filter(s => s !== null);
+            const minSub = present.length ? Math.min(...present) : null;
+            const maxSub = present.length ? Math.max(...present) : null;
+            for (const s of subs) {
+                if (s === null) {
+                    html += `<td class="border px-2 py-1 text-center text-gray-300">-</td>`;
+                } else {
+                    let cls = 'text-gray-800';
+                    if (present.length > 1 && s === minSub && minSub !== maxSub) cls = 'text-emerald-700 font-bold';
+                    else if (present.length > 1 && s === maxSub && minSub !== maxSub) cls = 'text-red-700';
+                    html += `<td class="border px-2 py-1 text-right tabular-nums ${cls}">${formatRp(s)}</td>`;
+                }
+            }
+            html += `</tr>`;
+        }
+    }
+
+    // Footer totals.
+    const totalRow = (label, keyGetter, isPrice) => {
+        let row = `<tr class="${isPrice ? 'bg-emerald-50 font-bold text-sm' : 'bg-gray-50'}">
+            <td class="border px-2 py-1.5">${label}</td>`;
+        for (const b of boqs) {
+            const val = keyGetter(b.totals || {}) || 0;
+            const isBest = isPrice && bestPrice !== null && val === bestPrice && boqs.length > 1;
+            const cls = isBest ? 'text-emerald-700' : (isPrice ? 'text-gray-800' : 'text-gray-600');
+            row += `<td class="border px-2 py-1.5 text-right tabular-nums ${cls}">
+                ${formatRp(val)} ${isBest ? '<span class="text-[10px] ml-1">🏆</span>' : ''}
+            </td>`;
+        }
+        return row + `</tr>`;
+    };
+    html += `<tr><td colspan="${boqs.length + 1}" class="border-t-2 border-gray-400"></td></tr>`;
+    html += totalRow('Total Group Cost', t => t.total_group_cost);
+    html += totalRow('Cost per pax', t => t.cost_per_pax);
+    html += totalRow('Margin', t => t.margin_amount);
+    html += totalRow('Harga per pax', t => t.price_per_pax, true);
+    html += `</tbody></table>`;
+
+    if (!rows.length) {
+        html = `<div class="text-center text-gray-400 py-8">BOQ yang dipilih belum punya line item -- tambahkan item dulu untuk bisa dibandingkan.</div>`;
+    }
+    document.getElementById('boq-cmp-body').innerHTML = html;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 

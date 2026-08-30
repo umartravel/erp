@@ -186,6 +186,61 @@ async def boq_list(
     return rows
 
 
+@router.get("/api/boq/compare")
+async def boq_compare(ids: str = "", user=Depends(authenticate_token)):
+    """Bandingkan 2-5 BOQ side-by-side.
+
+    Query: `ids=1,2,3` -- integer comma-separated. Minimal 2, maksimal 5.
+    Boleh cross-package (misal utk banding vendor across routes), meski
+    biasa-nya user pilih BOQ dari paket yang sama.
+
+    Response: list BOQ dgn shape sama seperti detail (header + items + totals),
+    urutan sesuai input. Frontend yang render kolom sejajar + highlight beda.
+
+    NOTE: didaftarkan SEBELUM /api/boq/{bid} biar 'compare' tidak dianggap
+    integer bid.
+    """
+    raw = [x.strip() for x in (ids or "").split(",") if x.strip()]
+    if not raw:
+        raise HTTPException(status_code=400, detail="Parameter ids wajib (comma-separated).")
+    try:
+        parsed = [int(x) for x in raw]
+    except ValueError:
+        raise HTTPException(status_code=400, detail="ids harus integer.")
+    if len(parsed) < 2:
+        raise HTTPException(status_code=400, detail="Minimal 2 BOQ untuk dibandingkan.")
+    if len(parsed) > 5:
+        raise HTTPException(status_code=400, detail="Maksimal 5 BOQ per compare.")
+
+    # Dedup preserving order.
+    seen: set[int] = set()
+    ordered = [i for i in parsed if not (i in seen or seen.add(i))]
+
+    boqs: list[dict] = []
+    for bid in ordered:
+        boq = db.query_one("SELECT * FROM package_boq WHERE id = ?", (bid,))
+        if not boq:
+            raise HTTPException(status_code=404, detail=f"BOQ #{bid} tidak ditemukan.")
+        items = db.query_all(
+            "SELECT * FROM package_boq_items WHERE boq_id = ? "
+            "ORDER BY category, sort_order, id",
+            (bid,),
+        ) or []
+        totals = _compute_totals(bid, boq["target_pax"], boq["target_margin_pct"])
+        pkg = db.query_one("SELECT name FROM packages WHERE id = ?", (boq["package_id"],)) if boq["package_id"] else None
+        creator = db.query_one("SELECT name FROM users WHERE id = ?", (boq["created_by"],)) if boq["created_by"] else None
+        boqs.append({
+            **dict(boq),
+            "items": items,
+            "totals": totals,
+            "package_name": pkg["name"] if pkg else None,
+            "created_by_name": creator["name"] if creator else None,
+        })
+
+    same_package = len({b["package_id"] for b in boqs}) == 1 and boqs[0]["package_id"] is not None
+    return {"boqs": boqs, "count": len(boqs), "same_package": same_package}
+
+
 @router.get("/api/boq/{bid}")
 async def boq_detail(bid: int, user=Depends(authenticate_token)):
     boq = _boq_or_404(bid)

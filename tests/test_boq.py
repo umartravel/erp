@@ -349,6 +349,74 @@ def test_convert_requires_departure_and_duration(client, admin_token):
     assert r.status_code == 400  # duration masih kosong
 
 
+# ---------------------------------------------------------------------------
+# compare (Phase 3a) -- GET /api/boq/compare?ids=1,2,3
+# ---------------------------------------------------------------------------
+def test_compare_two_boqs_happy(client, admin_token):
+    """2 BOQ approved -> response berisi 2 boq lengkap dgn items + totals."""
+    a = _mk_boq(client, admin_token, name="TEST BOQ Compare A", target_pax=40, margin=15, items=[
+        {"category": "hotel_mekkah", "item_name": "Anjum", "unit": "per_pax",
+         "quantity": 1, "unit_price": 8_000_000},
+    ])
+    b = _mk_boq(client, admin_token, name="TEST BOQ Compare B", target_pax=40, margin=20, items=[
+        {"category": "hotel_mekkah", "item_name": "Swissotel", "unit": "per_pax",
+         "quantity": 1, "unit_price": 10_000_000},
+    ])
+    r = client.get(f"/api/boq/compare?ids={a['id']},{b['id']}", headers=bearer(admin_token))
+    assert r.status_code == 200, r.text
+    j = r.json()
+    assert j["count"] == 2
+    assert len(j["boqs"]) == 2
+    # Urutan sesuai input.
+    assert j["boqs"][0]["id"] == a["id"]
+    assert j["boqs"][1]["id"] == b["id"]
+    # Items + totals ikut.
+    assert len(j["boqs"][0]["items"]) == 1
+    assert j["boqs"][0]["totals"]["price_per_pax"] == 9_200_000  # 8jt + 15%
+    assert j["boqs"][1]["totals"]["price_per_pax"] == 12_000_000  # 10jt + 20%
+
+
+def test_compare_missing_ids_param_400(client, admin_token):
+    r = client.get("/api/boq/compare", headers=bearer(admin_token))
+    assert r.status_code == 400
+    assert "ids" in r.json()["error"].lower()
+
+
+def test_compare_needs_min_two(client, admin_token):
+    a = _mk_boq(client, admin_token, name="TEST BOQ Compare Solo")
+    r = client.get(f"/api/boq/compare?ids={a['id']}", headers=bearer(admin_token))
+    assert r.status_code == 400
+    assert "minimal 2" in r.json()["error"].lower()
+
+
+def test_compare_caps_at_five(client, admin_token):
+    """6 ids -> 400."""
+    ids = []
+    for i in range(6):
+        b = _mk_boq(client, admin_token, name=f"TEST BOQ Compare Cap {i}")
+        ids.append(str(b["id"]))
+    r = client.get(f"/api/boq/compare?ids={','.join(ids)}", headers=bearer(admin_token))
+    assert r.status_code == 400
+    assert "maksimal 5" in r.json()["error"].lower()
+
+
+def test_compare_missing_boq_404(client, admin_token):
+    a = _mk_boq(client, admin_token, name="TEST BOQ Compare Exists")
+    r = client.get(f"/api/boq/compare?ids={a['id']},999999", headers=bearer(admin_token))
+    assert r.status_code == 404
+
+
+def test_compare_dedups_and_preserves_order(client, admin_token):
+    """ids=B,A,B,A -> hasil [B,A] (dedup, urutan input pertama menang)."""
+    a = _mk_boq(client, admin_token, name="TEST BOQ Compare Dedup A")
+    b = _mk_boq(client, admin_token, name="TEST BOQ Compare Dedup B")
+    r = client.get(f"/api/boq/compare?ids={b['id']},{a['id']},{b['id']},{a['id']}",
+                   headers=bearer(admin_token))
+    assert r.status_code == 200
+    j = r.json()
+    assert [x["id"] for x in j["boqs"]] == [b["id"], a["id"]]
+
+
 def test_add_item_updates_totals(client, admin_token):
     b = _mk_boq(client, admin_token, name="TEST BOQ ItemAdd", target_pax=1, margin=0)
     r = client.post(f"/api/boq/{b['id']}/items", json={
