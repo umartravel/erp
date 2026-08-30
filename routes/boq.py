@@ -241,6 +241,176 @@ async def boq_compare(ids: str = "", user=Depends(authenticate_token)):
     return {"boqs": boqs, "count": len(boqs), "same_package": same_package}
 
 
+# ---------------------------------------------------------------------------
+# Phase 3b: BOQ Templates (preset line items).
+# Route WAJIB didaftarkan SEBELUM /api/boq/{bid} biar 'templates' tidak
+# di-parse jadi bid=templates.
+# ---------------------------------------------------------------------------
+def _template_or_404(tid: int) -> dict:
+    row = db.query_one("SELECT * FROM boq_templates WHERE id = ?", (tid,))
+    if not row:
+        raise HTTPException(status_code=404, detail="Template BOQ tidak ditemukan.")
+    return row
+
+
+@router.get("/api/boq/templates")
+async def boq_template_list(user=Depends(authenticate_token)):
+    """List semua template. Semua role authenticated boleh baca (sales perlu
+    utk apply-template ke Draft-nya)."""
+    return db.query_all(
+        "SELECT t.*, "
+        "       u.name AS created_by_name, "
+        "       (SELECT COUNT(*) FROM boq_template_items WHERE template_id = t.id) AS item_count "
+        "FROM boq_templates t "
+        "LEFT JOIN users u ON u.id = t.created_by "
+        "ORDER BY t.name"
+    ) or []
+
+
+@router.get("/api/boq/templates/{tid}")
+async def boq_template_detail(tid: int, user=Depends(authenticate_token)):
+    t = _template_or_404(tid)
+    items = db.query_all(
+        "SELECT * FROM boq_template_items WHERE template_id = ? ORDER BY sort_order, id",
+        (tid,),
+    ) or []
+    creator = db.query_one("SELECT name FROM users WHERE id = ?", (t["created_by"],)) if t["created_by"] else None
+    return {**dict(t), "items": items, "created_by_name": creator["name"] if creator else None}
+
+
+@router.post("/api/boq/templates")
+async def boq_template_create(body: dict = Depends(json_body), user=Depends(authenticate_token)):
+    """Mgmt/admin only -- template = governance harga preset."""
+    require_role(user, *_MGMT_ROLES)
+    name = (body.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Nama template wajib diisi.")
+
+    tid, _ = db.execute(
+        "INSERT INTO boq_templates (name, description, created_by) VALUES (?, ?, ?)",
+        (name, body.get("description"), user["id"]),
+    )
+    for it in body.get("items") or []:
+        _validate_item(it)
+        db.execute(
+            "INSERT INTO boq_template_items "
+            "(template_id, category, item_name, unit, quantity, unit_price, "
+            " vendor_name, note, sort_order) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                tid, it.get("category"), it.get("item_name").strip(),
+                it.get("unit") or "per_pax",
+                float(it.get("quantity") or 1),
+                int(it.get("unit_price") or 0),
+                it.get("vendor_name"), it.get("note"),
+                int(it.get("sort_order") or 0),
+            ),
+        )
+    log_action(user, "BOQ_TEMPLATE_CREATE", f"id={tid} name={name}")
+    notify("data_updated", "boq_template")
+    return {"id": tid, "message": "Template dibuat."}
+
+
+@router.put("/api/boq/templates/{tid}")
+async def boq_template_update(tid: int, body: dict = Depends(json_body), user=Depends(authenticate_token)):
+    """Update header + (kalau `items` di body) replace items secara utuh.
+    Mgmt/admin only."""
+    require_role(user, *_MGMT_ROLES)
+    t = _template_or_404(tid)
+    name = (body.get("name") or t["name"]).strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Nama template wajib diisi.")
+
+    db.execute(
+        "UPDATE boq_templates SET name = ?, description = ?, "
+        " updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (name, body.get("description", t["description"]), tid),
+    )
+    # Replace items secara utuh kalau body membawa key 'items'
+    # (biar UI simpel: kirim seluruh state items terbaru).
+    if "items" in body:
+        db.execute("DELETE FROM boq_template_items WHERE template_id = ?", (tid,))
+        for it in body.get("items") or []:
+            _validate_item(it)
+            db.execute(
+                "INSERT INTO boq_template_items "
+                "(template_id, category, item_name, unit, quantity, unit_price, "
+                " vendor_name, note, sort_order) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    tid, it.get("category"), it.get("item_name").strip(),
+                    it.get("unit") or "per_pax",
+                    float(it.get("quantity") or 1),
+                    int(it.get("unit_price") or 0),
+                    it.get("vendor_name"), it.get("note"),
+                    int(it.get("sort_order") or 0),
+                ),
+            )
+    log_action(user, "BOQ_TEMPLATE_UPDATE", f"id={tid}")
+    notify("data_updated", "boq_template")
+    return {"message": "Template diperbarui."}
+
+
+@router.delete("/api/boq/templates/{tid}")
+async def boq_template_delete(tid: int, user=Depends(authenticate_token)):
+    require_role(user, *_MGMT_ROLES)
+    _template_or_404(tid)
+    db.execute("DELETE FROM boq_templates WHERE id = ?", (tid,))
+    log_action(user, "BOQ_TEMPLATE_DELETE", f"id={tid}")
+    notify("data_updated", "boq_template")
+    return {"message": "Template dihapus."}
+
+
+@router.post("/api/boq/templates/{tid}/apply/{bid}")
+async def boq_template_apply(tid: int, bid: int, user=Depends(authenticate_token)):
+    """Copy semua template items ke BOQ (append, tidak replace).
+
+    Guard:
+    - BOQ target harus editable oleh caller (mgmt/admin apa saja; owner cuma Draft).
+    - Template harus punya minimal 1 item (kosong = no-op yang confusing).
+
+    Items ditambahkan ke akhir (sort_order melanjutkan max existing) supaya
+    tidak menimpa item yg sudah ada di BOQ.
+    """
+    boq = _boq_or_404(bid)
+    _assert_editable(boq, user)
+    t = _template_or_404(tid)
+
+    items = db.query_all(
+        "SELECT * FROM boq_template_items WHERE template_id = ? ORDER BY sort_order, id",
+        (tid,),
+    ) or []
+    if not items:
+        raise HTTPException(status_code=400, detail="Template kosong -- tambah item template dulu.")
+
+    # Sort_order offset agar item template lanjut setelah item existing.
+    max_sort = db.query_one(
+        "SELECT COALESCE(MAX(sort_order), -1) AS m FROM package_boq_items WHERE boq_id = ?",
+        (bid,),
+    )
+    offset = (max_sort["m"] if max_sort else -1) + 1
+
+    for i, it in enumerate(items):
+        qty = float(it["quantity"] or 1)
+        up = int(it["unit_price"] or 0)
+        db.execute(
+            "INSERT INTO package_boq_items "
+            "(boq_id, category, item_name, unit, quantity, unit_price, subtotal, "
+            " vendor_name, note, sort_order) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                bid, it["category"], it["item_name"], it["unit"], qty, up,
+                _calc_subtotal(qty, up),
+                it["vendor_name"], it["note"], offset + i,
+            ),
+        )
+
+    db.execute("UPDATE package_boq SET updated_at = CURRENT_TIMESTAMP WHERE id = ?", (bid,))
+    log_action(user, "BOQ_TEMPLATE_APPLY", f"tmpl={tid} boq={bid} items={len(items)}")
+    notify("data_updated", "boq")
+    return {"applied": len(items), "message": f"{len(items)} item dari template ditambahkan ke BOQ."}
+
+
 @router.get("/api/boq/{bid}")
 async def boq_detail(bid: int, user=Depends(authenticate_token)):
     boq = _boq_or_404(bid)

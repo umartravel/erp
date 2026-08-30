@@ -417,6 +417,145 @@ def test_compare_dedups_and_preserves_order(client, admin_token):
     assert [x["id"] for x in j["boqs"]] == [b["id"], a["id"]]
 
 
+# ---------------------------------------------------------------------------
+# Templates (Phase 3b)
+# ---------------------------------------------------------------------------
+def _mk_template(client, token, name="TEST Template Umroh 9H", items=None):
+    body = {"name": name, "description": "template test", "items": items or []}
+    r = client.post("/api/boq/templates", json=body, headers=bearer(token))
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def test_template_create_requires_mgmt(client, sales_token):
+    r = client.post("/api/boq/templates",
+                    json={"name": "Sales Buat Template"},
+                    headers=bearer(sales_token))
+    assert r.status_code == 403
+
+
+def test_template_create_happy_and_list(client, management_token):
+    t = _mk_template(client, management_token, name="TEST Template Reguler", items=[
+        {"category": "hotel_mekkah", "item_name": "Anjum", "unit": "per_pax",
+         "quantity": 1, "unit_price": 8_000_000},
+        {"category": "tiket", "item_name": "Saudia", "unit": "per_pax",
+         "quantity": 1, "unit_price": 12_000_000},
+    ])
+    # Detail berisi 2 items.
+    detail = client.get(f"/api/boq/templates/{t['id']}", headers=bearer(management_token)).json()
+    assert detail["name"] == "TEST Template Reguler"
+    assert len(detail["items"]) == 2
+    # List include row tsb.
+    rows = client.get("/api/boq/templates", headers=bearer(management_token)).json()
+    assert any(r["id"] == t["id"] and r["item_count"] == 2 for r in rows)
+
+
+def test_template_list_visible_to_sales(client, management_token, sales_token):
+    """Sales boleh baca template supaya bisa apply ke Draft-nya."""
+    t = _mk_template(client, management_token, name="TEST Template Visible")
+    rows = client.get("/api/boq/templates", headers=bearer(sales_token)).json()
+    assert any(r["id"] == t["id"] for r in rows)
+
+
+def test_template_update_replaces_items(client, management_token):
+    t = _mk_template(client, management_token, name="TEST Template Update", items=[
+        {"category": "tiket", "item_name": "Old", "unit": "per_pax",
+         "quantity": 1, "unit_price": 5_000_000},
+    ])
+    r = client.put(f"/api/boq/templates/{t['id']}", json={
+        "name": "TEST Template Updated",
+        "items": [
+            {"category": "visa", "item_name": "Visa Umroh", "unit": "per_pax",
+             "quantity": 1, "unit_price": 1_500_000},
+            {"category": "muthawwif", "item_name": "TL", "unit": "per_group",
+             "quantity": 1, "unit_price": 3_000_000},
+        ],
+    }, headers=bearer(management_token))
+    assert r.status_code == 200
+    detail = client.get(f"/api/boq/templates/{t['id']}", headers=bearer(management_token)).json()
+    assert detail["name"] == "TEST Template Updated"
+    assert len(detail["items"]) == 2
+    assert {i["item_name"] for i in detail["items"]} == {"Visa Umroh", "TL"}
+
+
+def test_template_delete_cascades(client, management_token):
+    t = _mk_template(client, management_token, name="TEST Template Del", items=[
+        {"category": "tiket", "item_name": "X", "unit": "per_pax",
+         "quantity": 1, "unit_price": 100},
+    ])
+    r = client.delete(f"/api/boq/templates/{t['id']}", headers=bearer(management_token))
+    assert r.status_code == 200
+    # Detail sekarang 404.
+    r = client.get(f"/api/boq/templates/{t['id']}", headers=bearer(management_token))
+    assert r.status_code == 404
+
+
+def test_template_apply_appends_to_draft(client, management_token, sales_token):
+    """Sales bikin Draft (kosong) + apply template mgmt -> items ter-append."""
+    t = _mk_template(client, management_token, name="TEST Template Apply", items=[
+        {"category": "hotel_mekkah", "item_name": "Anjum", "unit": "per_pax",
+         "quantity": 1, "unit_price": 8_000_000},
+        {"category": "tiket", "item_name": "Saudia", "unit": "per_pax",
+         "quantity": 1, "unit_price": 12_000_000},
+    ])
+    b = _mk_boq(client, sales_token, name="TEST BOQ Apply Target")
+    r = client.post(f"/api/boq/templates/{t['id']}/apply/{b['id']}",
+                    headers=bearer(sales_token))
+    assert r.status_code == 200
+    assert r.json()["applied"] == 2
+    detail = client.get(f"/api/boq/{b['id']}", headers=bearer(sales_token)).json()
+    assert len(detail["items"]) == 2
+    names = {i["item_name"] for i in detail["items"]}
+    assert names == {"Anjum", "Saudia"}
+
+
+def test_template_apply_empty_400(client, management_token, sales_token):
+    """Apply template kosong -> 400 (no-op yang confusing)."""
+    t = _mk_template(client, management_token, name="TEST Template Empty")  # 0 items
+    b = _mk_boq(client, sales_token, name="TEST BOQ Empty Apply")
+    r = client.post(f"/api/boq/templates/{t['id']}/apply/{b['id']}",
+                    headers=bearer(sales_token))
+    assert r.status_code == 400
+    assert "kosong" in r.json()["error"].lower()
+
+
+def test_template_apply_blocks_after_submit(client, management_token, sales_token):
+    """Sales submit BOQ -> tidak bisa apply template lagi (BOQ locked)."""
+    t = _mk_template(client, management_token, name="TEST Template LockedTarget", items=[
+        {"category": "tiket", "item_name": "X", "unit": "per_pax",
+         "quantity": 1, "unit_price": 100},
+    ])
+    b = _mk_boq(client, sales_token, name="TEST BOQ Locked", items=[
+        {"category": "visa", "item_name": "Visa", "unit": "per_pax",
+         "quantity": 1, "unit_price": 100},
+    ])
+    client.post(f"/api/boq/{b['id']}/submit", headers=bearer(sales_token))
+    r = client.post(f"/api/boq/templates/{t['id']}/apply/{b['id']}",
+                    headers=bearer(sales_token))
+    assert r.status_code == 400
+    assert "Draft" in r.json()["error"]
+
+
+def test_template_apply_appends_offset_after_existing(client, management_token, admin_token):
+    """Apply template tidak menimpa item existing -- sort_order lanjut."""
+    b = _mk_boq(client, admin_token, name="TEST BOQ Offset", items=[
+        {"category": "hotel_mekkah", "item_name": "Existing1", "unit": "per_pax",
+         "quantity": 1, "unit_price": 1_000_000, "sort_order": 0},
+    ])
+    t = _mk_template(client, management_token, name="TEST Template Offset", items=[
+        {"category": "tiket", "item_name": "TplItem", "unit": "per_pax",
+         "quantity": 1, "unit_price": 2_000_000, "sort_order": 0},
+    ])
+    r = client.post(f"/api/boq/templates/{t['id']}/apply/{b['id']}",
+                    headers=bearer(admin_token))
+    assert r.status_code == 200
+    detail = client.get(f"/api/boq/{b['id']}", headers=bearer(admin_token)).json()
+    assert len(detail["items"]) == 2
+    # Existing item tetap ada; template item ditambah.
+    names = [i["item_name"] for i in detail["items"]]
+    assert "Existing1" in names and "TplItem" in names
+
+
 def test_add_item_updates_totals(client, admin_token):
     b = _mk_boq(client, admin_token, name="TEST BOQ ItemAdd", target_pax=1, margin=0)
     r = client.post(f"/api/boq/{b['id']}/items", json={

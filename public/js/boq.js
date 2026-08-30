@@ -61,6 +61,9 @@ async function initBoqPage() {
     _renderBoqPackageFilter();
     const addBtn = document.getElementById('boq-add-btn');
     if (addBtn) addBtn.classList.toggle('hidden', !_isAuthor());
+    // Kelola Template = mgmt/admin only.
+    const tmplBtn = document.getElementById('boq-tmpl-manage-btn');
+    if (tmplBtn) tmplBtn.classList.toggle('hidden', !_isMgmt());
     await fetchBoqList();
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
@@ -746,6 +749,183 @@ function _renderCompareBody(data) {
     }
     document.getElementById('boq-cmp-body').innerHTML = html;
     if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+
+/* ============================================================================
+ * Phase 3b: BOQ Templates (preset line items)
+ * ==========================================================================*/
+let __boqTmplList = [];
+let __boqTmplFormItems = [];
+
+async function openBoqTemplateManager() {
+    try {
+        const r = await authFetch('/boq/templates');
+        __boqTmplList = await r.json() || [];
+    } catch (e) { __boqTmplList = []; }
+    _renderTmplList();
+    openModal('modal-boq-tmpl-manager');
+}
+
+function _renderTmplList() {
+    const tbody = document.getElementById('boq-tmpl-list');
+    if (!tbody) return;
+    if (!__boqTmplList.length) {
+        tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-8 text-center text-gray-400 text-sm">
+            Belum ada template. Klik <b>+ Template Baru</b> untuk buat preset line items.</td></tr>`;
+        return;
+    }
+    tbody.innerHTML = __boqTmplList.map(t => `
+        <tr class="hover:bg-slate-50">
+            <td class="px-3 py-2">
+                <div class="font-semibold text-gray-800">${_esc(t.name)}</div>
+                <div class="text-[11px] text-gray-500">${_esc(t.description || '')}</div>
+            </td>
+            <td class="px-3 py-2 text-center text-sm">${t.item_count || 0}</td>
+            <td class="px-3 py-2 text-[11px] text-gray-500">
+                ${_esc(t.created_by_name || '-')}<br>
+                ${_esc((t.created_at || '').slice(0, 16))}
+            </td>
+            <td class="px-3 py-2 text-right whitespace-nowrap">
+                <button onclick="openBoqTemplateForm(${t.id})" class="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200" title="Edit"><i data-lucide="edit-2" class="w-3.5 h-3.5"></i></button>
+                <button onclick="deleteBoqTemplate(${t.id})" class="text-xs px-2 py-1 rounded bg-red-50 text-red-700 hover:bg-red-100" title="Hapus"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+            </td>
+        </tr>`).join('');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+async function openBoqTemplateForm(tid) {
+    if (tid) {
+        // Edit mode: fetch detail.
+        try {
+            const r = await authFetch(`/boq/templates/${tid}`);
+            const t = await r.json();
+            document.getElementById('boq-tmpl-form-title').innerText = 'Edit Template';
+            document.getElementById('boq-tmpl-form-id').value = tid;
+            document.getElementById('boq-tmpl-form-name').value = t.name || '';
+            document.getElementById('boq-tmpl-form-desc').value = t.description || '';
+            __boqTmplFormItems = (t.items || []).map(it => ({
+                category: it.category, item_name: it.item_name, unit: it.unit,
+                quantity: it.quantity, unit_price: it.unit_price,
+                vendor_name: it.vendor_name || '', note: it.note || '',
+            }));
+        } catch (e) { return _toast('Gagal load template: ' + e.message, 'error'); }
+    } else {
+        document.getElementById('boq-tmpl-form-title').innerText = 'Template Baru';
+        document.getElementById('boq-tmpl-form-id').value = '';
+        document.getElementById('boq-tmpl-form-name').value = '';
+        document.getElementById('boq-tmpl-form-desc').value = '';
+        __boqTmplFormItems = [_blankItem()];
+    }
+    _renderTmplFormItems();
+    openModal('modal-boq-tmpl-form');
+}
+
+function addTmplFormItem() { __boqTmplFormItems.push(_blankItem()); _renderTmplFormItems(); }
+function removeTmplFormItem(idx) { __boqTmplFormItems.splice(idx, 1); _renderTmplFormItems(); }
+function _updateTmplFormItem(idx, field, value) {
+    if (!__boqTmplFormItems[idx]) return;
+    if (['quantity', 'unit_price'].includes(field)) value = parseFloat(value) || 0;
+    __boqTmplFormItems[idx][field] = value;
+}
+function _renderTmplFormItems() {
+    const tbody = document.getElementById('boq-tmpl-form-items');
+    if (!tbody) return;
+    tbody.innerHTML = __boqTmplFormItems.map((it, idx) => `<tr>
+        <td class="px-1 py-1">
+            <select class="w-full border rounded px-1 py-1 text-xs" onchange="_updateTmplFormItem(${idx},'category',this.value)">
+                ${BOQ_CATEGORIES.map(c => `<option value="${c}" ${it.category===c?'selected':''}>${BOQ_CATEGORY_LABEL[c]}</option>`).join('')}
+            </select>
+        </td>
+        <td class="px-1 py-1"><input type="text" value="${_esc(it.item_name)}" class="w-full border rounded px-2 py-1 text-xs" placeholder="Nama item" oninput="_updateTmplFormItem(${idx},'item_name',this.value)"/></td>
+        <td class="px-1 py-1">
+            <select class="w-full border rounded px-1 py-1 text-xs" onchange="_updateTmplFormItem(${idx},'unit',this.value)">
+                ${BOQ_UNITS.map(u => `<option value="${u.value}" ${it.unit===u.value?'selected':''}>${u.label}</option>`).join('')}
+            </select>
+        </td>
+        <td class="px-1 py-1"><input type="number" step="0.01" value="${it.quantity}" class="w-16 border rounded px-1 py-1 text-xs text-right" oninput="_updateTmplFormItem(${idx},'quantity',this.value)"/></td>
+        <td class="px-1 py-1"><input type="number" value="${it.unit_price}" class="w-28 border rounded px-1 py-1 text-xs text-right" oninput="_updateTmplFormItem(${idx},'unit_price',this.value)"/></td>
+        <td class="px-1 py-1"><input type="text" value="${_esc(it.vendor_name || '')}" class="w-full border rounded px-1 py-1 text-xs" placeholder="opsional" oninput="_updateTmplFormItem(${idx},'vendor_name',this.value)"/></td>
+        <td class="px-1 py-1 text-center"><button type="button" onclick="removeTmplFormItem(${idx})" class="text-red-600 hover:text-red-800 text-xs"><i data-lucide="x" class="w-3.5 h-3.5"></i></button></td>
+    </tr>`).join('') || `<tr><td colspan="7" class="text-center text-xs text-gray-400 py-3">Belum ada item.</td></tr>`;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+async function saveBoqTemplate() {
+    const tid = document.getElementById('boq-tmpl-form-id').value;
+    const name = document.getElementById('boq-tmpl-form-name').value.trim();
+    if (!name) return _toast('Nama template wajib diisi.', 'error');
+    const items = (__boqTmplFormItems || []).filter(it => it.item_name && it.category);
+    const body = {
+        name, description: document.getElementById('boq-tmpl-form-desc').value, items,
+    };
+    try {
+        const path = tid ? `/boq/templates/${tid}` : '/boq/templates';
+        const method = tid ? 'PUT' : 'POST';
+        await authFetch(path, { method, body: JSON.stringify(body) });
+        _toast('Template tersimpan.', 'success');
+        closeModal('modal-boq-tmpl-form');
+        await openBoqTemplateManager();  // refresh list
+    } catch (e) {
+        _toast('Simpan gagal: ' + (e.message || e), 'error');
+    }
+}
+
+async function deleteBoqTemplate(tid) {
+    if (!confirm('Hapus template ini? Aksi tidak bisa dibatalkan.')) return;
+    try {
+        await authFetch(`/boq/templates/${tid}`, { method: 'DELETE' });
+        _toast('Template dihapus.', 'success');
+        await openBoqTemplateManager();
+    } catch (e) {
+        _toast('Hapus gagal: ' + (e.message || e), 'error');
+    }
+}
+
+
+/* --- Picker (dipakai dari Add BOQ modal utk load items) --- */
+async function openTemplatePicker() {
+    let list = [];
+    try {
+        const r = await authFetch('/boq/templates');
+        list = await r.json() || [];
+    } catch (e) { return _toast('Gagal load template: ' + e.message, 'error'); }
+    const box = document.getElementById('boq-tmpl-picker-list');
+    if (!list.length) {
+        box.innerHTML = `<div class="text-center text-gray-400 py-8 text-sm">
+            Belum ada template. ${_isMgmt() ? 'Klik "Kelola Template" di halaman utama untuk buat preset.' : 'Minta mgmt/admin untuk bikin preset dulu.'}
+        </div>`;
+    } else {
+        box.innerHTML = list.map(t => `
+            <div class="border rounded p-3 flex items-center justify-between hover:bg-slate-50">
+                <div>
+                    <div class="font-semibold text-sm">${_esc(t.name)}</div>
+                    <div class="text-xs text-gray-500">${_esc(t.description || '')} &middot; ${t.item_count || 0} item</div>
+                </div>
+                <button onclick="loadTemplateIntoBoqForm(${t.id})" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white rounded text-xs font-bold">Load</button>
+            </div>`).join('');
+    }
+    openModal('modal-boq-tmpl-picker');
+}
+
+async function loadTemplateIntoBoqForm(tid) {
+    const has = (__boqFormItems || []).some(it => it.item_name);
+    if (has && !confirm('Load template = replace semua items yang sudah diinput. Yakin?')) return;
+    try {
+        const r = await authFetch(`/boq/templates/${tid}`);
+        const t = await r.json();
+        __boqFormItems = (t.items || []).map(it => ({
+            category: it.category, item_name: it.item_name, unit: it.unit,
+            quantity: it.quantity, unit_price: it.unit_price,
+            vendor_name: it.vendor_name || '', note: it.note || '',
+        }));
+        if (!__boqFormItems.length) __boqFormItems = [_blankItem()];
+        _renderBoqFormItems();
+        closeModal('modal-boq-tmpl-picker');
+        _toast(`${t.items?.length || 0} item ter-load dari template "${t.name}".`, 'success');
+    } catch (e) {
+        _toast('Load gagal: ' + (e.message || e), 'error');
+    }
 }
 
 
