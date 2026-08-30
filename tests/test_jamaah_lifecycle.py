@@ -348,6 +348,132 @@ def test_register_paket_tanpa_boq_flow_lama_masih_jalan(client, admin_token):
     assert j["boq_snapshot_price"] is None
 
 
+# ---------------------------------------------------------------------------
+# Phase 4c: edit jamaah re-snapshot on boq_id change
+# ---------------------------------------------------------------------------
+def _reg_with_boq(client, admin_token, pkg_name, room_type="QUAD", nik_suffix="001"):
+    """Bikin paket + BOQ + register 1 jamaah. Return (pkg_id, boq_id, jid, totals)."""
+    hdr = bearer(admin_token)
+    pkg_id, boq_id, totals = _mk_pkg_with_boq(client, admin_token, pkg_name,
+                                              extra_triple=2_000_000, extra_double=4_000_000)
+    price = totals[f"price_{room_type.lower()}"]
+    r = client.post("/api/jamaah", json={
+        "nik": f"999990000000{nik_suffix}", "name": f"TEST J {pkg_name}",
+        "phone": f"08119999{nik_suffix}",
+        "package_type": pkg_name, "boq_id": boq_id,
+        "total_price": price, "room_type": room_type, "status": "Waitlisted",
+    }, headers=hdr)
+    assert r.status_code == 200, r.text
+    return pkg_id, boq_id, r.json()["id"], totals
+
+
+def test_edit_reboot_snapshot_when_boq_changes(client, admin_token):
+    """Edit jamaah dgn boq_id baru -> boq_snapshot_price di-refresh dari BOQ baru,
+    boq_snapshot_at ter-update."""
+    hdr = bearer(admin_token)
+    # Setup: paket dgn 2 BOQ Approved (Reguler + Upgrade).
+    pkg_id_a, boq_reg, jid, totals_reg = _reg_with_boq(client, admin_token, "TEST PKG BOQ Edit", nik_suffix="201")
+
+    # BOQ kedua di paket yg sama, harga lebih mahal (base 25jt vs 20jt).
+    boq_up_r = client.post("/api/boq", json={
+        "name": "BOQ Upgrade", "package_id": pkg_id_a,
+        "target_pax": 40, "target_margin_pct": 20,
+        "extra_triple": 3_000_000, "extra_double": 6_000_000,
+        "items": [{"category": "hotel_mekkah", "item_name": "Anjum", "unit": "per_pax",
+                   "quantity": 1, "unit_price": 25_000_000}],
+    }, headers=hdr)
+    boq_up = boq_up_r.json()["id"]
+    boq_up_detail = client.get(f"/api/boq/{boq_up}", headers=hdr).json()
+    boq_up_price_quad = boq_up_detail["totals"]["price_quad"]  # 25jt + 20% = 30jt
+
+    # Baseline: jamaah punya snapshot dari BOQ Reguler = 23jt (from totals_reg["price_quad"]).
+    j_before = next(x for x in client.get("/api/jamaah", headers=hdr).json() if x["id"] == jid)
+    assert j_before["boq_id"] == boq_reg
+    assert j_before["boq_snapshot_price"] == totals_reg["price_quad"]
+    ts_before = j_before["boq_snapshot_at"]
+    assert ts_before is not None
+
+    # Edit: ganti boq_id ke BOQ Upgrade, total_price update ke price baru.
+    r = client.put(f"/api/jamaah/{jid}", json={
+        # Kirim semua field yg dibutuhkan endpoint (biar aman)
+        "nik": j_before["nik"], "name": j_before["name"], "phone": j_before["phone"],
+        "status": j_before["status"], "package_type": "TEST PKG BOQ Edit",
+        "boq_id": boq_up,
+        "total_price": boq_up_price_quad,
+        "room_type": "QUAD",
+        "price_change_note": "Upgrade skenario",
+    }, headers=hdr)
+    assert r.status_code == 200, r.text
+
+    j_after = next(x for x in client.get("/api/jamaah", headers=hdr).json() if x["id"] == jid)
+    assert j_after["boq_id"] == boq_up
+    assert j_after["boq_snapshot_price"] == boq_up_price_quad
+    # Timestamp berubah (CURRENT_TIMESTAMP).
+    assert j_after["boq_snapshot_at"] is not None
+
+
+def test_edit_boq_snapshot_room_type_split(client, admin_token):
+    """Edit sekaligus ganti room_type -> snapshot pakai harga split BOQ per room_type."""
+    hdr = bearer(admin_token)
+    pkg_id, boq_id, jid, totals = _reg_with_boq(client, admin_token, "TEST PKG BOQ RoomChange", nik_suffix="202")
+    # Baseline QUAD snapshot.
+    j_before = next(x for x in client.get("/api/jamaah", headers=hdr).json() if x["id"] == jid)
+    assert j_before["boq_snapshot_price"] == totals["price_quad"]
+
+    # Edit: ubah room_type ke DOUBLE, kirim boq_id yg sama -> snapshot re-computed = price_double.
+    r = client.put(f"/api/jamaah/{jid}", json={
+        "nik": j_before["nik"], "name": j_before["name"], "phone": j_before["phone"],
+        "status": j_before["status"], "package_type": "TEST PKG BOQ RoomChange",
+        "boq_id": boq_id,
+        "total_price": totals["price_double"],
+        "room_type": "DOUBLE",
+        "price_change_note": "Upgrade kamar ke DOUBLE",
+    }, headers=hdr)
+    assert r.status_code == 200, r.text
+    j_after = next(x for x in client.get("/api/jamaah", headers=hdr).json() if x["id"] == jid)
+    assert j_after["boq_snapshot_price"] == totals["price_double"]
+
+
+def test_edit_boq_wrong_package_rejected(client, admin_token):
+    """Edit dgn boq_id milik paket berbeda -> 400."""
+    hdr = bearer(admin_token)
+    pkg_a, boq_a, jid, totals_a = _reg_with_boq(client, admin_token, "TEST PKG BOQ Wrong Edit A", nik_suffix="203")
+    pkg_b, boq_b, totals_b = _mk_pkg_with_boq(client, admin_token, "TEST PKG BOQ Wrong Edit B")
+
+    r = client.put(f"/api/jamaah/{jid}", json={
+        "nik": "9999900000000203", "name": "TEST J TEST PKG BOQ Wrong Edit A",
+        "phone": "0811999999203",
+        "status": "Waitlisted",
+        "package_type": "TEST PKG BOQ Wrong Edit A",
+        "boq_id": boq_b,   # milik paket B -- ditolak
+        "total_price": totals_a["price_quad"],
+        "room_type": "QUAD",
+    }, headers=hdr)
+    assert r.status_code == 400
+    assert "bukan milik" in r.json()["error"].lower() or "tidak milik" in r.json()["error"].lower()
+
+
+def test_edit_tanpa_boq_key_tidak_menghapus_snapshot(client, admin_token):
+    """Edit body TANPA boq_id key -> snapshot existing tetap (utk edit field lain)."""
+    hdr = bearer(admin_token)
+    pkg_id, boq_id, jid, totals = _reg_with_boq(client, admin_token, "TEST PKG BOQ NoTouch", nik_suffix="204")
+    j_before = next(x for x in client.get("/api/jamaah", headers=hdr).json() if x["id"] == jid)
+
+    # Edit nama saja, tanpa key boq_id.
+    r = client.put(f"/api/jamaah/{jid}", json={
+        "nik": j_before["nik"], "name": "TEST J NAMA BARU", "phone": j_before["phone"],
+        "status": j_before["status"], "package_type": "TEST PKG BOQ NoTouch",
+        "total_price": totals["price_quad"],
+        "room_type": "QUAD",
+        # NO boq_id key!
+    }, headers=hdr)
+    assert r.status_code == 200, r.text
+    j_after = next(x for x in client.get("/api/jamaah", headers=hdr).json() if x["id"] == jid)
+    assert j_after["boq_id"] == boq_id
+    assert j_after["boq_snapshot_price"] == totals["price_quad"]
+    assert j_after["name"] == "TEST J NAMA BARU"
+
+
 def test_status_mirror_after_payment(client, admin_token, finance_token):
     """Verify sync_status_mirror: kolom `status` legacy nyambung ke dimensi."""
     hdr = bearer(admin_token)

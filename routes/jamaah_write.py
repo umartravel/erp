@@ -151,18 +151,76 @@ async def jamaah_update(jid: int, body: dict = Depends(json_body), user=Depends(
             status_code=400, detail="Keterangan wajib diisi saat mengubah Total Harga."
         )
 
+    # Phase 4c: BOQ re-snapshot kalau boq_id di body berubah dari row saat ini.
+    # Jamaah tanpa BOQ (row.boq_id NULL) + edit dgn boq_id baru -> attach.
+    # Jamaah dgn BOQ existing + edit dgn boq_id berbeda -> re-snapshot dari BOQ baru.
+    # Body tanpa boq_id key -> keep row apa adanya (untuk edit yg tidak sentuh BOQ).
+    boq_id_new = g("boq_id")
+    boq_snapshot_price_new = row["boq_snapshot_price"]
+    boq_snapshot_at_sql = "boq_snapshot_at"  # keep existing kalau tidak berubah
+    boq_change_log = None
+
+    if "boq_id" in body:  # body eksplisit mention boq_id
+        try:
+            boq_id_int = int(boq_id_new) if boq_id_new not in (None, "") else None
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="boq_id tidak valid.")
+
+        if boq_id_int is not None:
+            # Validate BOQ belongs to (new) package + is Approved.
+            boq_row = db.query_one(
+                "SELECT b.*, p.name AS pkg_name FROM package_boq b "
+                "LEFT JOIN packages p ON p.id = b.package_id "
+                "WHERE b.id = ? AND b.status = 'Approved'",
+                (boq_id_int,),
+            )
+            if not boq_row:
+                raise HTTPException(status_code=400, detail="BOQ tidak Approved atau tidak ditemukan.")
+            if boq_row["pkg_name"] != final_package:
+                raise HTTPException(status_code=400, detail="BOQ tidak milik paket ini.")
+            # Re-snapshot price per room_type.
+            from routes.boq import _compute_totals  # local import
+            totals = _compute_totals(
+                boq_id_int, boq_row["target_pax"], boq_row["target_margin_pct"],
+                boq_row["extra_triple"], boq_row["extra_double"],
+            )
+            rt = g("room_type")
+            if rt == "TRIPLE":
+                boq_snapshot_price_new = int(totals["price_triple"] or 0)
+            elif rt == "DOUBLE":
+                boq_snapshot_price_new = int(totals["price_double"] or 0)
+            else:
+                boq_snapshot_price_new = int(totals["price_quad"] or 0)
+            boq_snapshot_at_sql = "CURRENT_TIMESTAMP"
+        else:
+            # Clear BOQ (boq_id explicitly None).
+            boq_snapshot_price_new = None
+            boq_snapshot_at_sql = "NULL"
+
+        if (row["boq_id"] or None) != (boq_id_int or None):
+            boq_change_log = (
+                f"BOQ diubah: #{row['boq_id'] or '-'} -> #{boq_id_int or '-'} "
+                f"(snapshot Rp {fmt_id(boq_snapshot_price_new or 0)})"
+            )
+        boq_id_to_save = boq_id_int
+    else:
+        boq_id_to_save = row["boq_id"]
+
     db.execute(
-        "UPDATE jamaah SET nik = ?, name = ?, phone = ?, status = ?, health_history = ?, mahram = ?, "
-        "package_type = ?, total_price = ?, orderer_name = ?, gender = ?, birth_place = ?, birth_date = ?, "
-        "citizenship = ?, identity_type = ?, family_phone = ?, email = ?, father_name = ?, education = ?, "
-        "job = ?, marital_status = ?, relation = ?, address = ?, province = ?, city = ?, subdistrict = ?, "
-        "village = ?, room_type = ? WHERE id = ?",
+        f"UPDATE jamaah SET nik = ?, name = ?, phone = ?, status = ?, health_history = ?, mahram = ?, "
+        f"package_type = ?, total_price = ?, orderer_name = ?, gender = ?, birth_place = ?, birth_date = ?, "
+        f"citizenship = ?, identity_type = ?, family_phone = ?, email = ?, father_name = ?, education = ?, "
+        f"job = ?, marital_status = ?, relation = ?, address = ?, province = ?, city = ?, subdistrict = ?, "
+        f"village = ?, room_type = ?, boq_id = ?, boq_snapshot_price = ?, boq_snapshot_at = {boq_snapshot_at_sql} "
+        f"WHERE id = ?",
         (
             g("nik"), g("name"), g("phone"), g("status"), g("health_history"), g("mahram"),
             final_package, final_price, g("orderer_name"), g("gender"), g("birth_place"), g("birth_date"),
             g("citizenship"), g("identity_type"), g("family_phone"), g("email"), g("father_name"),
             g("education"), g("job"), g("marital_status"), g("relation"), g("address"),
-            g("province"), g("city"), g("subdistrict"), g("village"), g("room_type"), jid,
+            g("province"), g("city"), g("subdistrict"), g("village"), g("room_type"),
+            boq_id_to_save, boq_snapshot_price_new,
+            jid,
         ),
     )
     # Selaraskan dimensi: payment selalu dari nominal asli; pipeline hanya digeser
@@ -192,6 +250,8 @@ async def jamaah_update(jid: int, body: dict = Depends(json_body), user=Depends(
     ]))
     if new_price != old_price:
         changes.append(f"Total Harga (Rp {fmt_id(old_price)} -> Rp {fmt_id(new_price)}) [Keterangan: {price_change_note}]")
+    if boq_change_log:
+        changes.append(boq_change_log)
 
     log_action(
         user, "UPDATE_JAMAAH",

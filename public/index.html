@@ -2280,6 +2280,15 @@
                     <div><label class="text-xs">Ubah Tipe Kamar</label><select id="edit-j-room-type" class="w-full border p-2 rounded bg-gray-50"><option value="QUAD">QUAD (Ber-4)</option><option value="TRIPLE">TRIPLE (Ber-3)</option><option value="DOUBLE">DOUBLE (Ber-2)</option><option value="LAINNYA..">LAINNYA..</option></select></div>
                     <div><label class="text-xs">Total Harga Baru</label><input type="text" id="edit-j-price" class="w-full border p-2 rounded" oninput="formatCurrencyInput(this); toggleEditPriceNote();"></div>
                 </div>
+                <!-- Phase 4c: Skenario BOQ (kalau paket terpilih punya BOQ Approved) -->
+                <div id="edit-j-boq-wrap" class="hidden bg-slate-50 border border-slate-200 rounded p-3">
+                    <label class="text-xs font-semibold text-slate-700 flex items-center gap-1">
+                        <i data-lucide="calculator" class="w-3.5 h-3.5"></i>Skenario BOQ
+                        <span class="text-[10px] text-gray-500 font-normal normal-case">-- ubah = re-snapshot harga dari BOQ terpilih</span>
+                    </label>
+                    <select id="edit-j-boq" class="w-full border p-2 rounded mt-1 text-sm"></select>
+                    <p id="edit-j-boq-info" class="text-[10px] text-slate-600 mt-1"></p>
+                </div>
                 <div id="edit-j-price-note-wrap" class="hidden">
                     <label class="text-xs font-semibold text-blue-700">Keterangan Perubahan Harga (WAJIB)</label>
                     <textarea id="edit-j-price-note" rows="2" class="w-full border p-2 rounded text-sm" placeholder="Cth: Nego harga khusus grup keluarga, diskon Rp 500rb dari harga normal."></textarea>
@@ -6043,7 +6052,7 @@
         }
 
         // --- ADMIN ACTION FUNCS (CRUD JAMAAH) ---
-        function editJamaah(id) {
+        async function editJamaah(id) {
             const j = allJamaah.find(x => x.id === id);
             document.getElementById('edit-j-id').value = j.id; document.getElementById('edit-j-nik').value = j.nik; document.getElementById('edit-j-name').value = j.name; document.getElementById('edit-j-phone').value = j.phone; 
             document.getElementById('edit-j-room-type').value = normalizeRoomType(j.room_type) || 'QUAD';
@@ -6062,18 +6071,95 @@
             if(j.paid_amount > 0 && currentUser.role !== 'admin') { document.getElementById('edit-j-warn').classList.remove('hidden'); document.getElementById('edit-j-price').readOnly = true; document.getElementById('edit-j-pkg').disabled = true; }
             else { document.getElementById('edit-j-warn').classList.add('hidden'); document.getElementById('edit-j-price').readOnly = false; document.getElementById('edit-j-pkg').disabled = false; }
 
-            $('#edit-j-pkg, #edit-j-room-type').off('change.dynEdit').on('change.dynEdit', function() {
-                const pkgSelect = document.getElementById('edit-j-pkg');
-                const rType = document.getElementById('edit-j-room-type').value.toLowerCase();
-                const opt = $(pkgSelect).find('option:selected')[0];
-                if (opt && opt.value) {
-                    let price = opt.dataset[rType];
-                    if (!price || price === '0' || price === '') price = opt.dataset.price || 0;
-                    document.getElementById('edit-j-price').value = parseInt(price).toLocaleString('id-ID');
-                }
+            $('#edit-j-pkg, #edit-j-room-type').off('change.dynEdit').on('change.dynEdit', async function() {
+                await refreshEditBoqDropdown(null);  // paket berubah -> reset BOQ (jangan preselect id lama)
+                updateEditJamaahPrice();
                 toggleEditPriceNote();
             });
+            $('#edit-j-boq').off('change.dynEditBoq').on('change.dynEditBoq', function() {
+                updateEditJamaahPrice();
+                toggleEditPriceNote();
+            });
+            // Populate BOQ dropdown untuk paket saat ini, preselect jamaah.boq_id.
+            await refreshEditBoqDropdown(j.boq_id);
             openModal('modal-edit-jamaah');
+        }
+
+        // Phase 4c: refresh BOQ dropdown di modal edit jamaah.
+        // `preselectId` = jamaah.boq_id yg sedang dipakai (untuk auto-select),
+        // `currentPkgName` = nama paket jamaah saat ini (fallback kalau dropdown paket
+        // masih "Tetap" -- default value ""). Kalau tidak passed, ambil dari
+        // window.currentEditJamaahData.
+        async function refreshEditBoqDropdown(preselectId, currentPkgName) {
+            const wrapper = document.getElementById('edit-j-boq-wrap');
+            const sel = document.getElementById('edit-j-boq');
+            const info = document.getElementById('edit-j-boq-info');
+            const pkgOpt = $('#edit-j-pkg').find('option:selected')[0];
+            let pkgId = pkgOpt?.dataset?.id;
+            if (!pkgId) {
+                // Fallback: cari option dgn value = currentPkgName (jamaah paket saat ini).
+                const fallbackName = currentPkgName || window.currentEditJamaahData?.package_type;
+                if (fallbackName) {
+                    const opt = Array.from(document.getElementById('edit-j-pkg').options)
+                        .find(o => o.value === fallbackName);
+                    pkgId = opt?.dataset?.id;
+                }
+            }
+            if (!pkgId) { wrapper.classList.add('hidden'); sel.innerHTML = ''; return; }
+            let boqs = window.__regBoqCache?.[pkgId];
+            if (!boqs) {
+                try {
+                    const r = await authFetch('/boq?package_id=' + pkgId + '&status=Approved');
+                    boqs = await r.json() || [];
+                    for (const b of boqs) {
+                        try {
+                            const dr = await authFetch('/boq/' + b.id);
+                            const d = await dr.json();
+                            b.totals = d.totals || {};
+                        } catch (e) { b.totals = {}; }
+                    }
+                    window.__regBoqCache = window.__regBoqCache || {};
+                    window.__regBoqCache[pkgId] = boqs;
+                } catch (e) { boqs = []; }
+            }
+            if (!boqs.length) {
+                wrapper.classList.add('hidden');
+                sel.innerHTML = '';
+                return;
+            }
+            wrapper.classList.remove('hidden');
+            sel.innerHTML = boqs.map(b => {
+                const t = b.totals || {};
+                const selAttr = preselectId && b.id === preselectId ? 'selected' : '';
+                return `<option value="${b.id}"
+                    data-quad="${t.price_quad || 0}"
+                    data-triple="${t.price_triple || 0}"
+                    data-double="${t.price_double || 0}" ${selAttr}>${escapeHtml(b.name)} (Rp ${(t.price_quad || 0).toLocaleString('id-ID')} - ${(t.price_double || 0).toLocaleString('id-ID')})</option>`;
+            }).join('');
+            if (info) info.innerHTML = preselectId
+                ? 'Ubah pilihan BOQ = re-snapshot harga dari BOQ baru + log audit.'
+                : 'Pilih skenario BOQ (paket ini punya beberapa harga).';
+        }
+
+        function updateEditJamaahPrice() {
+            const boqWrap = document.getElementById('edit-j-boq-wrap');
+            const boqSel = document.getElementById('edit-j-boq');
+            const roomType = document.getElementById('edit-j-room-type').value.toLowerCase();
+            // BOQ visible + selected -> price dari BOQ.
+            if (boqWrap && !boqWrap.classList.contains('hidden') && boqSel && boqSel.value) {
+                const opt = boqSel.selectedOptions[0];
+                let p = opt?.dataset?.[roomType] || 0;
+                document.getElementById('edit-j-price').value = parseInt(p).toLocaleString('id-ID');
+                return;
+            }
+            // Fallback: dari packages (behavior lama).
+            const pkgSelect = document.getElementById('edit-j-pkg');
+            const opt = $(pkgSelect).find('option:selected')[0];
+            if (opt && opt.value) {
+                let price = opt.dataset[roomType];
+                if (!price || price === '0' || price === '') price = opt.dataset.price || 0;
+                document.getElementById('edit-j-price').value = parseInt(price).toLocaleString('id-ID');
+            }
         }
         function toggleEditPriceNote() {
             const j = window.currentEditJamaahData || {};
@@ -6094,6 +6180,19 @@
 
             const j = window.currentEditJamaahData || {};
             const payload = { nik: document.getElementById('edit-j-nik').value, name: document.getElementById('edit-j-name').value, phone: document.getElementById('edit-j-phone').value, status: document.getElementById('edit-j-status').value, package_type: finalPkg, room_type: document.getElementById('edit-j-room-type').value, total_price: parseCurrency(document.getElementById('edit-j-price').value), price_change_note: priceNote };
+
+            // Phase 4c: BOQ pilihan (kalau dropdown visible). Kirim eksplisit meskipun sama
+            // dgn snapshot lama -> backend akan validate + re-snapshot (idempoten).
+            const boqWrap = document.getElementById('edit-j-boq-wrap');
+            const boqSel = document.getElementById('edit-j-boq');
+            if (boqWrap && !boqWrap.classList.contains('hidden')) {
+                payload.boq_id = boqSel?.value ? parseInt(boqSel.value) : null;
+            }
+            // Kalau paket berubah ke paket TANPA BOQ (wrap hidden) tapi jamaah punya boq_id lama
+            // -> clear BOQ (kirim null eksplisit).
+            else if (j.boq_id) {
+                payload.boq_id = null;
+            }
 
             // Preserve other fields
             payload.orderer_name = j.orderer_name;
