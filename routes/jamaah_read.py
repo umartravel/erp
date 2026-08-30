@@ -50,9 +50,10 @@ async def jamaah_create(body: dict = Depends(json_body), user=Depends(authentica
     package_type = body.get("package_type")
     total_price = body.get("total_price")
     room_type = body.get("room_type")
+    boq_id_body = body.get("boq_id")  # Phase 4b: BOQ terpilih sales
 
     row = db.query_one(
-        "SELECT quota, price, price_quad, price_triple, price_double, "
+        "SELECT id, quota, price, price_quad, price_triple, price_double, "
         "(SELECT COUNT(*) FROM jamaah WHERE package_type = p.name AND status NOT IN ('Cancelled')) as filled "
         "FROM packages p WHERE p.name = ?",
         (package_type,),
@@ -60,14 +61,54 @@ async def jamaah_create(body: dict = Depends(json_body), user=Depends(authentica
     if not row:
         raise HTTPException(status_code=404, detail="Paket yang dipilih tidak ditemukan.")
 
-    # Gatekeeper harga berdasarkan tipe kamar (validasi sisi server)
-    server_price = row["price"] or 0
-    if room_type == "QUAD" and row["price_quad"]:
-        server_price = row["price_quad"]
-    elif room_type == "TRIPLE" and row["price_triple"]:
-        server_price = row["price_triple"]
-    elif room_type == "DOUBLE" and row["price_double"]:
-        server_price = row["price_double"]
+    # Phase 4b: cek ada BOQ Approved utk paket ini?
+    #   - Ada -> WAJIB pilih boq_id. Harga di-derive dari BOQ (bukan packages.price_*).
+    #   - Tidak ada -> flow lama (harga dari packages).
+    approved_boqs = db.query_all(
+        "SELECT id FROM package_boq WHERE package_id = ? AND status = 'Approved'",
+        (row["id"],),
+    ) or []
+    boq_snapshot_price = None
+    if approved_boqs:
+        if not boq_id_body:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Paket ini punya {len(approved_boqs)} BOQ Approved. Wajib pilih salah satu skenario BOQ.",
+            )
+        allowed_ids = {b["id"] for b in approved_boqs}
+        try:
+            boq_id_int = int(boq_id_body)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="boq_id tidak valid.")
+        if boq_id_int not in allowed_ids:
+            raise HTTPException(
+                status_code=400,
+                detail="BOQ yang dipilih bukan milik paket ini atau belum Approved.",
+            )
+        # Ambil harga split dari BOQ.
+        from routes.boq import _compute_totals  # local import: hindari circular
+        boq_row = db.query_one("SELECT * FROM package_boq WHERE id = ?", (boq_id_int,))
+        totals = _compute_totals(
+            boq_id_int, boq_row["target_pax"], boq_row["target_margin_pct"],
+            boq_row["extra_triple"], boq_row["extra_double"],
+        )
+        # Pilih harga sesuai room_type; default QUAD kalau room_type kosong/tidak dikenal.
+        if room_type == "TRIPLE":
+            boq_snapshot_price = int(totals["price_triple"] or 0)
+        elif room_type == "DOUBLE":
+            boq_snapshot_price = int(totals["price_double"] or 0)
+        else:
+            boq_snapshot_price = int(totals["price_quad"] or 0)
+        server_price = boq_snapshot_price
+    else:
+        # Flow lama: gatekeeper harga berdasarkan tipe kamar dari packages
+        server_price = row["price"] or 0
+        if room_type == "QUAD" and row["price_quad"]:
+            server_price = row["price_quad"]
+        elif room_type == "TRIPLE" and row["price_triple"]:
+            server_price = row["price_triple"]
+        elif room_type == "DOUBLE" and row["price_double"]:
+            server_price = row["price_double"]
 
     if server_price != int(total_price):
         raise HTTPException(
@@ -96,14 +137,19 @@ async def jamaah_create(body: dict = Depends(json_body), user=Depends(authentica
         if sub_cs and sub_cs["preferred_cs_id"]:
             sales_id = sub_cs["preferred_cs_id"]
 
+    # Phase 4b: kalau BOQ dipakai, simpan pointer + snapshot harga + timestamp.
+    boq_id_to_save = int(boq_id_body) if boq_snapshot_price is not None else None
+
     try:
         last_id, _ = db.execute(
             "INSERT INTO jamaah ("
             "nik, name, phone, package_type, status, total_price, notes, health_history, mahram, "
             "agent_id, city, sales_id, orderer_name, gender, birth_place, birth_date, citizenship, "
             "identity_type, family_phone, email, father_name, education, job, marital_status, "
-            "relation, address, province, subdistrict, village, room_type) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "relation, address, province, subdistrict, village, room_type, "
+            "boq_id, boq_snapshot_price, boq_snapshot_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "
+            "        ?, ?, CASE WHEN ? IS NOT NULL THEN CURRENT_TIMESTAMP ELSE NULL END)",
             (
                 g("nik"), g("name"), g("phone"), package_type, g("status") or "Waitlisted",
                 server_price, g("notes"), g("health_history"), g("mahram"), g("agent_id") or None,
@@ -111,6 +157,7 @@ async def jamaah_create(body: dict = Depends(json_body), user=Depends(authentica
                 g("citizenship"), g("identity_type"), g("family_phone"), g("email"),
                 g("father_name"), g("education"), g("job"), g("marital_status"), g("relation"),
                 g("address"), g("province"), g("subdistrict"), g("village"), room_type,
+                boq_id_to_save, boq_snapshot_price, boq_id_to_save,
             ),
         )
     except Exception as e:  # noqa: BLE001

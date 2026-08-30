@@ -1012,6 +1012,16 @@
                                     <div><label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide">Pilih Paket <span class="text-red-500">*</span></label><select id="reg-package" class="mt-1 block w-full select2-smart"></select></div>
                                     <div><label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide">Tipe Kamar <span class="text-red-500">*</span></label><select id="reg-room-type" class="mt-1 block w-full select2-smart no-search"><option value="QUAD">QUAD (Ber-4)</option><option value="TRIPLE">TRIPLE (Ber-3)</option><option value="DOUBLE">DOUBLE (Ber-2)</option></select></div>
                                 </div>
+                                <!-- Phase 4b: Dropdown BOQ (skenario harga) -- hanya muncul kalau paket punya BOQ Approved -->
+                                <div class="md:col-span-2 hidden" id="reg-boq-wrapper">
+                                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wide flex items-center gap-1">
+                                        <i data-lucide="calculator" class="w-3.5 h-3.5"></i>
+                                        Skenario BOQ <span class="text-red-500">*</span>
+                                        <span class="text-[10px] text-gray-500 font-normal normal-case">-- pilih skenario harga (BOQ) yang di-quote ke jamaah ini</span>
+                                    </label>
+                                    <select id="reg-boq" class="mt-1 block w-full select2-smart no-search"></select>
+                                    <p id="reg-boq-info" class="text-[10px] text-slate-600 mt-1 hidden"></p>
+                                </div>
                             </div>
                         </div>
 
@@ -4786,7 +4796,8 @@
                     });
                 });
                 // Re-attach event listener untuk harga dinamis
-                $('#reg-package, #reg-room-type').off('change.dynPrice').on('change.dynPrice', updateDynamicPrice);
+                $('#reg-package').off('change.regBoq').on('change.regBoq', refreshRegBoqDropdown);
+                $('#reg-package, #reg-room-type, #reg-boq').off('change.dynPrice').on('change.dynPrice', updateDynamicPrice);
                 $('#qr-package').off('change.dynPrice').on('change.dynPrice', setQRHargaPaket);
             }
             
@@ -4883,8 +4894,8 @@
                 pkgs.forEach(p => {
                     const sisa = p.quota - p.filled; const dis = sisa <= 0 ? 'disabled' : '';
                     const text = `${p.name} (Sisa: ${sisa} Pax)`;
-                    selHtml += `<option value="${p.name}" data-quad="${p.price_quad||0}" data-triple="${p.price_triple||0}" data-double="${p.price_double||0}" data-price="${p.price||0}" ${dis}>${text}</option>`;
-                    editSelHtml += `<option value="${p.name}" data-quad="${p.price_quad||0}" data-triple="${p.price_triple||0}" data-double="${p.price_double||0}" data-price="${p.price||0}" ${dis}>${p.name}</option>`;
+                    selHtml += `<option value="${p.name}" data-id="${p.id}" data-quad="${p.price_quad||0}" data-triple="${p.price_triple||0}" data-double="${p.price_double||0}" data-price="${p.price||0}" ${dis}>${text}</option>`;
+                    editSelHtml += `<option value="${p.name}" data-id="${p.id}" data-quad="${p.price_quad||0}" data-triple="${p.price_triple||0}" data-double="${p.price_double||0}" data-price="${p.price||0}" ${dis}>${p.name}</option>`;
                     incSelHtml += `<option value="${p.name}">${p.name}</option>`;
                     mselHtml += `<option value="${p.name}">${p.name}</option>`;
                     eselHtml += `<option value="${p.name}">${p.name}</option>`;
@@ -5647,11 +5658,75 @@
         }
 
         // --- ACTION FUNCS ---
-        function updateDynamicPrice() { 
+        // Phase 4b: cache BOQ list per package_id yang lagi dipilih di form register.
+        // Struktur: { [package_id]: [{id, name, target_pax, target_margin_pct, extra_triple, extra_double, totals}] }
+        window.__regBoqCache = {};
+
+        async function refreshRegBoqDropdown() {
+            const wrapper = document.getElementById('reg-boq-wrapper');
+            const sel = document.getElementById('reg-boq');
+            const info = document.getElementById('reg-boq-info');
+            const pkgOpt = $('#reg-package').find('option:selected')[0];
+            const pkgId = pkgOpt?.dataset?.id;
+            if (!pkgId) {
+                wrapper.classList.add('hidden');
+                sel.innerHTML = '';
+                if (info) info.classList.add('hidden');
+                updateDynamicPrice();
+                return;
+            }
+            // Cache hit -> pakai. Cache miss -> fetch.
+            let boqs = window.__regBoqCache[pkgId];
+            if (!boqs) {
+                try {
+                    const r = await authFetch('/boq?package_id=' + pkgId + '&status=Approved');
+                    boqs = await r.json() || [];
+                    // Ambil totals per BOQ (perlu detail call per baris) -- kecilkan concurrency.
+                    for (const b of boqs) {
+                        try {
+                            const dr = await authFetch('/boq/' + b.id);
+                            const d = await dr.json();
+                            b.totals = d.totals || {};
+                        } catch (e) { b.totals = {}; }
+                    }
+                    window.__regBoqCache[pkgId] = boqs;
+                } catch (e) {
+                    boqs = [];
+                }
+            }
+            if (!boqs.length) {
+                wrapper.classList.add('hidden');
+                sel.innerHTML = '';
+                if (info) info.classList.add('hidden');
+                updateDynamicPrice();
+                return;
+            }
+            wrapper.classList.remove('hidden');
+            // Populate dropdown; embed totals di dataset supaya updateDynamicPrice bisa baca.
+            sel.innerHTML = '<option value="" disabled selected>-- Pilih Skenario BOQ --</option>' + boqs.map(b => {
+                const t = b.totals || {};
+                return `<option value="${b.id}"
+                    data-quad="${t.price_quad || 0}"
+                    data-triple="${t.price_triple || 0}"
+                    data-double="${t.price_double || 0}">${escapeHtml(b.name)} (Rp ${(t.price_quad || 0).toLocaleString('id-ID')} - ${(t.price_double || 0).toLocaleString('id-ID')})</option>`;
+            }).join('');
+            if (typeof $ !== 'undefined') $(sel).trigger('change.select2');
+            updateDynamicPrice();
+        }
+
+        // Kecil util (fallback -- kalau di file ini belum ada global escape).
+        function escapeHtml(s) {
+            if (s === null || s === undefined) return '';
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        function updateDynamicPrice() {
             const pkgSelect = document.getElementById('reg-package');
             const roomSelect = document.getElementById('reg-room-type');
             const priceInput = document.getElementById('reg-price');
-            
+            const boqSel = document.getElementById('reg-boq');
+            const info = document.getElementById('reg-boq-info');
+
             const selectedOption = $(pkgSelect).find('option:selected')[0];
             if (!selectedOption || !selectedOption.value) {
                 priceInput.value = '0';
@@ -5659,11 +5734,27 @@
             }
 
             const roomType = roomSelect.value.toLowerCase();
+
+            // Phase 4b: kalau BOQ dropdown visible + ada value, harga dari BOQ (bukan packages).
+            const boqWrapper = document.getElementById('reg-boq-wrapper');
+            if (boqWrapper && !boqWrapper.classList.contains('hidden') && boqSel && boqSel.value) {
+                const boqOpt = boqSel.selectedOptions[0];
+                let price = boqOpt?.dataset?.[roomType] || 0;
+                priceInput.value = parseInt(price).toLocaleString('id-ID');
+                if (info) {
+                    info.classList.remove('hidden');
+                    info.innerHTML = `Harga di-snapshot dari BOQ terpilih. Kalau BOQ diubah nanti, jamaah ini tetap pegang harga yang sekarang.`;
+                }
+                return;
+            }
+
+            // Fallback lama: pakai price_quad/triple/double dari packages.
             let price = selectedOption.dataset[roomType];
             if (!price || price === '0' || price === '') {
                 price = selectedOption.dataset.price || 0;
             }
             priceInput.value = parseInt(price).toLocaleString('id-ID');
+            if (info) info.classList.add('hidden');
         }
         
         document.getElementById('form-pendaftaran').addEventListener('submit', async e => {
@@ -5674,16 +5765,25 @@
             const cityVal = $('#reg-city').val();
             if(!cityVal) return showToast('Harap pilih Provinsi & Kota', 'error');
 
-            const payload = { 
-                agent_id: document.getElementById('reg-agent').value, 
-                city: cityVal, 
-                status: document.getElementById('reg-status').value, 
-                nik: document.getElementById('reg-nik').value, 
-                name: document.getElementById('reg-name').value, 
-                phone: document.getElementById('reg-phone').value, 
-                package_type: pkgType, 
-                room_type: document.getElementById('reg-room-type').value, 
-                total_price: parseCurrency(document.getElementById('reg-price').value), 
+            // Phase 4b: kalau paket punya BOQ Approved -> dropdown BOQ visible & wajib pilih.
+            const boqWrap = document.getElementById('reg-boq-wrapper');
+            const boqSel = document.getElementById('reg-boq');
+            let boqIdVal = null;
+            if (boqWrap && !boqWrap.classList.contains('hidden')) {
+                boqIdVal = boqSel?.value ? parseInt(boqSel.value) : null;
+                if (!boqIdVal) return showToast('Paket ini punya BOQ Approved. Wajib pilih salah satu skenario BOQ.', 'error');
+            }
+            const payload = {
+                agent_id: document.getElementById('reg-agent').value,
+                city: cityVal,
+                status: document.getElementById('reg-status').value,
+                nik: document.getElementById('reg-nik').value,
+                name: document.getElementById('reg-name').value,
+                phone: document.getElementById('reg-phone').value,
+                package_type: pkgType,
+                room_type: document.getElementById('reg-room-type').value,
+                total_price: parseCurrency(document.getElementById('reg-price').value),
+                boq_id: boqIdVal,
                 health_history: document.getElementById('reg-health').value, 
                 mahram: document.getElementById('reg-mahram').value, 
                 notes: document.getElementById('reg-notes').value,
@@ -5723,6 +5823,10 @@
                     $('#reg-agent').val('').trigger('change');
                     $('#reg-package').val('').trigger('change');
                     $('#reg-room-type').val('QUAD').trigger('change');
+                    // Phase 4b: reset BOQ dropdown + hide wrapper (akan re-show kalau paket dgn BOQ dipilih ulang).
+                    $('#reg-boq').val('').trigger('change');
+                    document.getElementById('reg-boq-wrapper')?.classList.add('hidden');
+                    document.getElementById('reg-boq-info')?.classList.add('hidden');
                     $('#reg-citizenship').val('WNI').trigger('change');
                     $('#reg-id-type').val('NIK').trigger('change');
                     $('#reg-gender').val('Laki-Laki').trigger('change');
