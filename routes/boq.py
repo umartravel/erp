@@ -53,6 +53,20 @@ _MGMT_ROLES = ("admin", "management")
 _AUTHOR_ROLES = ("admin", "management", "sales", "ops")  # boleh bikin BOQ
 _UNIT_TYPES = {"per_pax", "per_room_per_night", "per_group", "per_pax_per_day"}
 
+# Phase 6b: bucket = layer di formula harga jual.
+#   hpp         -> biaya nyata (hotel, tiket, visa, transport, TL kalau
+#                  paket "TL include").
+#   prorate_tl  -> biaya TL yang di-share ke pax (paket "TL exclude").
+#                  Item pakai unit per_group, sistem auto-bagi target_pax.
+#   fee_agen    -> komisi jaringan penjual.
+#   fee_referal -> komisi personal referal/sponsor.
+#   margin      -> profit UMAR.
+# Default 'hpp' -- legacy items tetap valid tanpa perubahan caller.
+_BUCKETS = {"hpp", "prorate_tl", "fee_agen", "fee_referal", "margin"}
+
+# Phase 6b: boq_type = kategori paket. Metadata + hint UI validation.
+_BOQ_TYPES = {"umar_reguler", "umar_ramadhan", "uts_partner", "itikaf"}
+
 
 # ---------------------------------------------------------------------------
 # helpers
@@ -96,41 +110,92 @@ def _compute_totals(
     extra_triple: int | None = None,
     extra_double: int | None = None,
 ) -> dict:
-    """Hitung total group cost + harga per pax + split per room type.
+    """Hitung total group cost + harga per pax + split per room type + breakdown
+    per bucket (Phase 6b).
 
-    Aturan unit item:
-      per_pax          -> subtotal utk 1 pax; total_group = subtotal * target_pax
-      per_group        -> subtotal = total group (1x, mis. sewa bus)
-      per_room_per_night -> total group (user isi quantity = rooms * nights)
-      per_pax_per_day  -> subtotal * target_pax (asumsi quantity = hari)
+    Aturan unit item (berlaku PER bucket, tidak hanya HPP):
+      per_pax          -> subtotal * target_pax (per orang, dibayar semua pax)
+      per_pax_per_day  -> subtotal * target_pax (user isi quantity = hari)
+      per_group        -> subtotal (1x, mis. sewa bus, biaya TL total)
+      per_room_per_night -> subtotal (user isi quantity = rooms * nights)
 
-    Room split (Phase 4a): base price/pax dianggap = QUAD.
-      price_quad   = base
-      price_triple = base + extra_triple
-      price_double = base + extra_double
-    Kalau extra_* NULL/0, semua room type = base (flat, backward compat).
+    Bucket semantics (Phase 6b):
+      hpp         -> biaya nyata (cost). Termasuk TL kalau paket "TL include".
+      prorate_tl  -> biaya TL yang di-share ke pax (paket "TL exclude").
+                     Biasanya user isi per_group -> sistem auto-bagi target_pax.
+      fee_agen    -> komisi jaringan penjual. Biasanya per_pax.
+      fee_referal -> komisi personal referal/sponsor. Biasanya per_pax.
+      margin      -> profit UMAR. Bisa per_pax atau per_group.
 
-    Parameter extra_triple/extra_double bisa dilewatkan langsung (untuk preview
-    di form) atau NULL -> fungsi ambil sendiri dari row package_boq.
+    Formula harga jual per pax:
+      hpp_per_pax         = hpp_group / target_pax
+      prorate_tl_per_pax  = prorate_tl_group / target_pax
+      fee_agen_per_pax    = fee_agen_group / target_pax
+      fee_referal_per_pax = fee_referal_group / target_pax
+      margin_per_pax      = margin_group / target_pax
+      price_per_pax       = sum semua *_per_pax
+
+    Backward-compat: kalau BOQ TIDAK punya item di bucket margin (semua items
+    bucket=hpp default), margin_per_pax dihitung dari hpp_per_pax *
+    target_margin_pct/100 -- pattern legacy pre-Phase-6b. BOQ existing yang
+    hanya isi hpp + margin_pct=15 tetap menghasilkan price_per_pax identik.
+
+    Room split (Phase 4a) tetap: extra_triple/extra_double ditambahkan ke
+    price_per_pax base (yg = quad).
+
+    Return:
+      total_group_cost, cost_per_pax, margin_amount, price_per_pax,
+      price_quad/triple/double, extra_triple/double, item_count,
+      + Phase 6b: buckets = {hpp, prorate_tl, fee_agen, fee_referal, margin}
+        masing2 dgn {group, per_pax}, plus margin.from_items (bool: True kalau
+        dari item bucket=margin, False kalau derived dari target_margin_pct).
     """
     items = db.query_all(
-        "SELECT category, unit, subtotal FROM package_boq_items WHERE boq_id = ?",
+        "SELECT bucket, category, unit, subtotal FROM package_boq_items WHERE boq_id = ?",
         (boq_id,),
     ) or []
     pax = max(int(target_pax or 1), 1)
-    total_group = 0
+
+    # Per-bucket group cost. Unit multiplier tetap sama semantik.
+    by_bucket = {b: 0 for b in _BUCKETS}
     for it in items:
+        bkt = it["bucket"] if it["bucket"] in _BUCKETS else "hpp"
         u = it["unit"]
         sub = it["subtotal"] or 0
         if u in ("per_pax", "per_pax_per_day"):
-            total_group += sub * pax
-        else:
-            total_group += sub  # per_group, per_room_per_night
-    cost_per_pax = total_group // pax if pax else 0
-    margin_amt = int(cost_per_pax * (float(margin_pct or 0) / 100.0))
-    price_per_pax = cost_per_pax + margin_amt
+            by_bucket[bkt] += sub * pax
+        else:  # per_group, per_room_per_night
+            by_bucket[bkt] += sub
 
-    # Ambil extra_triple/extra_double dari row kalau caller tidak sediakan.
+    # Per-pax per bucket (integer floor -- konsisten dgn semantik lama).
+    hpp_pp = by_bucket["hpp"] // pax
+    prorate_tl_pp = by_bucket["prorate_tl"] // pax
+    fee_agen_pp = by_bucket["fee_agen"] // pax
+    fee_referal_pp = by_bucket["fee_referal"] // pax
+    margin_pp_from_items = by_bucket["margin"] // pax
+
+    # Backward-compat: kalau tidak ada item bucket=margin, honor target_margin_pct
+    # (dihitung dari HPP saja, bukan total, konsisten dgn legacy behavior).
+    margin_from_items = margin_pp_from_items > 0
+    if not margin_from_items and (margin_pct or 0) > 0:
+        margin_pp = int(hpp_pp * (float(margin_pct) / 100.0))
+    else:
+        margin_pp = margin_pp_from_items
+
+    # cost_per_pax: HANYA biaya nyata (hpp + prorate_tl), bukan revenue side.
+    # Legacy BOQ tanpa prorate/fee -> cost_per_pax = hpp_pp = OLD cost_per_pax.
+    cost_per_pax = hpp_pp + prorate_tl_pp
+
+    price_per_pax = (
+        hpp_pp + prorate_tl_pp + fee_agen_pp + fee_referal_pp + margin_pp
+    )
+
+    # total_group_cost: sum raw items yg sudah include unit multiplier.
+    # Backward-compat: OLD semantics = sum of raw subtotals, TIDAK termasuk
+    # margin implicit dari target_margin_pct. Tetap dipertahankan.
+    total_group = sum(by_bucket.values())
+
+    # Room split (Phase 4a): base price/pax = QUAD.
     if extra_triple is None or extra_double is None:
         row = db.query_one("SELECT extra_triple, extra_double FROM package_boq WHERE id = ?", (boq_id,))
         if row:
@@ -147,7 +212,7 @@ def _compute_totals(
     return {
         "total_group_cost": total_group,
         "cost_per_pax": cost_per_pax,
-        "margin_amount": margin_amt,
+        "margin_amount": margin_pp,
         "price_per_pax": price_per_pax,  # alias price_quad (backward compat)
         "price_quad": price_quad,
         "price_triple": price_triple,
@@ -155,6 +220,18 @@ def _compute_totals(
         "extra_triple": et,
         "extra_double": ed,
         "item_count": len(items),
+        # Phase 6b: bucket breakdown.
+        "buckets": {
+            "hpp": {"group": by_bucket["hpp"], "per_pax": hpp_pp},
+            "prorate_tl": {"group": by_bucket["prorate_tl"], "per_pax": prorate_tl_pp},
+            "fee_agen": {"group": by_bucket["fee_agen"], "per_pax": fee_agen_pp},
+            "fee_referal": {"group": by_bucket["fee_referal"], "per_pax": fee_referal_pp},
+            "margin": {
+                "group": margin_pp * pax,
+                "per_pax": margin_pp,
+                "from_items": margin_from_items,
+            },
+        },
     }
 
 
@@ -178,6 +255,24 @@ def _validate_item(body: dict) -> None:
             status_code=400,
             detail=f"Unit tidak valid. Pilihan: {', '.join(sorted(_UNIT_TYPES))}",
         )
+    # Phase 6b: bucket validation. Caller boleh omit -> default 'hpp'.
+    bucket = body.get("bucket") or "hpp"
+    if bucket not in _BUCKETS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Bucket tidak valid. Pilihan: {', '.join(sorted(_BUCKETS))}",
+        )
+
+
+def _validate_boq_type(t: str | None) -> str:
+    """Phase 6b: normalize + validate boq_type. None/'' -> default umar_reguler."""
+    v = (t or "").strip() or "umar_reguler"
+    if v not in _BOQ_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"boq_type tidak valid. Pilihan: {', '.join(sorted(_BOQ_TYPES))}",
+        )
+    return v
 
 
 # ---------------------------------------------------------------------------
@@ -325,8 +420,8 @@ async def boq_template_create(body: dict = Depends(json_body), user=Depends(auth
         db.execute(
             "INSERT INTO boq_template_items "
             "(template_id, category, item_name, unit, quantity, unit_price, "
-            " vendor_name, note, sort_order) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            " vendor_name, note, sort_order, bucket) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 tid, it.get("category"), it.get("item_name").strip(),
                 it.get("unit") or "per_pax",
@@ -334,6 +429,7 @@ async def boq_template_create(body: dict = Depends(json_body), user=Depends(auth
                 int(it.get("unit_price") or 0),
                 it.get("vendor_name"), it.get("note"),
                 int(it.get("sort_order") or 0),
+                it.get("bucket") or "hpp",
             ),
         )
     log_action(user, "BOQ_TEMPLATE_CREATE", f"id={tid} name={name}")
@@ -426,12 +522,13 @@ async def boq_template_apply(tid: int, bid: int, user=Depends(authenticate_token
         db.execute(
             "INSERT INTO package_boq_items "
             "(boq_id, category, item_name, unit, quantity, unit_price, subtotal, "
-            " vendor_name, note, sort_order) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            " vendor_name, note, sort_order, bucket) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 bid, it["category"], it["item_name"], it["unit"], qty, up,
                 _calc_subtotal(qty, up),
                 it["vendor_name"], it["note"], offset + i,
+                it["bucket"] or "hpp",
             ),
         )
 
@@ -478,11 +575,15 @@ async def boq_create(body: dict = Depends(json_body), user=Depends(authenticate_
     if room_split is not None and not isinstance(room_split, str):
         room_split = json.dumps(room_split)  # dict/list -> JSON text
 
+    # Phase 6b: boq_type. Terima kalau ada di body, else default umar_reguler.
+    boq_type = _validate_boq_type(body.get("boq_type"))
+
     bid, _ = db.execute(
         "INSERT INTO package_boq "
         "(package_id, name, status, target_pax, room_split, target_margin_pct, "
-        " extra_triple, extra_double, notes, created_by, reviewed_by, reviewed_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        " extra_triple, extra_double, notes, boq_type, created_by, "
+        " reviewed_by, reviewed_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (
             body.get("package_id"),
             body.get("name").strip(),
@@ -493,6 +594,7 @@ async def boq_create(body: dict = Depends(json_body), user=Depends(authenticate_
             int(body.get("extra_triple") or 0),
             int(body.get("extra_double") or 0),
             body.get("notes"),
+            boq_type,
             user["id"],
             reviewed_by,
             reviewed_at,
@@ -507,8 +609,8 @@ async def boq_create(body: dict = Depends(json_body), user=Depends(authenticate_
         db.execute(
             "INSERT INTO package_boq_items "
             "(boq_id, category, item_name, unit, quantity, unit_price, subtotal, "
-            " vendor_name, note, sort_order) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            " vendor_name, note, sort_order, bucket) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 bid,
                 it.get("category"),
@@ -518,6 +620,7 @@ async def boq_create(body: dict = Depends(json_body), user=Depends(authenticate_
                 it.get("vendor_name"),
                 it.get("note"),
                 int(it.get("sort_order") or 0),
+                it.get("bucket") or "hpp",
             ),
         )
 
@@ -544,11 +647,17 @@ async def boq_update(bid: int, body: dict = Depends(json_body), user=Depends(aut
     if room_split is not None and not isinstance(room_split, str):
         room_split = json.dumps(room_split)
 
+    # Phase 6b: boq_type. Kalau body tidak kirim field -> pertahankan value existing.
+    if "boq_type" in body:
+        boq_type = _validate_boq_type(body.get("boq_type"))
+    else:
+        boq_type = boq["boq_type"] or "umar_reguler"
+
     db.execute(
         "UPDATE package_boq SET "
         "  package_id = ?, name = ?, target_pax = ?, room_split = ?, "
         "  target_margin_pct = ?, extra_triple = ?, extra_double = ?, notes = ?, "
-        "  updated_at = CURRENT_TIMESTAMP "
+        "  boq_type = ?, updated_at = CURRENT_TIMESTAMP "
         "WHERE id = ?",
         (
             pkg_id,
@@ -559,6 +668,7 @@ async def boq_update(bid: int, body: dict = Depends(json_body), user=Depends(aut
             int(body.get("extra_triple", boq["extra_triple"]) or 0),
             int(body.get("extra_double", boq["extra_double"]) or 0),
             body.get("notes", boq["notes"]),
+            boq_type,
             bid,
         ),
     )
@@ -596,8 +706,8 @@ async def boq_item_add(bid: int, body: dict = Depends(json_body), user=Depends(a
     item_id, _ = db.execute(
         "INSERT INTO package_boq_items "
         "(boq_id, category, item_name, unit, quantity, unit_price, subtotal, "
-        " vendor_name, note, sort_order) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        " vendor_name, note, sort_order, bucket) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (
             bid,
             body.get("category"),
@@ -607,10 +717,11 @@ async def boq_item_add(bid: int, body: dict = Depends(json_body), user=Depends(a
             body.get("vendor_name"),
             body.get("note"),
             int(body.get("sort_order") or 0),
+            body.get("bucket") or "hpp",
         ),
     )
     db.execute("UPDATE package_boq SET updated_at = CURRENT_TIMESTAMP WHERE id = ?", (bid,))
-    log_action(user, "BOQ_ITEM_ADD", f"boq={bid} item={item_id}")
+    log_action(user, "BOQ_ITEM_ADD", f"boq={bid} item={item_id} bucket={body.get('bucket') or 'hpp'}")
     notify("data_updated", "boq")
     return {"id": item_id}
 
@@ -625,12 +736,19 @@ async def boq_item_update(bid: int, iid: int, body: dict = Depends(json_body), u
     unit = body.get("unit", it["unit"])
     if unit not in _UNIT_TYPES:
         raise HTTPException(status_code=400, detail="Unit tidak valid.")
+    # Phase 6b: bucket bisa di-update. Body tidak kirim -> tetap value existing.
+    bucket = body.get("bucket", it["bucket"] or "hpp")
+    if bucket not in _BUCKETS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Bucket tidak valid. Pilihan: {', '.join(sorted(_BUCKETS))}",
+        )
     qty = float(body.get("quantity", it["quantity"]) or 0)
     up = int(body.get("unit_price", it["unit_price"]) or 0)
     db.execute(
         "UPDATE package_boq_items SET "
         "  category = ?, item_name = ?, unit = ?, quantity = ?, unit_price = ?, "
-        "  subtotal = ?, vendor_name = ?, note = ?, sort_order = ? "
+        "  subtotal = ?, vendor_name = ?, note = ?, sort_order = ?, bucket = ? "
         "WHERE id = ?",
         (
             body.get("category", it["category"]),
@@ -639,6 +757,7 @@ async def boq_item_update(bid: int, iid: int, body: dict = Depends(json_body), u
             body.get("vendor_name", it["vendor_name"]),
             body.get("note", it["note"]),
             int(body.get("sort_order", it["sort_order"]) or 0),
+            bucket,
             iid,
         ),
     )
@@ -827,11 +946,13 @@ async def boq_duplicate(bid: int, body: dict = Depends(json_body), user=Depends(
     new_bid, _ = db.execute(
         "INSERT INTO package_boq "
         "(package_id, name, status, target_pax, room_split, target_margin_pct, "
-        " notes, created_by) "
-        "VALUES (?, ?, 'Draft', ?, ?, ?, ?, ?)",
+        " extra_triple, extra_double, notes, boq_type, created_by) "
+        "VALUES (?, ?, 'Draft', ?, ?, ?, ?, ?, ?, ?, ?)",
         (
             src["package_id"], new_name, src["target_pax"], src["room_split"],
-            src["target_margin_pct"], src["notes"], user["id"],
+            src["target_margin_pct"],
+            src["extra_triple"] or 0, src["extra_double"] or 0,
+            src["notes"], src["boq_type"] or "umar_reguler", user["id"],
         ),
     )
     src_items = db.query_all(
@@ -842,12 +963,13 @@ async def boq_duplicate(bid: int, body: dict = Depends(json_body), user=Depends(
         db.execute(
             "INSERT INTO package_boq_items "
             "(boq_id, category, item_name, unit, quantity, unit_price, subtotal, "
-            " vendor_name, note, sort_order) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            " vendor_name, note, sort_order, bucket) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 new_bid, it["category"], it["item_name"], it["unit"],
                 it["quantity"], it["unit_price"], it["subtotal"],
                 it["vendor_name"], it["note"], it["sort_order"],
+                it["bucket"] or "hpp",
             ),
         )
     log_action(user, "BOQ_DUPLICATE", f"src={bid} new={new_bid}")

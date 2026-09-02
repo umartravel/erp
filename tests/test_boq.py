@@ -733,6 +733,260 @@ def test_new_boq_defaults_boq_type_umar_reguler(client, admin_token):
         con.close()
 
 
+# ---------------------------------------------------------------------------
+# Phase 6b: backend bucket-aware CRUD + prorate + boq_type + compare
+# ---------------------------------------------------------------------------
+def test_create_boq_with_boq_type_uts(client, admin_token):
+    """Body kirim boq_type='uts_partner' -> tersimpan + terlihat di GET detail."""
+    r = client.post("/api/boq", json={
+        "name": "TEST BOQ Phase6b-UTS",
+        "boq_type": "uts_partner",
+    }, headers=bearer(admin_token))
+    assert r.status_code == 200
+    bid = r.json()["id"]
+    detail = client.get(f"/api/boq/{bid}", headers=bearer(admin_token)).json()
+    assert detail["boq_type"] == "uts_partner"
+
+
+def test_create_boq_rejects_invalid_boq_type(client, admin_token):
+    r = client.post("/api/boq", json={
+        "name": "TEST BOQ Phase6b-InvalidType",
+        "boq_type": "not_a_real_type",
+    }, headers=bearer(admin_token))
+    assert r.status_code == 400
+    assert "boq_type" in r.json()["error"].lower()
+
+
+def test_update_boq_changes_boq_type(client, admin_token):
+    b = _mk_boq(client, admin_token, name="TEST BOQ Phase6b-UpdateType")
+    # Default sudah umar_reguler.
+    r = client.put(f"/api/boq/{b['id']}", json={"boq_type": "itikaf"},
+                   headers=bearer(admin_token))
+    assert r.status_code == 200
+    detail = client.get(f"/api/boq/{b['id']}", headers=bearer(admin_token)).json()
+    assert detail["boq_type"] == "itikaf"
+
+
+def test_add_item_with_bucket_fee_agen(client, admin_token):
+    """Item baru bisa specify bucket. GET detail return bucket per item."""
+    b = _mk_boq(client, admin_token, name="TEST BOQ Phase6b-FeeAgen",
+                target_pax=10, margin=0)
+    r = client.post(f"/api/boq/{b['id']}/items", json={
+        "category": "lain", "item_name": "Fee Agen Utama",
+        "unit": "per_pax", "quantity": 1, "unit_price": 500_000,
+        "bucket": "fee_agen",
+    }, headers=bearer(admin_token))
+    assert r.status_code == 200
+    detail = client.get(f"/api/boq/{b['id']}", headers=bearer(admin_token)).json()
+    assert detail["items"][0]["bucket"] == "fee_agen"
+    # Fee agen kontribusi ke price_per_pax, tidak ke cost_per_pax.
+    assert detail["totals"]["cost_per_pax"] == 0
+    assert detail["totals"]["price_per_pax"] == 500_000
+    assert detail["totals"]["buckets"]["fee_agen"]["per_pax"] == 500_000
+
+
+def test_add_item_rejects_invalid_bucket(client, admin_token):
+    b = _mk_boq(client, admin_token, name="TEST BOQ Phase6b-BadBucket",
+                target_pax=1, margin=0)
+    r = client.post(f"/api/boq/{b['id']}/items", json={
+        "category": "hotel_mekkah", "item_name": "X",
+        "unit": "per_pax", "quantity": 1, "unit_price": 1_000_000,
+        "bucket": "invalid_bucket",
+    }, headers=bearer(admin_token))
+    assert r.status_code == 400
+    assert "bucket" in r.json()["error"].lower()
+
+
+def test_update_item_changes_bucket(client, admin_token):
+    """Existing item bisa dipindah bucket via PUT."""
+    b = _mk_boq(client, admin_token, name="TEST BOQ Phase6b-MoveBucket",
+                target_pax=1, margin=0)
+    r = client.post(f"/api/boq/{b['id']}/items", json={
+        "category": "muthawwif", "item_name": "TL Fadli",
+        "unit": "per_group", "quantity": 1, "unit_price": 15_000_000,
+    }, headers=bearer(admin_token))
+    iid = r.json()["id"]
+    # Default hpp -> pindah ke prorate_tl.
+    r = client.put(f"/api/boq/{b['id']}/items/{iid}", json={"bucket": "prorate_tl"},
+                   headers=bearer(admin_token))
+    assert r.status_code == 200
+    detail = client.get(f"/api/boq/{b['id']}", headers=bearer(admin_token)).json()
+    it = next(i for i in detail["items"] if i["id"] == iid)
+    assert it["bucket"] == "prorate_tl"
+
+
+def test_prorate_tl_divides_by_target_pax(client, admin_token):
+    """Item bucket=prorate_tl unit=per_group -> dibagi target_pax jadi cost/pax.
+
+    Contoh dari Excel: biaya TL Rp 15jt, target 30 pax, free 2 TL = 1 TL prorate.
+    Simulasi: 1 item per_group qty=1 unit_price=15jt, target_pax=30.
+    Expected prorate_tl_per_pax = 15_000_000 / 30 = 500_000.
+    """
+    b = _mk_boq(client, admin_token, name="TEST BOQ Phase6b-Prorate",
+                target_pax=30, margin=0)
+    r = client.post(f"/api/boq/{b['id']}/items", json={
+        "category": "muthawwif", "item_name": "TL Prorate",
+        "unit": "per_group", "quantity": 1, "unit_price": 15_000_000,
+        "bucket": "prorate_tl",
+    }, headers=bearer(admin_token))
+    assert r.status_code == 200
+    detail = client.get(f"/api/boq/{b['id']}", headers=bearer(admin_token)).json()
+    t = detail["totals"]
+    assert t["buckets"]["prorate_tl"]["group"] == 15_000_000
+    assert t["buckets"]["prorate_tl"]["per_pax"] == 500_000
+    # cost_per_pax = hpp + prorate_tl per pax = 0 + 500_000
+    assert t["cost_per_pax"] == 500_000
+    assert t["price_per_pax"] == 500_000  # no fee/margin
+
+
+def test_all_buckets_sum_to_price_per_pax(client, admin_token):
+    """Skenario Excel lengkap: HPP + prorate + fee_agen + fee_referal + margin.
+    Semua bucket dijumlah harus == price_per_pax."""
+    b = _mk_boq(client, admin_token, name="TEST BOQ Phase6b-AllBuckets",
+                target_pax=30, margin=0)  # margin_pct=0 supaya explicit
+    body = [
+        # HPP: hotel per_pax 20jt (per pax); tiket per_pax 5jt (per pax)
+        ("hotel_mekkah", "Hotel", "per_pax", 1, 20_000_000, "hpp"),
+        ("tiket", "Tiket", "per_pax", 1, 5_000_000, "hpp"),
+        # prorate_tl: TL per_group 15jt (dibagi 30 = 500rb/pax)
+        ("muthawwif", "TL", "per_group", 1, 15_000_000, "prorate_tl"),
+        # fee_agen: per_pax 500rb
+        ("lain", "Fee Agen", "per_pax", 1, 500_000, "fee_agen"),
+        # fee_referal: per_pax 200rb
+        ("lain", "Fee Referal", "per_pax", 1, 200_000, "fee_referal"),
+        # margin: per_pax 1.5jt
+        ("margin", "Margin UMAR", "per_pax", 1, 1_500_000, "margin"),
+    ]
+    for cat, name, unit, qty, up, bkt in body:
+        r = client.post(f"/api/boq/{b['id']}/items", json={
+            "category": cat, "item_name": name, "unit": unit,
+            "quantity": qty, "unit_price": up, "bucket": bkt,
+        }, headers=bearer(admin_token))
+        assert r.status_code == 200, r.text
+    detail = client.get(f"/api/boq/{b['id']}", headers=bearer(admin_token)).json()
+    bkts = detail["totals"]["buckets"]
+    # Expected per-pax:
+    #   hpp = (20jt + 5jt) = 25jt (semua per_pax)
+    #   prorate_tl = 15jt / 30 = 500rb
+    #   fee_agen = 500rb
+    #   fee_referal = 200rb
+    #   margin = 1.5jt (from item, bukan dari %)
+    #   total price = 25jt + 500rb + 500rb + 200rb + 1.5jt = 27_700_000
+    assert bkts["hpp"]["per_pax"] == 25_000_000
+    assert bkts["prorate_tl"]["per_pax"] == 500_000
+    assert bkts["fee_agen"]["per_pax"] == 500_000
+    assert bkts["fee_referal"]["per_pax"] == 200_000
+    assert bkts["margin"]["per_pax"] == 1_500_000
+    assert bkts["margin"]["from_items"] is True
+    assert detail["totals"]["price_per_pax"] == 27_700_000
+    # cost_per_pax = HPP + prorate_tl only (bukan fee/margin)
+    assert detail["totals"]["cost_per_pax"] == 25_500_000
+
+
+def test_legacy_margin_pct_when_no_margin_bucket_item(client, admin_token):
+    """BOQ tanpa item bucket=margin, target_margin_pct=15 -> honor legacy
+    behavior: margin = hpp_per_pax * 0.15 (pattern pre-Phase 6b).
+    """
+    b = _mk_boq(client, admin_token, name="TEST BOQ Phase6b-LegacyMargin",
+                target_pax=10, margin=15)
+    r = client.post(f"/api/boq/{b['id']}/items", json={
+        "category": "hotel_mekkah", "item_name": "Hotel",
+        "unit": "per_pax", "quantity": 1, "unit_price": 10_000_000,
+    }, headers=bearer(admin_token))
+    assert r.status_code == 200
+    detail = client.get(f"/api/boq/{b['id']}", headers=bearer(admin_token)).json()
+    t = detail["totals"]
+    # HPP per pax = 10jt, margin dari % = 10jt * 0.15 = 1.5jt
+    assert t["cost_per_pax"] == 10_000_000
+    assert t["margin_amount"] == 1_500_000
+    assert t["price_per_pax"] == 11_500_000
+    assert t["buckets"]["margin"]["from_items"] is False
+
+
+def test_compare_includes_bucket_breakdown(client, admin_token):
+    """Compare endpoint return totals.buckets untuk tiap BOQ (Phase 6b)."""
+    b1 = _mk_boq(client, admin_token, name="TEST BOQ Phase6b-CompA",
+                 target_pax=10, margin=0)
+    b2 = _mk_boq(client, admin_token, name="TEST BOQ Phase6b-CompB",
+                 target_pax=10, margin=0)
+    # BOQ 1: HPP only.
+    client.post(f"/api/boq/{b1['id']}/items", json={
+        "category": "hotel_mekkah", "item_name": "Hotel", "unit": "per_pax",
+        "quantity": 1, "unit_price": 10_000_000, "bucket": "hpp",
+    }, headers=bearer(admin_token))
+    # BOQ 2: HPP + margin (explicit item).
+    client.post(f"/api/boq/{b2['id']}/items", json={
+        "category": "hotel_mekkah", "item_name": "Hotel", "unit": "per_pax",
+        "quantity": 1, "unit_price": 10_000_000, "bucket": "hpp",
+    }, headers=bearer(admin_token))
+    client.post(f"/api/boq/{b2['id']}/items", json={
+        "category": "margin", "item_name": "Margin", "unit": "per_pax",
+        "quantity": 1, "unit_price": 2_000_000, "bucket": "margin",
+    }, headers=bearer(admin_token))
+
+    r = client.get(f"/api/boq/compare?ids={b1['id']},{b2['id']}",
+                   headers=bearer(admin_token))
+    assert r.status_code == 200
+    result = r.json()
+    assert result["count"] == 2
+    for boq in result["boqs"]:
+        assert "buckets" in boq["totals"]
+        assert set(boq["totals"]["buckets"].keys()) == {
+            "hpp", "prorate_tl", "fee_agen", "fee_referal", "margin"
+        }
+    # BOQ 2 punya margin from_items=True, BOQ 1 tidak.
+    b2_data = next(b for b in result["boqs"] if b["id"] == b2["id"])
+    assert b2_data["totals"]["buckets"]["margin"]["from_items"] is True
+
+
+def test_duplicate_boq_preserves_bucket_and_boq_type(client, admin_token):
+    """BOQ duplicate -> Draft baru dgn boq_type + semua items' bucket ter-copy."""
+    b = _mk_boq(client, admin_token, name="TEST BOQ Phase6b-DupSrc",
+                target_pax=1, margin=0)
+    # Set boq_type non-default.
+    client.put(f"/api/boq/{b['id']}", json={"boq_type": "uts_partner"},
+               headers=bearer(admin_token))
+    # Tambah 2 items: 1 hpp, 1 fee_agen.
+    for cat, name, bkt in [("hotel_mekkah", "Hotel", "hpp"),
+                            ("lain", "Fee Agen", "fee_agen")]:
+        client.post(f"/api/boq/{b['id']}/items", json={
+            "category": cat, "item_name": name, "unit": "per_pax",
+            "quantity": 1, "unit_price": 1_000_000, "bucket": bkt,
+        }, headers=bearer(admin_token))
+
+    r = client.post(f"/api/boq/{b['id']}/duplicate", json={},
+                    headers=bearer(admin_token))
+    assert r.status_code == 200
+    new_bid = r.json()["id"]
+    detail = client.get(f"/api/boq/{new_bid}", headers=bearer(admin_token)).json()
+    assert detail["boq_type"] == "uts_partner"
+    buckets_new = {i["item_name"]: i["bucket"] for i in detail["items"]}
+    assert buckets_new == {"Hotel": "hpp", "Fee Agen": "fee_agen"}
+
+
+def test_template_apply_copies_bucket(client, admin_token):
+    """Template item bucket=fee_agen -> ketika apply ke BOQ, bucket ikut."""
+    # Buat template dgn 1 item fee_agen.
+    r = client.post("/api/boq/templates", json={
+        "name": "TEST TPL Phase6b-BucketApply",
+        "items": [{
+            "category": "lain", "item_name": "Fee Agen Tpl",
+            "unit": "per_pax", "quantity": 1, "unit_price": 300_000,
+            "bucket": "fee_agen",
+        }],
+    }, headers=bearer(admin_token))
+    tid = r.json()["id"]
+
+    b = _mk_boq(client, admin_token, name="TEST BOQ Phase6b-TplTarget",
+                target_pax=1, margin=0)
+    r = client.post(f"/api/boq/templates/{tid}/apply/{b['id']}",
+                    headers=bearer(admin_token))
+    assert r.status_code == 200
+    detail = client.get(f"/api/boq/{b['id']}", headers=bearer(admin_token)).json()
+    tpl_item = next(i for i in detail["items"] if i["item_name"] == "Fee Agen Tpl")
+    assert tpl_item["bucket"] == "fee_agen"
+
+
 def test_migration_007_idempotent_backfill(client, admin_token):
     """Simulasi migration 007 dijalankan ulang di DB yg sudah applied.
     Tidak boleh error, tidak boleh mengubah row yg sudah bucket=margin."""
