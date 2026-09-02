@@ -466,14 +466,14 @@
             </div>
 
             <button type="button" id="navgrouphdr-ops" onclick="toggleNavGroup('ops')" class="w-full flex items-center gap-1.5 px-2 mt-6 mb-2 text-xs font-bold text-emerald-400 uppercase tracking-widest hover:text-emerald-200 transition-colors">
-                <i data-lucide="chevron-right" class="w-3.5 h-3.5 nav-group-chevron transition-transform duration-150 shrink-0" id="chevron-ops"></i> Ops
+                <i data-lucide="chevron-right" class="w-3.5 h-3.5 nav-group-chevron transition-transform duration-150 shrink-0" id="chevron-ops"></i> Operasional
             </button>
             <div id="navgroup-ops" class="space-y-1">
                 <a href="#" id="nav-ops-home" onclick="showPage('ops-home')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
-                    <i data-lucide="sun" class="w-4 h-4"></i> Home Ops
+                    <i data-lucide="sun" class="w-4 h-4"></i> Home Operasional
                 </a>
                 <a href="#" id="nav-operasional" onclick="showPage('operasional')" class="nav-btn flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150">
-                    <span class="flex items-center gap-3"><i data-lucide="box" class="w-4 h-4"></i> Logistik & Ops</span>
+                    <span class="flex items-center gap-3"><i data-lucide="box" class="w-4 h-4"></i> Logistik & Operasional</span>
                     <span class="flex items-center gap-1">
                         <span id="ops-lowstock-badge" class="hidden bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center" title="Stok barang menipis"></span>
                         <span id="ops-passport-badge" class="hidden bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center" title="Paspor mau habis masa berlaku (<6 bulan)"></span>
@@ -933,7 +933,7 @@
                         <div id="super-bn-pay" class="umar-kpi-value">0 <span class="text-xs font-medium text-gray-600">Jamaah</span></div>
                     </div>
                     <div class="umar-kpi-card">
-                        <div class="umar-kpi-label" title="Jamaah sudah lunas tapi Visa tak kunjung diproses Ops">Stuck Visa (Lunas >7h)</div>
+                        <div class="umar-kpi-label" title="Jamaah sudah lunas tapi Visa tak kunjung diproses Tim Operasional">Stuck Visa (Lunas >7h)</div>
                         <div id="super-bn-visa" class="umar-kpi-value">0 <span class="text-xs font-medium text-gray-600">Jamaah</span></div>
                     </div>
                 </div>
@@ -5055,7 +5055,7 @@
             return false;
         }
 
-        const pageTitles = { 'dashboard': 'Dashboard', 'pendaftaran': 'Pendaftaran Baru', 'jamaah': 'Master Data Jamaah', 'finance': 'Keuangan & P&L', 'operasional': 'Operasional & Logistik', 'whatsapp': 'Manajemen WA', 'users': 'Master Data Karyawan', 'packages': 'Master Paket Umroh', 'agents': 'Manajemen Keagenan', 'tactical': 'Kesiapan Operasional & Audit', 'procurement': 'Manajemen Vendor / Procurement', 'settings': 'Pengaturan Aplikasi', 'followup': 'Follow-up Lead (CRM Sales)', 'expense': 'Expense Report', 'inbox': 'Kotak Masuk Pendaftaran Publik', 'leave': 'Ajukan Izin', 'marketing': 'Marketing Analytics', 'sales-home': 'Home Sales', 'ops-home': 'Home Ops', 'incidents': 'Insiden Lapangan', 'finance-home': 'Home Finance', 'mgmt-home': 'Home Management', 'aged-receivable': 'Aged Receivable', 'reconcile': 'Rekonsiliasi Bank', 'risk-register': 'Risk Register', 'boq': 'Simulasi Paket (BOQ)' };
+        const pageTitles = { 'dashboard': 'Dashboard', 'pendaftaran': 'Pendaftaran Baru', 'jamaah': 'Master Data Jamaah', 'finance': 'Keuangan & P&L', 'operasional': 'Operasional & Logistik', 'whatsapp': 'Manajemen WA', 'users': 'Master Data Karyawan', 'packages': 'Master Paket Umroh', 'agents': 'Manajemen Keagenan', 'tactical': 'Kesiapan Operasional & Audit', 'procurement': 'Manajemen Vendor / Procurement', 'settings': 'Pengaturan Aplikasi', 'followup': 'Follow-up Lead (CRM Sales)', 'expense': 'Expense Report', 'inbox': 'Kotak Masuk Pendaftaran Publik', 'leave': 'Ajukan Izin', 'marketing': 'Marketing Analytics', 'sales-home': 'Home Sales', 'ops-home': 'Home Operasional', 'incidents': 'Insiden Lapangan', 'finance-home': 'Home Finance', 'mgmt-home': 'Home Management', 'aged-receivable': 'Aged Receivable', 'reconcile': 'Rekonsiliasi Bank', 'risk-register': 'Risk Register', 'boq': 'Simulasi Paket (BOQ)' };
 
         // --- SIDEBAR: kategori yang bisa dilipat (accordion), status tersimpan per browser ---
         const NAV_GROUPS = ['crm', 'finance', 'ops', 'tools'];

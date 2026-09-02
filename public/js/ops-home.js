@@ -97,7 +97,7 @@ function renderOhReturned(list) {
         </div>
       </div>
       <div class="flex gap-1 mt-2 justify-end">
-        <button onclick="openDebriefModal(${p.id}, ${JSON.stringify(p.name).replace(/"/g,'&quot;')})" class="text-xs px-2 py-1 rounded font-medium" style="background:${OH_COLORS.gold};color:${OH_COLORS.charcoal};">Debrief Ops</button>
+        <button onclick="openDebriefModal(${p.id}, ${JSON.stringify(p.name).replace(/"/g,'&quot;')})" class="text-xs px-2 py-1 rounded font-medium" style="background:${OH_COLORS.gold};color:${OH_COLORS.charcoal};">Debrief Operasional</button>
         <button onclick="openFeedbackModal(${p.id}, ${JSON.stringify(p.name).replace(/"/g,'&quot;')})" class="text-xs px-2 py-1 rounded font-medium border" style="border-color:#E8DFC8;color:${OH_COLORS.charcoal};background:#E0E7FF;">Feedback Jamaah</button>
       </div>
     </div>`;
