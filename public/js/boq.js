@@ -43,6 +43,30 @@ const BOQ_STATUS_BADGE = {
     'Approved':         { cls: 'bg-emerald-100 text-emerald-800', ico: 'check-circle' },
     'Rejected':         { cls: 'bg-red-100 text-red-700', ico: 'x-circle' },
 };
+// Phase 6c: bucket = layer di formula harga jual. Urut sesuai section render.
+const BOQ_BUCKETS = ['hpp', 'prorate_tl', 'fee_agen', 'fee_referal', 'margin'];
+const BOQ_BUCKET_LABEL = {
+    hpp: 'HPP (Biaya)',
+    prorate_tl: 'Prorate TL',
+    fee_agen: 'Fee Agen',
+    fee_referal: 'Fee Referal',
+    margin: 'Margin UMAR',
+};
+const BOQ_BUCKET_STYLE = {
+    hpp:         { cls: 'bg-slate-100 text-slate-700',   ico: 'package' },
+    prorate_tl:  { cls: 'bg-cyan-100 text-cyan-800',     ico: 'users' },
+    fee_agen:    { cls: 'bg-indigo-100 text-indigo-800', ico: 'briefcase' },
+    fee_referal: { cls: 'bg-purple-100 text-purple-800', ico: 'user-plus' },
+    margin:      { cls: 'bg-emerald-100 text-emerald-800', ico: 'trending-up' },
+};
+// Phase 6c: tipe paket. Metadata + hint di UI.
+const BOQ_TYPES = ['umar_reguler', 'umar_ramadhan', 'uts_partner', 'itikaf'];
+const BOQ_TYPE_LABEL = {
+    umar_reguler:  'UMAR Reguler',
+    umar_ramadhan: 'UMAR Ramadhan',
+    uts_partner:   'UTS Partner',
+    itikaf:        'Itikaf',
+};
 
 const _isMgmt = () => ['admin', 'management'].includes(currentUser?.role);
 const _isAuthor = () => ['admin', 'management', 'sales', 'ops'].includes(currentUser?.role);
@@ -203,6 +227,9 @@ function openAddBoq() {
     document.getElementById('boq-form-extra-triple').value = 0;
     document.getElementById('boq-form-extra-double').value = 0;
     document.getElementById('boq-form-notes').value = '';
+    // Phase 6c: default boq_type = UMAR Reguler.
+    const typeSel = document.getElementById('boq-form-type');
+    if (typeSel) typeSel.value = 'umar_reguler';
     document.getElementById('boq-form-items-wrapper').classList.remove('hidden');
     __boqFormItems = [_blankItem()];
     _renderBoqFormItems();
@@ -221,6 +248,9 @@ function openEditBoq(bid) {
     document.getElementById('boq-form-extra-triple').value = b.extra_triple || 0;
     document.getElementById('boq-form-extra-double').value = b.extra_double || 0;
     document.getElementById('boq-form-notes').value = b.notes || '';
+    // Phase 6c: populate boq_type dari row existing.
+    const typeSel = document.getElementById('boq-form-type');
+    if (typeSel) typeSel.value = b.boq_type || 'umar_reguler';
     document.getElementById('boq-form-items-wrapper').classList.add('hidden');
     openModal('modal-boq-form');
 }
@@ -235,6 +265,8 @@ async function saveBoq() {
         extra_triple: parseInt(document.getElementById('boq-form-extra-triple').value) || 0,
         extra_double: parseInt(document.getElementById('boq-form-extra-double').value) || 0,
         notes: document.getElementById('boq-form-notes').value,
+        // Phase 6c: kirim boq_type.
+        boq_type: document.getElementById('boq-form-type')?.value || 'umar_reguler',
     };
     if (!body.name) return _toast('Nama BOQ wajib diisi.', 'error');
     if (!id) {
@@ -258,6 +290,9 @@ async function saveBoq() {
 let __boqFormItems = [];
 function _blankItem() {
     return {
+        // Phase 6c: bucket default 'hpp' (biaya nyata). User pilih section
+        // lain kalau mau taruh di prorate_tl / fee / margin.
+        bucket: 'hpp',
         category: 'hotel_mekkah', item_name: '', unit: 'per_pax',
         quantity: 1, unit_price: 0, vendor_name: '', note: '',
     };
@@ -281,7 +316,14 @@ function _renderBoqFormItems() {
     if (!tbody) return;
     tbody.innerHTML = __boqFormItems.map((it, idx) => {
         const subtotal = (it.quantity || 0) * (it.unit_price || 0);
+        const bkt = it.bucket || 'hpp';
+        const bStyle = BOQ_BUCKET_STYLE[bkt] || BOQ_BUCKET_STYLE.hpp;
         return `<tr>
+            <td class="px-1 py-1">
+                <select class="w-full border rounded px-1 py-1 text-xs ${bStyle.cls}" onchange="_updateFormItemField(${idx},'bucket',this.value)" title="Bucket = layer di formula harga jual">
+                    ${BOQ_BUCKETS.map(b => `<option value="${b}" ${bkt===b?'selected':''}>${BOQ_BUCKET_LABEL[b]}</option>`).join('')}
+                </select>
+            </td>
             <td class="px-1 py-1">
                 <select class="w-full border rounded px-1 py-1 text-xs" onchange="_updateFormItemField(${idx},'category',this.value)">
                     ${BOQ_CATEGORIES.map(c => `<option value="${c}" ${it.category===c?'selected':''}>${BOQ_CATEGORY_LABEL[c]}</option>`).join('')}
@@ -298,36 +340,91 @@ function _renderBoqFormItems() {
             <td class="px-1 py-1 text-right text-xs text-gray-600 tabular-nums">${formatRp(subtotal)}</td>
             <td class="px-1 py-1 text-center"><button type="button" onclick="removeBoqFormItem(${idx})" class="text-red-600 hover:text-red-800 text-xs" title="Hapus"><i data-lucide="x" class="w-3.5 h-3.5"></i></button></td>
         </tr>`;
-    }).join('') || `<tr><td colspan="7" class="text-center text-xs text-gray-400 py-3">Belum ada item. Klik + Tambah Item.</td></tr>`;
+    }).join('') || `<tr><td colspan="8" class="text-center text-xs text-gray-400 py-3">Belum ada item. Klik + Tambah Item.</td></tr>`;
     _renderBoqFormTotals();
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
+// Phase 6c: bucket-aware live calc. Mirror backend _compute_totals di
+// routes/boq.py -- semua formula persis sama supaya preview == hasil simpan.
+function _computeBucketsFromItems(items, pax, marginPct) {
+    const by = { hpp: 0, prorate_tl: 0, fee_agen: 0, fee_referal: 0, margin: 0 };
+    for (const it of (items || [])) {
+        const bkt = BOQ_BUCKETS.includes(it.bucket) ? it.bucket : 'hpp';
+        const sub = (it.quantity || 0) * (it.unit_price || 0);
+        if (it.unit === 'per_pax' || it.unit === 'per_pax_per_day') {
+            by[bkt] += sub * pax;
+        } else {
+            by[bkt] += sub;
+        }
+    }
+    const perPax = {
+        hpp: Math.floor(by.hpp / pax),
+        prorate_tl: Math.floor(by.prorate_tl / pax),
+        fee_agen: Math.floor(by.fee_agen / pax),
+        fee_referal: Math.floor(by.fee_referal / pax),
+        margin: Math.floor(by.margin / pax),
+    };
+    // Legacy backward-compat: kalau bucket=margin kosong, margin dari %.
+    const marginFromItems = perPax.margin > 0;
+    if (!marginFromItems && marginPct > 0) {
+        perPax.margin = Math.floor(perPax.hpp * (marginPct / 100));
+    }
+    const costPerPax = perPax.hpp + perPax.prorate_tl;
+    const pricePerPax = perPax.hpp + perPax.prorate_tl + perPax.fee_agen
+        + perPax.fee_referal + perPax.margin;
+    const totalGroup = by.hpp + by.prorate_tl + by.fee_agen + by.fee_referal + by.margin;
+    return { by, perPax, costPerPax, pricePerPax, totalGroup, marginFromItems };
+}
+
 function _renderBoqFormTotals() {
     const pax = Math.max(parseInt(document.getElementById('boq-form-pax').value) || 1, 1);
     const margin = parseFloat(document.getElementById('boq-form-margin').value) || 0;
     const et = parseInt(document.getElementById('boq-form-extra-triple')?.value) || 0;
     const ed = parseInt(document.getElementById('boq-form-extra-double')?.value) || 0;
-    let totalGroup = 0;
-    (__boqFormItems || []).forEach(it => {
-        const sub = (it.quantity || 0) * (it.unit_price || 0);
-        if (it.unit === 'per_pax' || it.unit === 'per_pax_per_day') totalGroup += sub * pax;
-        else totalGroup += sub;
-    });
-    const costPerPax = Math.floor(totalGroup / pax);
-    const marginAmt = Math.floor(costPerPax * (margin / 100));
-    const priceQuad = costPerPax + marginAmt;
+    const c = _computeBucketsFromItems(__boqFormItems, pax, margin);
+    const priceQuad = c.pricePerPax;
     const priceTriple = priceQuad + et;
     const priceDouble = priceQuad + ed;
+    const realMarginPct = c.pricePerPax > 0
+        ? ((c.perPax.margin / c.pricePerPax) * 100).toFixed(1)
+        : '0.0';
+    const bucketRow = (bkt) => {
+        const s = BOQ_BUCKET_STYLE[bkt];
+        const suffix = bkt === 'margin' && !c.marginFromItems
+            ? ` <span class="text-[9px] text-gray-400">(dari ${margin}%)</span>`
+            : '';
+        return `<div class="flex items-center gap-1.5 text-xs">
+            <span class="px-1.5 py-0.5 rounded ${s.cls} text-[10px] font-bold">${BOQ_BUCKET_LABEL[bkt]}</span>
+            <b class="tabular-nums">${formatRp(c.perPax[bkt])}</b>${suffix}
+        </div>`;
+    };
     const el = document.getElementById('boq-form-totals');
     if (el) el.innerHTML = `
-        <div><span class="text-gray-500">Total group:</span> <b class="tabular-nums">${formatRp(totalGroup)}</b></div>
-        <div><span class="text-gray-500">Cost/pax:</span> <b class="tabular-nums">${formatRp(costPerPax)}</b></div>
-        <div><span class="text-gray-500">Margin:</span> <b class="tabular-nums">${formatRp(marginAmt)}</b></div>
-        <div class="text-emerald-700 border-l pl-3">
-            <div class="text-[10px] text-gray-500">Harga per pax</div>
-            <div class="tabular-nums text-sm">QUAD <b>${formatRp(priceQuad)}</b></div>
-            <div class="tabular-nums text-sm">TRIPLE <b>${formatRp(priceTriple)}</b>${et ? '' : '<span class="text-[10px] text-gray-400 ml-1">(= QUAD)</span>'}</div>
-            <div class="tabular-nums text-sm">DOUBLE <b>${formatRp(priceDouble)}</b>${ed ? '' : '<span class="text-[10px] text-gray-400 ml-1">(= QUAD)</span>'}</div>
+        <div class="w-full grid grid-cols-1 md:grid-cols-2 gap-3 text-xs bg-gradient-to-br from-slate-50 to-emerald-50/30 p-3 rounded border">
+            <div>
+                <div class="text-[10px] text-gray-500 font-bold uppercase mb-1">Breakdown per pax</div>
+                <div class="space-y-1">
+                    ${BOQ_BUCKETS.map(bucketRow).join('')}
+                </div>
+                <div class="mt-2 pt-2 border-t text-[10px] text-gray-500 flex justify-between">
+                    <span>Cost/pax (HPP+Prorate):</span>
+                    <b class="tabular-nums">${formatRp(c.costPerPax)}</b>
+                </div>
+                <div class="text-[10px] text-gray-500 flex justify-between">
+                    <span>Real margin:</span>
+                    <b class="text-emerald-700">${realMarginPct}%</b>
+                </div>
+            </div>
+            <div class="text-emerald-800 border-l pl-3">
+                <div class="text-[10px] text-gray-500 font-bold uppercase mb-1">Harga per pax</div>
+                <div class="tabular-nums text-sm">QUAD <b>${formatRp(priceQuad)}</b></div>
+                <div class="tabular-nums text-sm">TRIPLE <b>${formatRp(priceTriple)}</b>${et ? '' : '<span class="text-[10px] text-gray-400 ml-1">(= QUAD)</span>'}</div>
+                <div class="tabular-nums text-sm">DOUBLE <b>${formatRp(priceDouble)}</b>${ed ? '' : '<span class="text-[10px] text-gray-400 ml-1">(= QUAD)</span>'}</div>
+                <div class="mt-2 pt-2 border-t text-[10px] text-gray-500 flex justify-between">
+                    <span>Total group cost:</span>
+                    <b class="tabular-nums">${formatRp(c.totalGroup)}</b>
+                </div>
+            </div>
         </div>`;
 }
 
@@ -354,14 +451,19 @@ function _renderBoqDetail() {
     const isPending = b.status === 'Pending Approval';
     const isDraft = b.status === 'Draft';
     const isOwner = b.created_by === currentUser.id;
+    const boqType = b.boq_type || 'umar_reguler';
+    const typeLabel = BOQ_TYPE_LABEL[boqType] || boqType;
 
     document.getElementById('boq-detail-header').innerHTML = `
         <div class="flex flex-wrap items-start gap-3 justify-between">
             <div>
                 <h3 class="text-lg font-bold text-gray-800">${_esc(b.name)}</h3>
-                <div class="text-xs text-gray-500 mt-1">
+                <div class="text-xs text-gray-500 mt-1 flex flex-wrap items-center gap-2">
                     ${b.package_name ? _esc(b.package_name) : '<i>Belum terikat ke paket (BOQ paket baru)</i>'}
-                    &middot; Target: ${b.target_pax} pax &middot; Margin: ${b.target_margin_pct}%
+                    <span>&middot; Target: ${b.target_pax} pax &middot; Margin: ${b.target_margin_pct}%</span>
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] rounded-full font-bold bg-amber-100 text-amber-800" title="Tipe paket BOQ (Phase 6c)">
+                        <i data-lucide="tag" class="w-3 h-3"></i>${_esc(typeLabel)}
+                    </span>
                 </div>
             </div>
             <span class="inline-flex items-center gap-1 px-3 py-1 text-xs rounded-full font-bold ${st.cls}">
@@ -376,8 +478,14 @@ function _renderBoqDetail() {
             ${b.reviewed_by_name ? ` &middot; Review oleh <b>${_esc(b.reviewed_by_name)}</b> ${_esc((b.reviewed_at||'').slice(0,16))}` : ''}
         </div>`;
 
+    // Phase 6c: group items per bucket dgn section header.
+    const itemsByBucket = { hpp: [], prorate_tl: [], fee_agen: [], fee_referal: [], margin: [] };
+    for (const it of (b.items || [])) {
+        const bkt = BOQ_BUCKETS.includes(it.bucket) ? it.bucket : 'hpp';
+        itemsByBucket[bkt].push(it);
+    }
     const tbody = document.getElementById('boq-detail-items');
-    tbody.innerHTML = (b.items || []).map(it => `
+    const itemRow = (it) => `
         <tr>
             <td class="px-2 py-1 text-xs">${_esc(BOQ_CATEGORY_LABEL[it.category] || it.category)}</td>
             <td class="px-2 py-1 text-xs">${_esc(it.item_name)}</td>
@@ -392,22 +500,74 @@ function _renderBoqDetail() {
                     <button onclick="_deleteBoqItem(${it.id})" class="text-xs px-1.5 py-0.5 text-red-600 hover:bg-red-50 rounded" title="Hapus"><i data-lucide="x" class="w-3 h-3"></i></button>
                 ` : ''}
             </td>
-        </tr>
-    `).join('') || `<tr><td colspan="8" class="text-center py-4 text-xs text-gray-400">Belum ada item.</td></tr>`;
+        </tr>`;
+    let html = '';
+    let sectionCount = 0;
+    for (const bkt of BOQ_BUCKETS) {
+        const items = itemsByBucket[bkt];
+        if (!items.length) continue;
+        sectionCount++;
+        const s = BOQ_BUCKET_STYLE[bkt];
+        html += `<tr class="${s.cls}">
+            <td colspan="8" class="px-2 py-1.5 text-[11px] font-bold uppercase tracking-wide">
+                <i data-lucide="${s.ico}" class="w-3.5 h-3.5 inline"></i>
+                ${BOQ_BUCKET_LABEL[bkt]}
+                <span class="ml-2 text-[10px] font-normal opacity-70">${items.length} item${items.length > 1 ? 's' : ''}</span>
+            </td>
+        </tr>`;
+        html += items.map(itemRow).join('');
+    }
+    tbody.innerHTML = html || `<tr><td colspan="8" class="text-center py-4 text-xs text-gray-400">Belum ada item.</td></tr>`;
+    // Legacy marker: kalau semua items masih di bucket=hpp default, hint reviewer.
+    if (sectionCount === 1 && itemsByBucket.hpp.length > 0 && b.items.every(i => (i.bucket || 'hpp') === 'hpp')) {
+        tbody.insertAdjacentHTML('afterbegin', `<tr><td colspan="8" class="px-2 py-1 text-[10px] italic text-amber-700 bg-amber-50 border-l-2 border-amber-400">
+            <i data-lucide="alert-circle" class="w-3 h-3 inline"></i>
+            Legacy BOQ -- semua items masih di bucket <b>HPP default</b>. Klik Edit item untuk reklasifikasi (mis. Fee Agen, Margin) supaya breakdown akurat.
+        </td></tr>`);
+    }
 
     const t = b.totals || {};
     const hasSplit = (t.extra_triple || 0) > 0 || (t.extra_double || 0) > 0;
+    const bkts = t.buckets || {};
+    const marginFromItems = bkts.margin?.from_items;
+    const realMarginPct = (t.price_per_pax > 0)
+        ? ((t.margin_amount / t.price_per_pax) * 100).toFixed(1)
+        : '0.0';
+    const bucketBadge = (bkt) => {
+        const s = BOQ_BUCKET_STYLE[bkt];
+        const pp = bkts[bkt]?.per_pax || 0;
+        const suffix = bkt === 'margin' && !marginFromItems
+            ? ` <span class="text-[9px] opacity-60">(dari ${b.target_margin_pct}%)</span>`
+            : '';
+        return `<div class="flex items-center gap-1.5">
+            <span class="px-1.5 py-0.5 rounded ${s.cls} text-[10px] font-bold">${BOQ_BUCKET_LABEL[bkt]}</span>
+            <b class="tabular-nums">${formatRp(pp)}</b>${suffix}
+        </div>`;
+    };
     document.getElementById('boq-detail-totals').innerHTML = `
-        <div class="grid grid-cols-3 md:grid-cols-6 gap-2 text-xs">
-            <div><span class="text-gray-500">Total group:</span> <b class="tabular-nums block">${formatRp(t.total_group_cost || 0)}</b></div>
-            <div><span class="text-gray-500">Cost/pax:</span> <b class="tabular-nums block">${formatRp(t.cost_per_pax || 0)}</b></div>
-            <div><span class="text-gray-500">Margin:</span> <b class="tabular-nums block">${formatRp(t.margin_amount || 0)}</b></div>
-            <div class="text-emerald-700 col-span-3 md:col-span-3 border-l pl-3">
-                <div class="text-[10px] text-gray-500 mb-0.5">Harga per pax ${hasSplit ? '(split per room type)' : '<span class="text-gray-400">(flat, semua room sama)</span>'}</div>
-                <div class="grid grid-cols-3 gap-1 tabular-nums">
-                    <div>QUAD<br><b>${formatRp(t.price_quad || 0)}</b></div>
-                    <div>TRIPLE<br><b>${formatRp(t.price_triple || 0)}</b></div>
-                    <div>DOUBLE<br><b>${formatRp(t.price_double || 0)}</b></div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gradient-to-br from-slate-50 to-emerald-50/30 p-3 rounded border">
+            <div>
+                <div class="text-[10px] text-gray-500 font-bold uppercase mb-1.5">Breakdown per pax (Phase 6c)</div>
+                <div class="space-y-1 text-xs">${BOQ_BUCKETS.map(bucketBadge).join('')}</div>
+                <div class="mt-2 pt-2 border-t text-[11px] flex justify-between">
+                    <span class="text-gray-500">Cost/pax (HPP+Prorate):</span>
+                    <b class="tabular-nums">${formatRp(t.cost_per_pax || 0)}</b>
+                </div>
+                <div class="text-[11px] flex justify-between">
+                    <span class="text-gray-500">Real margin:</span>
+                    <b class="text-emerald-700">${realMarginPct}%</b>
+                </div>
+                <div class="text-[11px] flex justify-between">
+                    <span class="text-gray-500">Total group cost:</span>
+                    <b class="tabular-nums">${formatRp(t.total_group_cost || 0)}</b>
+                </div>
+            </div>
+            <div class="text-emerald-800 border-l pl-3">
+                <div class="text-[10px] text-gray-500 font-bold uppercase mb-1.5">Harga jual per pax ${hasSplit ? '(split per room type)' : '<span class="text-gray-400 font-normal">(flat, semua room sama)</span>'}</div>
+                <div class="grid grid-cols-3 gap-2 tabular-nums text-sm">
+                    <div>QUAD<br><b class="text-base">${formatRp(t.price_quad || 0)}</b></div>
+                    <div>TRIPLE<br><b class="text-base">${formatRp(t.price_triple || 0)}</b></div>
+                    <div>DOUBLE<br><b class="text-base">${formatRp(t.price_double || 0)}</b></div>
                 </div>
             </div>
         </div>`;
@@ -462,6 +622,12 @@ async function _deleteBoqItem(iid) {
 function _openItemModal(it) {
     document.getElementById('boq-item-modal-title').innerText = it ? 'Edit Item' : 'Tambah Item';
     document.getElementById('boq-item-id').value = it?.id || '';
+    // Phase 6c: bucket picker paling atas.
+    const bucketSel = document.getElementById('boq-item-bucket');
+    if (bucketSel) {
+        bucketSel.innerHTML = BOQ_BUCKETS.map(b =>
+            `<option value="${b}" ${(it?.bucket || 'hpp')===b?'selected':''}>${BOQ_BUCKET_LABEL[b]}</option>`).join('');
+    }
     document.getElementById('boq-item-category').innerHTML = BOQ_CATEGORIES.map(c =>
         `<option value="${c}" ${it?.category===c?'selected':''}>${BOQ_CATEGORY_LABEL[c]}</option>`).join('');
     document.getElementById('boq-item-unit').innerHTML = BOQ_UNITS.map(u =>
@@ -476,6 +642,8 @@ function _openItemModal(it) {
 async function saveBoqItem() {
     const iid = document.getElementById('boq-item-id').value;
     const body = {
+        // Phase 6c: bucket.
+        bucket: document.getElementById('boq-item-bucket')?.value || 'hpp',
         category: document.getElementById('boq-item-category').value,
         item_name: document.getElementById('boq-item-name').value.trim(),
         unit: document.getElementById('boq-item-unit').value,
@@ -769,6 +937,35 @@ function _renderCompareBody(data) {
         return row + `</tr>`;
     };
     html += `<tr><td colspan="${boqs.length + 1}" class="border-t-2 border-gray-400"></td></tr>`;
+
+    // Phase 6c: bucket breakdown per pax sebelum totals klasik.
+    html += `<tr class="bg-slate-100">
+        <td colspan="${boqs.length + 1}" class="border px-2 py-1 font-bold text-[11px] uppercase text-slate-700">
+            Breakdown per pax (Phase 6c buckets)
+        </td>
+    </tr>`;
+    const bucketRow = (bkt) => {
+        const s = BOQ_BUCKET_STYLE[bkt];
+        const vals = boqs.map(b => b.totals?.buckets?.[bkt]?.per_pax || 0);
+        const present = vals.filter(v => v > 0);
+        const min = present.length ? Math.min(...present) : null;
+        const max = present.length ? Math.max(...present) : null;
+        let row = `<tr>
+            <td class="border px-2 py-1">
+                <span class="px-1.5 py-0.5 rounded ${s.cls} text-[10px] font-bold">${BOQ_BUCKET_LABEL[bkt]}</span>
+            </td>`;
+        for (const v of vals) {
+            let cls = 'text-gray-800';
+            if (present.length > 1 && v === min && min !== max && v > 0) cls = 'text-emerald-700 font-semibold';
+            else if (present.length > 1 && v === max && min !== max) cls = 'text-red-700';
+            else if (v === 0) cls = 'text-gray-300';
+            row += `<td class="border px-2 py-1 text-right tabular-nums ${cls}">${formatRp(v)}</td>`;
+        }
+        return row + `</tr>`;
+    };
+    for (const bkt of BOQ_BUCKETS) html += bucketRow(bkt);
+
+    html += `<tr><td colspan="${boqs.length + 1}" class="border-t-2 border-gray-300"></td></tr>`;
     html += totalRow('Total Group Cost', t => t.total_group_cost);
     html += totalRow('Cost per pax', t => t.cost_per_pax);
     html += totalRow('Margin', t => t.margin_amount);
