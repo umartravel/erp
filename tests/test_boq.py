@@ -640,3 +640,144 @@ def test_add_item_updates_totals(client, admin_token):
     detail = client.get(f"/api/boq/{b['id']}", headers=bearer(admin_token)).json()
     assert detail["totals"]["item_count"] == 1
     assert detail["items"][0]["subtotal"] == 10_000_000
+
+
+# ---------------------------------------------------------------------------
+# Phase 6a: schema migration 007 (bucket + boq_type)
+# Backend/UI belum aware bucket -- test ini fokus pada layer DB & data
+# integrity. Backend akan meng-honor bucket setelah Phase 6b.
+# ---------------------------------------------------------------------------
+def test_migration_007_columns_exist(client):
+    """Setelah init_db (yg auto-run migrations), package_boq_items harus punya
+    kolom bucket, boq_template_items juga, dan package_boq punya boq_type."""
+    import sqlite3
+    import os
+    con = sqlite3.connect(os.environ["UMAR_DB_FILE"])
+    try:
+        # package_boq_items
+        cols = {r[1]: r for r in con.execute("PRAGMA table_info(package_boq_items)")}
+        assert "bucket" in cols, "kolom bucket harus ada di package_boq_items"
+        # Default value 'hpp' (kolom 4 di PRAGMA row)
+        assert cols["bucket"][4] == "'hpp'", f"default bucket harus 'hpp', got {cols['bucket'][4]}"
+
+        # boq_template_items
+        cols = {r[1]: r for r in con.execute("PRAGMA table_info(boq_template_items)")}
+        assert "bucket" in cols, "kolom bucket harus ada di boq_template_items"
+        assert cols["bucket"][4] == "'hpp'"
+
+        # package_boq
+        cols = {r[1]: r for r in con.execute("PRAGMA table_info(package_boq)")}
+        assert "boq_type" in cols, "kolom boq_type harus ada di package_boq"
+        assert cols["boq_type"][4] == "'umar_reguler'"
+    finally:
+        con.close()
+
+
+def test_migration_007_recorded_in_schema_migrations(client):
+    """Migration harus tercatat di tabel schema_migrations supaya tidak
+    dijalankan ulang di next boot."""
+    import sqlite3
+    import os
+    con = sqlite3.connect(os.environ["UMAR_DB_FILE"])
+    try:
+        row = con.execute(
+            "SELECT version FROM schema_migrations WHERE version=?",
+            ("007_boq_bucket_and_type",),
+        ).fetchone()
+        assert row is not None, "migration 007 harus tercatat"
+    finally:
+        con.close()
+
+
+def test_new_boq_items_default_bucket_hpp(client, admin_token):
+    """BOQ item baru yg dibuat tanpa specify bucket harus default 'hpp'.
+    Ini kontrak backward-compat: caller pra-Phase-6b tidak perlu ubah apapun."""
+    import sqlite3
+    import os
+    b = _mk_boq(client, admin_token, name="TEST BOQ Phase6a-BucketDefault",
+                target_pax=1, margin=0)
+    r = client.post(f"/api/boq/{b['id']}/items", json={
+        "category": "hotel_mekkah", "item_name": "Test Bucket Default",
+        "unit": "per_pax", "quantity": 1, "unit_price": 1_000_000,
+    }, headers=bearer(admin_token))
+    assert r.status_code == 200
+
+    con = sqlite3.connect(os.environ["UMAR_DB_FILE"])
+    try:
+        row = con.execute(
+            "SELECT bucket FROM package_boq_items WHERE boq_id=? "
+            "AND item_name='Test Bucket Default'",
+            (b["id"],),
+        ).fetchone()
+        assert row is not None, "item harus tersimpan"
+        assert row[0] == "hpp", f"default bucket harus 'hpp', got {row[0]}"
+    finally:
+        con.close()
+
+
+def test_new_boq_defaults_boq_type_umar_reguler(client, admin_token):
+    """BOQ baru tanpa specify boq_type -> default 'umar_reguler' di DB
+    (backward-compat sepenuhnya utk caller lama)."""
+    import sqlite3
+    import os
+    b = _mk_boq(client, admin_token, name="TEST BOQ Phase6a-TypeDefault")
+
+    con = sqlite3.connect(os.environ["UMAR_DB_FILE"])
+    try:
+        row = con.execute(
+            "SELECT boq_type FROM package_boq WHERE id=?", (b["id"],)
+        ).fetchone()
+        assert row is not None
+        assert row[0] == "umar_reguler", f"default boq_type harus 'umar_reguler', got {row[0]}"
+    finally:
+        con.close()
+
+
+def test_migration_007_idempotent_backfill(client, admin_token):
+    """Simulasi migration 007 dijalankan ulang di DB yg sudah applied.
+    Tidak boleh error, tidak boleh mengubah row yg sudah bucket=margin."""
+    import sqlite3
+    import os
+    import importlib.util
+    import pathlib
+
+    # Dynamic import migration module (nama file diawali digit -> tak bisa
+    # `from migrations import 007_...`)
+    mig_path = pathlib.Path(__file__).parent.parent / "migrations" / "007_boq_bucket_and_type.py"
+    spec = importlib.util.spec_from_file_location("_mig007", mig_path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    con = sqlite3.connect(os.environ["UMAR_DB_FILE"])
+    try:
+        # Setup: insert item dengan category=margin di boq_template_items.
+        tpl_row = con.execute(
+            "INSERT INTO boq_templates(name, created_by) VALUES(?, ?) RETURNING id",
+            ("TEST TPL Phase6a-Idempotent", 1),
+        ).fetchone()
+        tpl_id = tpl_row[0]
+        con.execute(
+            "INSERT INTO boq_template_items"
+            "(template_id, category, item_name, unit, quantity, unit_price, bucket) "
+            "VALUES(?, 'margin', 'Existing Margin', 'per_pax', 1, 1500000, 'margin')",
+            (tpl_id,),
+        )
+        con.commit()
+
+        # Migration 007 up() runs backfill lagi -- tidak boleh error.
+        mod.up(con)
+        con.commit()
+
+        row = con.execute(
+            "SELECT bucket FROM boq_template_items "
+            "WHERE template_id=? AND item_name='Existing Margin'",
+            (tpl_id,),
+        ).fetchone()
+        assert row[0] == "margin", "idempotent backfill tidak boleh mengubah row yg sudah correct"
+
+        # Cleanup.
+        con.execute("DELETE FROM boq_template_items WHERE template_id=?", (tpl_id,))
+        con.execute("DELETE FROM boq_templates WHERE id=?", (tpl_id,))
+        con.commit()
+    finally:
+        con.close()
