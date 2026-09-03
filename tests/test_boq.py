@@ -1035,3 +1035,147 @@ def test_migration_007_idempotent_backfill(client, admin_token):
         con.commit()
     finally:
         con.close()
+
+
+# ---------------------------------------------------------------------------
+# Phase 6d-a: template sell_price + variant + optional + preset endpoint
+# ---------------------------------------------------------------------------
+def test_migration_008_template_columns_exist(client):
+    """Migration 008 wajib tambah sell_price/variant/optional di boq_template_items."""
+    import sqlite3
+    import os
+    con = sqlite3.connect(os.environ["UMAR_DB_FILE"])
+    try:
+        cols = {r[1]: r for r in con.execute("PRAGMA table_info(boq_template_items)")}
+        assert "sell_price" in cols
+        assert cols["sell_price"][2] == "INTEGER"
+        assert "variant" in cols
+        assert cols["variant"][2] == "TEXT"
+        assert "optional" in cols
+        assert cols["optional"][2] == "INTEGER"
+        assert cols["optional"][4] == "0"
+    finally:
+        con.close()
+
+
+def test_template_create_accepts_sell_price_variant_optional(client, admin_token):
+    """Body items terima 3 kolom baru; GET detail return unchanged."""
+    r = client.post("/api/boq/templates", json={
+        "name": "TEST TPL Phase6d-Fields",
+        "items": [
+            {"category": "perlengkapan", "item_name": "Minimalis L",
+             "unit": "per_pax", "quantity": 1, "unit_price": 190_000,
+             "bucket": "hpp", "sell_price": 350_000, "variant": "Minimalis",
+             "optional": False},
+            {"category": "lain", "item_name": "Bukhur",
+             "unit": "per_pax", "quantity": 1, "unit_price": 100_000,
+             "bucket": "hpp", "sell_price": 150_000, "variant": None,
+             "optional": True},
+        ],
+    }, headers=bearer(admin_token))
+    assert r.status_code == 200
+    tid = r.json()["id"]
+    detail = client.get(f"/api/boq/templates/{tid}", headers=bearer(admin_token)).json()
+    items = {i["item_name"]: i for i in detail["items"]}
+    assert items["Minimalis L"]["sell_price"] == 350_000
+    assert items["Minimalis L"]["variant"] == "Minimalis"
+    assert items["Minimalis L"]["optional"] == 0
+    assert items["Bukhur"]["sell_price"] == 150_000
+    assert items["Bukhur"]["variant"] is None
+    assert items["Bukhur"]["optional"] == 1
+
+
+def test_template_create_backward_compat_no_new_fields(client, admin_token):
+    """Caller lama tanpa sell_price/variant/optional -> default NULL/NULL/0."""
+    r = client.post("/api/boq/templates", json={
+        "name": "TEST TPL Phase6d-Legacy",
+        "items": [{"category": "hotel_mekkah", "item_name": "Hotel Legacy",
+                   "unit": "per_pax", "quantity": 1, "unit_price": 5_000_000}],
+    }, headers=bearer(admin_token))
+    assert r.status_code == 200
+    tid = r.json()["id"]
+    detail = client.get(f"/api/boq/templates/{tid}", headers=bearer(admin_token)).json()
+    it = detail["items"][0]
+    assert it["sell_price"] is None
+    assert it["variant"] is None
+    assert it["optional"] == 0
+
+
+def test_preset_list_returns_two_presets(client, admin_token):
+    """Endpoint /api/boq/templates/presets/available return 2 preset."""
+    r = client.get("/api/boq/templates/presets/available",
+                   headers=bearer(admin_token))
+    assert r.status_code == 200
+    keys = {p["key"] for p in r.json()["presets"]}
+    assert keys == {"perlengkapan_standar", "bonus_reguler"}
+
+
+def test_preset_perlengkapan_standar_creates_6_items(client, admin_token):
+    """POST preset -> template baru dgn 6 item perlengkapan (3 variant x 2 gender)."""
+    r = client.post("/api/boq/templates/preset", json={
+        "preset_key": "perlengkapan_standar",
+        "name": "TEST TPL Phase6d-Preset Perlengkapan",
+    }, headers=bearer(admin_token))
+    assert r.status_code == 200
+    assert r.json()["items_created"] == 6
+    tid = r.json()["id"]
+
+    detail = client.get(f"/api/boq/templates/{tid}",
+                        headers=bearer(admin_token)).json()
+    variants = {(i["variant"], "L" if "Laki" in i["item_name"] else "P")
+                for i in detail["items"]}
+    assert variants == {
+        ("Full Set", "L"), ("Full Set", "P"),
+        ("Minimalis", "L"), ("Minimalis", "P"),
+        ("Koper Only", "L"), ("Koper Only", "P"),
+    }
+    # Semua required (bukan optional).
+    assert all(i["optional"] == 0 for i in detail["items"])
+    # Semua punya sell_price > unit_price (HPP < harga jual).
+    for i in detail["items"]:
+        assert i["sell_price"] is not None
+        assert i["sell_price"] > 0
+        assert i["unit_price"] > 0
+
+
+def test_preset_bonus_reguler_creates_2_optional_items(client, admin_token):
+    """Preset Bonus Reguler -> 2 item optional (Bukhur + Al Baik)."""
+    r = client.post("/api/boq/templates/preset", json={
+        "preset_key": "bonus_reguler",
+        "name": "TEST TPL Phase6d-Preset Bonus",
+    }, headers=bearer(admin_token))
+    assert r.status_code == 200
+    assert r.json()["items_created"] == 2
+    tid = r.json()["id"]
+
+    detail = client.get(f"/api/boq/templates/{tid}",
+                        headers=bearer(admin_token)).json()
+    names = {i["item_name"] for i in detail["items"]}
+    assert "Bukhur Umar Oud" in names
+    assert "Al Baik Voucher" in names
+    # Semua optional.
+    assert all(i["optional"] == 1 for i in detail["items"])
+
+
+def test_preset_invalid_key_400(client, admin_token):
+    r = client.post("/api/boq/templates/preset", json={
+        "preset_key": "not_a_preset",
+    }, headers=bearer(admin_token))
+    assert r.status_code == 400
+    assert "preset" in r.json()["error"].lower()
+
+
+def test_preset_requires_mgmt_role(client, sales_token):
+    r = client.post("/api/boq/templates/preset", json={
+        "preset_key": "perlengkapan_standar",
+    }, headers=bearer(sales_token))
+    assert r.status_code == 403
+
+
+def test_preset_endpoint_route_before_tid_dispatch(client, admin_token):
+    """GET .../presets/available JANGAN di-treat sebagai GET .../{tid}
+    dgn tid='presets' (yg gagal parse integer 404 atau bahkan 500)."""
+    r = client.get("/api/boq/templates/presets/available",
+                   headers=bearer(admin_token))
+    assert r.status_code == 200, \
+        f"Route order salah -- {r.status_code}: {r.text}"

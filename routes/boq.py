@@ -392,6 +392,104 @@ async def boq_template_list(user=Depends(authenticate_token)):
     ) or []
 
 
+# ---------------------------------------------------------------------------
+# Phase 6d-a: Preset seeds untuk template.
+# Endpoint ini shortcut untuk admin bikin template siap-pakai dari data Excel
+# HPP Perlengkapan (numbers dari Sheet1 + HPP Perlengkapan). Admin bisa
+# edit/duplicate setelah preset di-import.
+# ---------------------------------------------------------------------------
+_BOQ_PRESETS = {
+    "perlengkapan_standar": {
+        "name": "Perlengkapan Standar UMAR",
+        "description": (
+            "Preset dari HPP Perlengkapan (Excel). Terdiri dari 3 variant "
+            "(Full Set / Minimalis / Koper Only) x 2 gender."
+        ),
+        "items": [
+            # (category, item_name, unit, qty, hpp, sell, vendor, note, sort, bucket, variant, optional)
+            ("perlengkapan", "Perlengkapan Full Set Laki-laki",  "per_pax", 1, 778000, 750000, None, "Koper+ransel+paspor+tumbler+ihram+kemeja+aksesoris", 1, "hpp", "Full Set",   0),
+            ("perlengkapan", "Perlengkapan Full Set Perempuan",  "per_pax", 1, 700000, 750000, None, "Koper+daypack+paspor+mukena+kerudung+outer+aksesoris", 2, "hpp", "Full Set",   0),
+            ("perlengkapan", "Perlengkapan Minimalis Laki-laki", "per_pax", 1, 190000, 350000, None, "Koko+aksesoris",   3, "hpp", "Minimalis",  0),
+            ("perlengkapan", "Perlengkapan Minimalis Perempuan", "per_pax", 1, 240000, 350000, None, "Kerudung+outer+aksesoris", 4, "hpp", "Minimalis",  0),
+            ("perlengkapan", "Perlengkapan Koper Only Laki-laki","per_pax", 1, 550000, 650000, None, "Koper 24'' policarbon + kain ihram + aksesoris", 5, "hpp", "Koper Only", 0),
+            ("perlengkapan", "Perlengkapan Koper Only Perempuan","per_pax", 1, 550000, 650000, None, "Koper 24'' policarbon + mukena + aksesoris",      6, "hpp", "Koper Only", 0),
+        ],
+    },
+    "bonus_reguler": {
+        "name": "Bonus Reguler UMAR",
+        "description": (
+            "Preset bonus opsional per paket (Bukhur + Al Baik). Item optional -- "
+            "user pilih di apply modal apakah paket ini dapat bonus atau tidak."
+        ),
+        "items": [
+            ("lain",     "Bukhur Umar Oud", "per_pax", 1, 100000, 150000, None, "Parfum khas UMAR",          1, "hpp", None, 1),
+            ("konsumsi", "Al Baik Voucher", "per_pax", 1, 125000, 175000, None, "Voucher makan Al Baik Jeddah/Mekkah", 2, "hpp", None, 1),
+        ],
+    },
+}
+
+
+@router.post("/api/boq/templates/preset")
+async def boq_template_preset(body: dict = Depends(json_body), user=Depends(authenticate_token)):
+    """Create template dari preset key yang sudah didefinisikan.
+
+    Body: {"preset_key": "perlengkapan_standar" | "bonus_reguler", "name": "override name"}
+
+    Preset items di-seed dgn HPP + sell_price + variant + optional dari
+    data Excel HPP Perlengkapan. Admin bisa edit/duplicate template setelah
+    di-create -- preset cuma starting point.
+
+    Mgmt/admin only.
+    """
+    require_role(user, *_MGMT_ROLES)
+    key = (body.get("preset_key") or "").strip()
+    if key not in _BOQ_PRESETS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Preset tidak dikenal. Pilihan: {', '.join(sorted(_BOQ_PRESETS.keys()))}",
+        )
+    preset = _BOQ_PRESETS[key]
+    name = (body.get("name") or preset["name"]).strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Nama template wajib diisi.")
+
+    tid, _ = db.execute(
+        "INSERT INTO boq_templates (name, description, created_by) VALUES (?, ?, ?)",
+        (name, preset["description"], user["id"]),
+    )
+    for (cat, iname, unit, qty, hpp, sell, vendor, note, sort_o, bucket, variant, opt) in preset["items"]:
+        db.execute(
+            "INSERT INTO boq_template_items "
+            "(template_id, category, item_name, unit, quantity, unit_price, "
+            " vendor_name, note, sort_order, bucket, sell_price, variant, optional) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (tid, cat, iname, unit, float(qty), int(hpp), vendor, note,
+             int(sort_o), bucket, int(sell) if sell is not None else None,
+             variant, int(opt)),
+        )
+    log_action(user, "BOQ_TEMPLATE_PRESET", f"key={key} tid={tid} items={len(preset['items'])}")
+    notify("data_updated", "boq_template")
+    return {"id": tid, "preset_key": key, "items_created": len(preset["items"]),
+            "message": f"Template preset '{name}' dibuat dgn {len(preset['items'])} item."}
+
+
+@router.get("/api/boq/templates/presets/available")
+async def boq_template_presets_list(user=Depends(authenticate_token)):
+    """List preset keys + metadata (nama, deskripsi, jumlah items). Dipakai UI
+    dropdown 'Import dari Preset'."""
+    return {
+        "presets": [
+            {
+                "key": k,
+                "name": v["name"],
+                "description": v["description"],
+                "item_count": len(v["items"]),
+            }
+            for k, v in _BOQ_PRESETS.items()
+        ]
+    }
+
+
 @router.get("/api/boq/templates/{tid}")
 async def boq_template_detail(tid: int, user=Depends(authenticate_token)):
     t = _template_or_404(tid)
@@ -420,8 +518,8 @@ async def boq_template_create(body: dict = Depends(json_body), user=Depends(auth
         db.execute(
             "INSERT INTO boq_template_items "
             "(template_id, category, item_name, unit, quantity, unit_price, "
-            " vendor_name, note, sort_order, bucket) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            " vendor_name, note, sort_order, bucket, sell_price, variant, optional) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 tid, it.get("category"), it.get("item_name").strip(),
                 it.get("unit") or "per_pax",
@@ -430,6 +528,10 @@ async def boq_template_create(body: dict = Depends(json_body), user=Depends(auth
                 it.get("vendor_name"), it.get("note"),
                 int(it.get("sort_order") or 0),
                 it.get("bucket") or "hpp",
+                # Phase 6d-a: sell_price/variant/optional.
+                int(it["sell_price"]) if it.get("sell_price") not in (None, "") else None,
+                (it.get("variant") or None),
+                1 if it.get("optional") else 0,
             ),
         )
     log_action(user, "BOQ_TEMPLATE_CREATE", f"id={tid} name={name}")
