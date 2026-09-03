@@ -407,8 +407,8 @@ _BOQ_PRESETS = {
         ),
         "items": [
             # (category, item_name, unit, qty, hpp, sell, vendor, note, sort, bucket, variant, optional)
-            ("perlengkapan", "Perlengkapan Full Set Laki-laki",  "per_pax", 1, 778000, 750000, None, "Koper+ransel+paspor+tumbler+ihram+kemeja+aksesoris", 1, "hpp", "Full Set",   0),
-            ("perlengkapan", "Perlengkapan Full Set Perempuan",  "per_pax", 1, 700000, 750000, None, "Koper+daypack+paspor+mukena+kerudung+outer+aksesoris", 2, "hpp", "Full Set",   0),
+            ("perlengkapan", "Perlengkapan Full Set Laki-laki",  "per_pax", 1, 750000, 850000, None, "Koper+ransel+paspor+tumbler+ihram+kemeja+aksesoris", 1, "hpp", "Full Set",   0),
+            ("perlengkapan", "Perlengkapan Full Set Perempuan",  "per_pax", 1, 700000, 850000, None, "Koper+daypack+paspor+mukena+kerudung+outer+aksesoris", 2, "hpp", "Full Set",   0),
             ("perlengkapan", "Perlengkapan Minimalis Laki-laki", "per_pax", 1, 190000, 350000, None, "Koko+aksesoris",   3, "hpp", "Minimalis",  0),
             ("perlengkapan", "Perlengkapan Minimalis Perempuan", "per_pax", 1, 240000, 350000, None, "Kerudung+outer+aksesoris", 4, "hpp", "Minimalis",  0),
             ("perlengkapan", "Perlengkapan Koper Only Laki-laki","per_pax", 1, 550000, 650000, None, "Koper 24'' policarbon + kain ihram + aksesoris", 5, "hpp", "Koper Only", 0),
@@ -590,15 +590,30 @@ async def boq_template_delete(tid: int, user=Depends(authenticate_token)):
 
 
 @router.post("/api/boq/templates/{tid}/apply/{bid}")
-async def boq_template_apply(tid: int, bid: int, user=Depends(authenticate_token)):
-    """Copy semua template items ke BOQ (append, tidak replace).
+async def boq_template_apply(tid: int, bid: int, body: dict = Depends(json_body), user=Depends(authenticate_token)):
+    """Copy template items ke BOQ (append, tidak replace).
+
+    Phase 6d-b: apply sekarang bucket-aware + auto-margin + optional-filter.
+
+    Body optional:
+      {"include_ids": [1, 3, 5]}
+      Kalau ada, HANYA template items dgn id ini yg ter-copy (utk filter
+      items optional). Kalau tidak ada, semua items ter-copy (required +
+      optional). Items required (optional=0) SELALU ter-copy walau include_ids
+      given -- filter cuma affect items optional=1.
+
+    Auto-margin (Phase 6d-a schema):
+      - Kalau template item sell_price NULL atau <= unit_price:
+        Create 1 BOQ item dgn bucket dari template (default hpp).
+      - Kalau sell_price > unit_price:
+        Create 2 BOQ items:
+          (a) bucket=hpp,    unit_price=template.unit_price          (HPP cost)
+          (b) bucket=margin, unit_price=sell_price - unit_price     (margin selisih)
+        Ini merepresentasikan konsep Excel "harga jual per item".
 
     Guard:
-    - BOQ target harus editable oleh caller (mgmt/admin apa saja; owner cuma Draft).
-    - Template harus punya minimal 1 item (kosong = no-op yang confusing).
-
-    Items ditambahkan ke akhir (sort_order melanjutkan max existing) supaya
-    tidak menimpa item yg sudah ada di BOQ.
+    - BOQ target harus editable (mgmt/admin apa saja; owner cuma Draft).
+    - Template harus punya minimal 1 item.
     """
     boq = _boq_or_404(bid)
     _assert_editable(boq, user)
@@ -611,6 +626,18 @@ async def boq_template_apply(tid: int, bid: int, user=Depends(authenticate_token
     if not items:
         raise HTTPException(status_code=400, detail="Template kosong -- tambah item template dulu.")
 
+    # Filter items optional lewat include_ids (opsional dari body).
+    include_ids = body.get("include_ids")
+    if include_ids is not None:
+        try:
+            include_set = {int(x) for x in include_ids}
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="include_ids harus list of integer.")
+        # Optional items: harus di include_set. Required items: selalu ikut.
+        items = [it for it in items if not it["optional"] or it["id"] in include_set]
+        if not items:
+            raise HTTPException(status_code=400, detail="Tidak ada item terpilih -- pilih minimal 1 item optional atau include item required.")
+
     # Sort_order offset agar item template lanjut setelah item existing.
     max_sort = db.query_one(
         "SELECT COALESCE(MAX(sort_order), -1) AS m FROM package_boq_items WHERE boq_id = ?",
@@ -618,26 +645,79 @@ async def boq_template_apply(tid: int, bid: int, user=Depends(authenticate_token
     )
     offset = (max_sort["m"] if max_sort else -1) + 1
 
-    for i, it in enumerate(items):
+    boq_items_created = 0
+    sort_cursor = offset
+    for it in items:
         qty = float(it["quantity"] or 1)
-        up = int(it["unit_price"] or 0)
+        hpp_price = int(it["unit_price"] or 0)
+        sell_price = int(it["sell_price"]) if it["sell_price"] is not None else None
+        base_bucket = it["bucket"] or "hpp"
+
+        # Case A: no sell_price OR sell_price tidak lebih tinggi dari HPP.
+        # Cukup 1 item dgn bucket dari template.
+        if sell_price is None or sell_price <= hpp_price:
+            db.execute(
+                "INSERT INTO package_boq_items "
+                "(boq_id, category, item_name, unit, quantity, unit_price, subtotal, "
+                " vendor_name, note, sort_order, bucket) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    bid, it["category"], it["item_name"], it["unit"], qty, hpp_price,
+                    _calc_subtotal(qty, hpp_price),
+                    it["vendor_name"], it["note"], sort_cursor, base_bucket,
+                ),
+            )
+            sort_cursor += 1
+            boq_items_created += 1
+            continue
+
+        # Case B: sell_price > HPP. Create 2 items: HPP + Margin selisih.
+        # HPP item pakai bucket dari template (biasa 'hpp').
         db.execute(
             "INSERT INTO package_boq_items "
             "(boq_id, category, item_name, unit, quantity, unit_price, subtotal, "
             " vendor_name, note, sort_order, bucket) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
-                bid, it["category"], it["item_name"], it["unit"], qty, up,
-                _calc_subtotal(qty, up),
-                it["vendor_name"], it["note"], offset + i,
-                it["bucket"] or "hpp",
+                bid, it["category"], it["item_name"], it["unit"], qty, hpp_price,
+                _calc_subtotal(qty, hpp_price),
+                it["vendor_name"], it["note"], sort_cursor, base_bucket,
             ),
         )
+        sort_cursor += 1
+        boq_items_created += 1
+
+        # Margin item -- item_name dgn suffix '(Margin)', bucket=margin.
+        # Category tetap sama supaya report per kategori tetap konsisten.
+        margin_amt = sell_price - hpp_price
+        db.execute(
+            "INSERT INTO package_boq_items "
+            "(boq_id, category, item_name, unit, quantity, unit_price, subtotal, "
+            " vendor_name, note, sort_order, bucket) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                bid, it["category"], f"{it['item_name']} (Margin)",
+                it["unit"], qty, margin_amt,
+                _calc_subtotal(qty, margin_amt),
+                it["vendor_name"],
+                f"Auto dari template: sell {sell_price} - HPP {hpp_price}",
+                sort_cursor, "margin",
+            ),
+        )
+        sort_cursor += 1
+        boq_items_created += 1
 
     db.execute("UPDATE package_boq SET updated_at = CURRENT_TIMESTAMP WHERE id = ?", (bid,))
-    log_action(user, "BOQ_TEMPLATE_APPLY", f"tmpl={tid} boq={bid} items={len(items)}")
+    log_action(
+        user, "BOQ_TEMPLATE_APPLY",
+        f"tmpl={tid} boq={bid} tpl_items={len(items)} boq_items={boq_items_created}",
+    )
     notify("data_updated", "boq")
-    return {"applied": len(items), "message": f"{len(items)} item dari template ditambahkan ke BOQ."}
+    return {
+        "applied": boq_items_created,
+        "template_items_used": len(items),
+        "message": f"{boq_items_created} item ditambahkan ke BOQ (dari {len(items)} template items).",
+    }
 
 
 @router.get("/api/boq/{bid}")

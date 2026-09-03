@@ -1179,3 +1179,173 @@ def test_preset_endpoint_route_before_tid_dispatch(client, admin_token):
                    headers=bearer(admin_token))
     assert r.status_code == 200, \
         f"Route order salah -- {r.status_code}: {r.text}"
+
+
+# ---------------------------------------------------------------------------
+# Phase 6d-b: apply refactor (auto-margin + optional filter)
+# ---------------------------------------------------------------------------
+def _mk_template_with_items(client, admin_token, name, items):
+    """Helper: create template dgn items, return template id."""
+    r = client.post("/api/boq/templates", json={"name": name, "items": items},
+                    headers=bearer(admin_token))
+    assert r.status_code == 200, r.text
+    return r.json()["id"]
+
+
+def test_apply_template_with_sell_price_creates_hpp_plus_margin(client, admin_token):
+    """1 template item dgn sell_price > hpp -> 2 BOQ items (hpp + margin)."""
+    tid = _mk_template_with_items(client, admin_token, "TEST TPL Phase6d-b-AutoMargin", [
+        {"category": "perlengkapan", "item_name": "Minimalis L",
+         "unit": "per_pax", "quantity": 1, "unit_price": 190_000,
+         "bucket": "hpp", "sell_price": 350_000, "variant": "Minimalis"},
+    ])
+    b = _mk_boq(client, admin_token, name="TEST BOQ Phase6d-b-Target1",
+                target_pax=1, margin=0)
+    r = client.post(f"/api/boq/templates/{tid}/apply/{b['id']}", json={},
+                    headers=bearer(admin_token))
+    assert r.status_code == 200
+    j = r.json()
+    assert j["applied"] == 2  # 1 template item -> 2 BOQ items
+    assert j["template_items_used"] == 1
+
+    detail = client.get(f"/api/boq/{b['id']}", headers=bearer(admin_token)).json()
+    items = detail["items"]
+    assert len(items) == 2
+    by_bucket = {i["bucket"]: i for i in items}
+    assert by_bucket["hpp"]["unit_price"] == 190_000
+    assert by_bucket["hpp"]["item_name"] == "Minimalis L"
+    assert by_bucket["margin"]["unit_price"] == 160_000  # 350k - 190k
+    assert "(Margin)" in by_bucket["margin"]["item_name"]
+
+
+def test_apply_template_no_sell_price_creates_single_hpp(client, admin_token):
+    """Template item tanpa sell_price -> 1 BOQ item (backward-compat Phase 3b)."""
+    tid = _mk_template_with_items(client, admin_token, "TEST TPL Phase6d-b-Legacy", [
+        {"category": "hotel_mekkah", "item_name": "Hotel Simple",
+         "unit": "per_pax", "quantity": 1, "unit_price": 5_000_000, "bucket": "hpp"},
+    ])
+    b = _mk_boq(client, admin_token, name="TEST BOQ Phase6d-b-Target2",
+                target_pax=1, margin=0)
+    r = client.post(f"/api/boq/templates/{tid}/apply/{b['id']}", json={},
+                    headers=bearer(admin_token))
+    assert r.status_code == 200
+    assert r.json()["applied"] == 1
+
+    detail = client.get(f"/api/boq/{b['id']}", headers=bearer(admin_token)).json()
+    assert len(detail["items"]) == 1
+    assert detail["items"][0]["bucket"] == "hpp"
+    assert detail["items"][0]["unit_price"] == 5_000_000
+
+
+def test_apply_template_sell_equal_hpp_creates_single_item(client, admin_token):
+    """Sell price sama dgn HPP -> tidak ada margin item, cukup 1 item."""
+    tid = _mk_template_with_items(client, admin_token, "TEST TPL Phase6d-b-ZeroMargin", [
+        {"category": "lain", "item_name": "Break-even",
+         "unit": "per_pax", "quantity": 1, "unit_price": 100_000,
+         "bucket": "hpp", "sell_price": 100_000},
+    ])
+    b = _mk_boq(client, admin_token, name="TEST BOQ Phase6d-b-Target3",
+                target_pax=1, margin=0)
+    r = client.post(f"/api/boq/templates/{tid}/apply/{b['id']}", json={},
+                    headers=bearer(admin_token))
+    assert r.status_code == 200
+    assert r.json()["applied"] == 1
+
+
+def test_apply_preset_perlengkapan_creates_12_items(client, admin_token):
+    """Preset Perlengkapan Standar (6 items dgn sell_price semua) -> 12 BOQ items."""
+    r = client.post("/api/boq/templates/preset", json={
+        "preset_key": "perlengkapan_standar",
+        "name": "TEST TPL Phase6d-b-Preset",
+    }, headers=bearer(admin_token))
+    tid = r.json()["id"]
+
+    b = _mk_boq(client, admin_token, name="TEST BOQ Phase6d-b-Preset-Target",
+                target_pax=30, margin=0)
+    r = client.post(f"/api/boq/templates/{tid}/apply/{b['id']}", json={},
+                    headers=bearer(admin_token))
+    assert r.status_code == 200
+    assert r.json()["applied"] == 12  # 6 template items x 2 (hpp+margin)
+    assert r.json()["template_items_used"] == 6
+
+    detail = client.get(f"/api/boq/{b['id']}", headers=bearer(admin_token)).json()
+    by_bucket = {"hpp": 0, "margin": 0}
+    for it in detail["items"]:
+        by_bucket[it["bucket"]] = by_bucket.get(it["bucket"], 0) + 1
+    assert by_bucket["hpp"] == 6
+    assert by_bucket["margin"] == 6
+
+
+def test_apply_bonus_reguler_without_include_ids_copies_all(client, admin_token):
+    """Bonus Reguler = 2 items OPTIONAL. Kalau apply tanpa include_ids ->
+    semua ter-copy (bukan skipped)."""
+    r = client.post("/api/boq/templates/preset", json={
+        "preset_key": "bonus_reguler",
+        "name": "TEST TPL Phase6d-b-BonusAll",
+    }, headers=bearer(admin_token))
+    tid = r.json()["id"]
+
+    b = _mk_boq(client, admin_token, name="TEST BOQ Phase6d-b-BonusAll-Target",
+                target_pax=1, margin=0)
+    r = client.post(f"/api/boq/templates/{tid}/apply/{b['id']}", json={},
+                    headers=bearer(admin_token))
+    assert r.status_code == 200
+    # 2 template items dgn sell_price > hpp -> 4 BOQ items (2 hpp + 2 margin).
+    assert r.json()["applied"] == 4
+
+
+def test_apply_bonus_with_include_ids_filters_optional(client, admin_token):
+    """include_ids=[first_only] -> hanya 1 template item optional ter-copy."""
+    r = client.post("/api/boq/templates/preset", json={
+        "preset_key": "bonus_reguler",
+        "name": "TEST TPL Phase6d-b-BonusPartial",
+    }, headers=bearer(admin_token))
+    tid = r.json()["id"]
+    tpl_detail = client.get(f"/api/boq/templates/{tid}",
+                            headers=bearer(admin_token)).json()
+    # Ambil ID item pertama saja (Bukhur) -- skip Al Baik.
+    bukhur = next(i for i in tpl_detail["items"] if "Bukhur" in i["item_name"])
+
+    b = _mk_boq(client, admin_token, name="TEST BOQ Phase6d-b-BonusPartial-Target",
+                target_pax=1, margin=0)
+    r = client.post(f"/api/boq/templates/{tid}/apply/{b['id']}",
+                    json={"include_ids": [bukhur["id"]]},
+                    headers=bearer(admin_token))
+    assert r.status_code == 200
+    # 1 template item optional ter-copy dgn sell > hpp -> 2 BOQ items.
+    assert r.json()["applied"] == 2
+
+    detail = client.get(f"/api/boq/{b['id']}", headers=bearer(admin_token)).json()
+    names = [i["item_name"] for i in detail["items"]]
+    assert any("Bukhur" in n for n in names)
+    assert not any("Al Baik" in n for n in names)
+
+
+def test_apply_mixed_required_and_optional_include_ids(client, admin_token):
+    """Template dgn mix: 1 required + 2 optional. include_ids=[opt#1 only].
+    Result: required + opt#1 ter-copy, opt#2 skipped."""
+    tid = _mk_template_with_items(client, admin_token, "TEST TPL Phase6d-b-Mix", [
+        {"category": "hotel_mekkah", "item_name": "Hotel Wajib",
+         "unit": "per_pax", "quantity": 1, "unit_price": 5_000_000,
+         "bucket": "hpp", "optional": False},
+        {"category": "lain", "item_name": "Bonus A",
+         "unit": "per_pax", "quantity": 1, "unit_price": 100_000,
+         "bucket": "hpp", "optional": True},
+        {"category": "lain", "item_name": "Bonus B",
+         "unit": "per_pax", "quantity": 1, "unit_price": 200_000,
+         "bucket": "hpp", "optional": True},
+    ])
+    tpl = client.get(f"/api/boq/templates/{tid}", headers=bearer(admin_token)).json()
+    bonus_a = next(i for i in tpl["items"] if i["item_name"] == "Bonus A")
+
+    b = _mk_boq(client, admin_token, name="TEST BOQ Phase6d-b-Mix-Target",
+                target_pax=1, margin=0)
+    r = client.post(f"/api/boq/templates/{tid}/apply/{b['id']}",
+                    json={"include_ids": [bonus_a["id"]]},
+                    headers=bearer(admin_token))
+    assert r.status_code == 200
+    detail = client.get(f"/api/boq/{b['id']}", headers=bearer(admin_token)).json()
+    names = [i["item_name"] for i in detail["items"]]
+    assert "Hotel Wajib" in names   # required ter-copy walau tidak di include_ids
+    assert "Bonus A" in names       # optional yg di-include
+    assert "Bonus B" not in names   # optional yg tidak di-include, skipped
