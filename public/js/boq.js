@@ -1038,6 +1038,11 @@ async function openBoqTemplateForm(tid) {
                 category: it.category, item_name: it.item_name, unit: it.unit,
                 quantity: it.quantity, unit_price: it.unit_price,
                 vendor_name: it.vendor_name || '', note: it.note || '',
+                // Phase 6d-c: bucket + sell_price + variant + optional.
+                bucket: it.bucket || 'hpp',
+                sell_price: it.sell_price,
+                variant: it.variant || '',
+                optional: !!it.optional,
             }));
         } catch (e) { return _toast('Gagal load template: ' + e.message, 'error'); }
     } else {
@@ -1045,39 +1050,63 @@ async function openBoqTemplateForm(tid) {
         document.getElementById('boq-tmpl-form-id').value = '';
         document.getElementById('boq-tmpl-form-name').value = '';
         document.getElementById('boq-tmpl-form-desc').value = '';
-        __boqTmplFormItems = [_blankItem()];
+        __boqTmplFormItems = [_blankTmplItem()];
     }
     _renderTmplFormItems();
     openModal('modal-boq-tmpl-form');
 }
 
-function addTmplFormItem() { __boqTmplFormItems.push(_blankItem()); _renderTmplFormItems(); }
+// Phase 6d-c: template blank item includes sell_price/variant/optional fields.
+function _blankTmplItem() {
+    return {
+        bucket: 'hpp', category: 'hotel_mekkah', item_name: '', unit: 'per_pax',
+        quantity: 1, unit_price: 0, vendor_name: '', note: '',
+        sell_price: null, variant: '', optional: false,
+    };
+}
+function addTmplFormItem() { __boqTmplFormItems.push(_blankTmplItem()); _renderTmplFormItems(); }
 function removeTmplFormItem(idx) { __boqTmplFormItems.splice(idx, 1); _renderTmplFormItems(); }
 function _updateTmplFormItem(idx, field, value) {
     if (!__boqTmplFormItems[idx]) return;
     if (['quantity', 'unit_price'].includes(field)) value = parseFloat(value) || 0;
+    if (field === 'sell_price') value = value === '' ? null : parseFloat(value) || 0;
+    if (field === 'optional') value = !!value;
     __boqTmplFormItems[idx][field] = value;
 }
 function _renderTmplFormItems() {
     const tbody = document.getElementById('boq-tmpl-form-items');
     if (!tbody) return;
-    tbody.innerHTML = __boqTmplFormItems.map((it, idx) => `<tr>
+    tbody.innerHTML = __boqTmplFormItems.map((it, idx) => {
+        const bkt = it.bucket || 'hpp';
+        const bStyle = (typeof BOQ_BUCKET_STYLE !== 'undefined')
+            ? (BOQ_BUCKET_STYLE[bkt] || BOQ_BUCKET_STYLE.hpp)
+            : { cls: '' };
+        return `<tr>
+        <td class="px-1 py-1">
+            <select class="w-full border rounded px-1 py-1 text-xs ${bStyle.cls}" onchange="_updateTmplFormItem(${idx},'bucket',this.value)" title="Bucket target">
+                ${BOQ_BUCKETS.map(b => `<option value="${b}" ${bkt===b?'selected':''}>${BOQ_BUCKET_LABEL[b]}</option>`).join('')}
+            </select>
+        </td>
         <td class="px-1 py-1">
             <select class="w-full border rounded px-1 py-1 text-xs" onchange="_updateTmplFormItem(${idx},'category',this.value)">
                 ${BOQ_CATEGORIES.map(c => `<option value="${c}" ${it.category===c?'selected':''}>${BOQ_CATEGORY_LABEL[c]}</option>`).join('')}
             </select>
         </td>
         <td class="px-1 py-1"><input type="text" value="${_esc(it.item_name)}" class="w-full border rounded px-2 py-1 text-xs" placeholder="Nama item" oninput="_updateTmplFormItem(${idx},'item_name',this.value)"/></td>
+        <td class="px-1 py-1"><input type="text" value="${_esc(it.variant || '')}" class="w-full border rounded px-1 py-1 text-xs" placeholder="Minimalis / Full Set / dst" oninput="_updateTmplFormItem(${idx},'variant',this.value)" title="Subcategory variant"/></td>
         <td class="px-1 py-1">
             <select class="w-full border rounded px-1 py-1 text-xs" onchange="_updateTmplFormItem(${idx},'unit',this.value)">
                 ${BOQ_UNITS.map(u => `<option value="${u.value}" ${it.unit===u.value?'selected':''}>${u.label}</option>`).join('')}
             </select>
         </td>
-        <td class="px-1 py-1"><input type="number" step="0.01" value="${it.quantity}" class="w-16 border rounded px-1 py-1 text-xs text-right" oninput="_updateTmplFormItem(${idx},'quantity',this.value)"/></td>
-        <td class="px-1 py-1"><input type="number" value="${it.unit_price}" class="w-28 border rounded px-1 py-1 text-xs text-right" oninput="_updateTmplFormItem(${idx},'unit_price',this.value)"/></td>
+        <td class="px-1 py-1"><input type="number" step="0.01" value="${it.quantity}" class="w-14 border rounded px-1 py-1 text-xs text-right" oninput="_updateTmplFormItem(${idx},'quantity',this.value)"/></td>
+        <td class="px-1 py-1"><input type="number" value="${it.unit_price}" class="w-24 border rounded px-1 py-1 text-xs text-right" oninput="_updateTmplFormItem(${idx},'unit_price',this.value)" title="HPP / biaya"/></td>
+        <td class="px-1 py-1"><input type="number" value="${it.sell_price ?? ''}" class="w-24 border rounded px-1 py-1 text-xs text-right bg-emerald-50" oninput="_updateTmplFormItem(${idx},'sell_price',this.value)" placeholder="opsional" title="Harga jual per item -- kalau > HPP, saat apply akan auto-buat margin item"/></td>
+        <td class="px-1 py-1 text-center"><input type="checkbox" ${it.optional ? 'checked' : ''} onchange="_updateTmplFormItem(${idx},'optional',this.checked)" title="Kalau di-check, item ini opsional saat template di-apply"/></td>
         <td class="px-1 py-1"><input type="text" value="${_esc(it.vendor_name || '')}" class="w-full border rounded px-1 py-1 text-xs" placeholder="opsional" oninput="_updateTmplFormItem(${idx},'vendor_name',this.value)"/></td>
         <td class="px-1 py-1 text-center"><button type="button" onclick="removeTmplFormItem(${idx})" class="text-red-600 hover:text-red-800 text-xs"><i data-lucide="x" class="w-3.5 h-3.5"></i></button></td>
-    </tr>`).join('') || `<tr><td colspan="7" class="text-center text-xs text-gray-400 py-3">Belum ada item.</td></tr>`;
+    </tr>`;
+    }).join('') || `<tr><td colspan="11" class="text-center text-xs text-gray-400 py-3">Belum ada item.</td></tr>`;
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
@@ -1085,7 +1114,22 @@ async function saveBoqTemplate() {
     const tid = document.getElementById('boq-tmpl-form-id').value;
     const name = document.getElementById('boq-tmpl-form-name').value.trim();
     if (!name) return _toast('Nama template wajib diisi.', 'error');
-    const items = (__boqTmplFormItems || []).filter(it => it.item_name && it.category);
+    // Phase 6d-c: serialize new fields (bucket, sell_price, variant, optional).
+    const items = (__boqTmplFormItems || [])
+        .filter(it => it.item_name && it.category)
+        .map(it => ({
+            bucket: it.bucket || 'hpp',
+            category: it.category,
+            item_name: it.item_name,
+            unit: it.unit,
+            quantity: it.quantity,
+            unit_price: it.unit_price,
+            vendor_name: it.vendor_name || '',
+            note: it.note || '',
+            sell_price: it.sell_price != null && it.sell_price !== '' ? it.sell_price : null,
+            variant: it.variant || null,
+            optional: it.optional ? 1 : 0,
+        }));
     const body = {
         name, description: document.getElementById('boq-tmpl-form-desc').value, items,
     };
@@ -1138,23 +1182,167 @@ async function openTemplatePicker() {
     openModal('modal-boq-tmpl-picker');
 }
 
+// Phase 6d-c: state utk template picker + optional checklist.
+let __boqTmplLoadingId = null;    // template id yg sedang dipilih items-nya
+let __boqTmplLoadingItems = [];   // items dari template (utk checklist render)
+
 async function loadTemplateIntoBoqForm(tid) {
     const has = (__boqFormItems || []).some(it => it.item_name);
     if (has && !confirm('Load template = replace semua items yang sudah diinput. Yakin?')) return;
     try {
         const r = await authFetch(`/boq/templates/${tid}`);
         const t = await r.json();
-        __boqFormItems = (t.items || []).map(it => ({
-            category: it.category, item_name: it.item_name, unit: it.unit,
-            quantity: it.quantity, unit_price: it.unit_price,
-            vendor_name: it.vendor_name || '', note: it.note || '',
-        }));
-        if (!__boqFormItems.length) __boqFormItems = [_blankItem()];
-        _renderBoqFormItems();
-        closeModal('modal-boq-tmpl-picker');
-        _toast(`${t.items?.length || 0} item ter-load dari template "${t.name}".`, 'success');
+        __boqTmplLoadingId = tid;
+        __boqTmplLoadingItems = t.items || [];
+        // Phase 6d-c: kalau template punya items optional, tampilkan checklist
+        // supaya user pilih mana yg mau di-load. Kalau semua required, langsung
+        // apply.
+        const hasOptional = __boqTmplLoadingItems.some(i => i.optional);
+        if (hasOptional) {
+            _renderTmplLoadChecklist(t);
+            closeModal('modal-boq-tmpl-picker');
+            openModal('modal-boq-tmpl-checklist');
+        } else {
+            _applyLoadedTemplateItems(__boqTmplLoadingItems);
+            closeModal('modal-boq-tmpl-picker');
+            _toast(`${__boqTmplLoadingItems.length} item ter-load dari template "${t.name}".`, 'success');
+        }
     } catch (e) {
         _toast('Load gagal: ' + (e.message || e), 'error');
+    }
+}
+
+// Render checklist utk items dari template (kalau ada optional).
+function _renderTmplLoadChecklist(tmpl) {
+    const title = document.getElementById('boq-tmpl-checklist-title');
+    if (title) title.innerText = `Pilih Items: ${tmpl.name}`;
+    const body = document.getElementById('boq-tmpl-checklist-body');
+    if (!body) return;
+    body.innerHTML = __boqTmplLoadingItems.map((it, idx) => {
+        const bkt = it.bucket || 'hpp';
+        const bStyle = (typeof BOQ_BUCKET_STYLE !== 'undefined')
+            ? (BOQ_BUCKET_STYLE[bkt] || BOQ_BUCKET_STYLE.hpp)
+            : { cls: 'bg-gray-100 text-gray-700' };
+        const req = !it.optional;
+        const marginNote = (it.sell_price && it.sell_price > it.unit_price)
+            ? ` + <b class="text-emerald-700">margin ${formatRp(it.sell_price - it.unit_price)}</b>`
+            : '';
+        return `<label class="flex items-start gap-2 p-2 border rounded hover:bg-slate-50 ${req ? 'bg-slate-50' : ''}">
+            <input type="checkbox" data-tmpl-idx="${idx}" ${req ? 'checked disabled' : 'checked'} class="mt-0.5"/>
+            <div class="flex-1">
+                <div class="flex items-center gap-2">
+                    <b class="text-sm">${_esc(it.item_name)}</b>
+                    ${it.variant ? `<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px]">${_esc(it.variant)}</span>` : ''}
+                    <span class="px-1.5 py-0.5 rounded ${bStyle.cls} text-[10px] font-bold">${BOQ_BUCKET_LABEL[bkt]}</span>
+                    ${req ? '<span class="text-[10px] px-1 py-0.5 bg-gray-200 text-gray-700 rounded">WAJIB</span>'
+                          : '<span class="text-[10px] px-1 py-0.5 bg-blue-100 text-blue-700 rounded">Opsional</span>'}
+                </div>
+                <div class="text-[11px] text-gray-500">
+                    ${_esc(BOQ_CATEGORY_LABEL[it.category] || it.category)}
+                    &middot; ${_esc(it.unit)} &times; ${it.quantity}
+                    &middot; HPP <b class="tabular-nums">${formatRp(it.unit_price)}</b>${marginNote}
+                </div>
+            </div>
+        </label>`;
+    }).join('');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+// Confirm handler untuk checklist modal.
+function confirmLoadTemplateWithChecklist() {
+    const checks = document.querySelectorAll('#boq-tmpl-checklist-body input[type="checkbox"][data-tmpl-idx]');
+    const chosenIdx = new Set();
+    checks.forEach(c => { if (c.checked) chosenIdx.add(parseInt(c.dataset.tmplIdx)); });
+    const chosen = __boqTmplLoadingItems.filter((_, i) => chosenIdx.has(i));
+    if (!chosen.length) return _toast('Pilih minimal 1 item.', 'error');
+    _applyLoadedTemplateItems(chosen);
+    closeModal('modal-boq-tmpl-checklist');
+    _toast(`${chosen.length} item ter-load ke BOQ form.`, 'success');
+}
+
+// Convert template items ke __boqFormItems dgn auto-margin split
+// (mirror backend boq_template_apply Phase 6d-b).
+function _applyLoadedTemplateItems(items) {
+    const out = [];
+    for (const it of items) {
+        const hpp = parseFloat(it.unit_price) || 0;
+        const sell = it.sell_price != null ? parseFloat(it.sell_price) : null;
+        const bkt = it.bucket || 'hpp';
+        // Row 1: item HPP.
+        out.push({
+            bucket: bkt, category: it.category, item_name: it.item_name,
+            unit: it.unit, quantity: it.quantity || 1, unit_price: hpp,
+            vendor_name: it.vendor_name || '', note: it.note || '',
+        });
+        // Row 2: margin item kalau sell > hpp.
+        if (sell !== null && sell > hpp) {
+            out.push({
+                bucket: 'margin', category: it.category,
+                item_name: `${it.item_name} (Margin)`,
+                unit: it.unit, quantity: it.quantity || 1,
+                unit_price: sell - hpp,
+                vendor_name: it.vendor_name || '',
+                note: `Auto dari template: sell ${sell} - HPP ${hpp}`,
+            });
+        }
+    }
+    __boqFormItems = out.length ? out : [_blankItem()];
+    _renderBoqFormItems();
+}
+
+
+// ---------------------------------------------------------------------------
+// Phase 6d-c: Import Preset Template
+// ---------------------------------------------------------------------------
+async function openPresetImportModal() {
+    try {
+        const r = await authFetch('/boq/templates/presets/available');
+        const j = await r.json();
+        const box = document.getElementById('boq-preset-list');
+        if (!box) return _toast('Modal preset tidak ditemukan.', 'error');
+        const presets = j.presets || [];
+        if (!presets.length) {
+            box.innerHTML = `<div class="text-center text-gray-400 py-6 text-sm">Belum ada preset tersedia.</div>`;
+        } else {
+            box.innerHTML = presets.map(p => `
+                <div class="border rounded-lg p-4 hover:bg-emerald-50/40">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="flex-1">
+                            <div class="font-bold text-sm text-slate-800">${_esc(p.name)}</div>
+                            <div class="text-[11px] text-gray-500 mt-1">${_esc(p.description || '')}</div>
+                            <div class="text-[10px] text-gray-400 mt-1">${p.item_count} item &middot; key: <code>${_esc(p.key)}</code></div>
+                        </div>
+                        <button onclick="importPresetTemplate('${_esc(p.key)}', ${JSON.stringify(p.name)})"
+                                class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold whitespace-nowrap">
+                            <i data-lucide="download" class="w-3 h-3 inline"></i> Import
+                        </button>
+                    </div>
+                </div>`).join('');
+        }
+        openModal('modal-boq-preset');
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    } catch (e) {
+        _toast('Gagal load preset: ' + (e.message || e), 'error');
+    }
+}
+
+async function importPresetTemplate(presetKey, defaultName) {
+    const name = prompt(
+        `Nama template baru dari preset "${presetKey}":`,
+        defaultName || presetKey,
+    );
+    if (!name || !name.trim()) return;
+    try {
+        const r = await authFetch('/boq/templates/preset', {
+            method: 'POST',
+            body: JSON.stringify({ preset_key: presetKey, name: name.trim() }),
+        });
+        const j = await r.json();
+        _toast(`Template "${name}" dibuat dengan ${j.items_created} item.`, 'success');
+        closeModal('modal-boq-preset');
+        await openBoqTemplateManager();
+    } catch (e) {
+        _toast('Import preset gagal: ' + (e.message || e), 'error');
     }
 }
 

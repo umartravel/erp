@@ -3898,6 +3898,7 @@
                     <i data-lucide="layout-template" class="w-5 h-5 text-slate-700"></i>Kelola Template BOQ
                 </h3>
                 <div class="flex items-center gap-2">
+                    <button onclick="openPresetImportModal()" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs font-bold" title="Import template dari preset built-in"><i data-lucide="download" class="w-3.5 h-3.5 inline"></i> Import Preset</button>
                     <button onclick="openBoqTemplateForm(null)" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold"><i data-lucide="plus" class="w-3.5 h-3.5 inline"></i> Template Baru</button>
                     <button onclick="closeModal('modal-boq-tmpl-manager')" class="text-gray-400 hover:text-gray-700"><i data-lucide="x" class="w-5 h-5"></i></button>
                 </div>
@@ -3944,11 +3945,15 @@
                 <table class="w-full text-xs">
                     <thead class="bg-gray-50 text-gray-500">
                         <tr>
-                            <th class="px-1 py-1 text-left w-32">Kategori</th>
+                            <th class="px-1 py-1 text-left w-28" title="Layer di formula harga jual">Bucket</th>
+                            <th class="px-1 py-1 text-left w-28">Kategori</th>
                             <th class="px-1 py-1 text-left">Item</th>
-                            <th class="px-1 py-1 text-left w-32">Unit</th>
-                            <th class="px-1 py-1 text-right w-16">Qty</th>
-                            <th class="px-1 py-1 text-right w-28">Harga Satuan</th>
+                            <th class="px-1 py-1 text-left w-24" title="Subcategory bebas (Minimalis / Full Set / dst)">Variant</th>
+                            <th class="px-1 py-1 text-left w-28">Unit</th>
+                            <th class="px-1 py-1 text-right w-14">Qty</th>
+                            <th class="px-1 py-1 text-right w-24" title="Harga pokok/biaya per item">HPP</th>
+                            <th class="px-1 py-1 text-right w-24 bg-emerald-50" title="Harga jual per item (opsional) -- kalau &gt; HPP, saat apply auto-generate item margin">Sell Price</th>
+                            <th class="px-1 py-1 text-center w-14" title="Kalau di-check, item ini opsional saat template di-apply (user pilih di checklist)">Opsional</th>
                             <th class="px-1 py-1 text-left w-24">Vendor</th>
                             <th class="w-8"></th>
                         </tr>
@@ -3977,6 +3982,47 @@
                     Load = <b>replace</b> items yang sudah diinput di form. Kalau mau append, cancel dan tambah item manual atau apply template dari BOQ detail setelah save.
                 </div>
                 <div id="boq-tmpl-picker-list" class="space-y-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Phase 6d-c Preset Import (pilih preset built-in utk create template siap-pakai) -->
+    <div id="modal-boq-preset" class="fixed inset-0 modal-bg z-[60] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+            <div class="border-b px-6 py-4 flex items-center justify-between">
+                <h3 class="font-bold text-lg flex items-center gap-2">
+                    <i data-lucide="download" class="w-5 h-5 text-amber-600"></i>Import Preset Template
+                </h3>
+                <button onclick="closeModal('modal-boq-preset')" class="text-gray-400 hover:text-gray-700"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="p-6 overflow-auto flex-1">
+                <div class="text-xs text-slate-600 bg-amber-50 border-l-2 border-amber-400 px-3 py-2 mb-3 rounded">
+                    Preset berisi items siap-pakai dgn HPP + harga jual + variant. Setelah import, template bisa di-edit/duplicate seperti biasa. Bisa dipilih dari menu <b>Kelola Template</b>.
+                </div>
+                <div id="boq-preset-list" class="space-y-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Phase 6d-c Template Load Checklist (untuk template yg punya items optional) -->
+    <div id="modal-boq-tmpl-checklist" class="fixed inset-0 modal-bg z-[70] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+            <div class="border-b px-6 py-4 flex items-center justify-between">
+                <h3 class="font-bold text-lg flex items-center gap-2">
+                    <i data-lucide="check-square" class="w-5 h-5 text-blue-600"></i>
+                    <span id="boq-tmpl-checklist-title">Pilih Items Template</span>
+                </h3>
+                <button onclick="closeModal('modal-boq-tmpl-checklist')" class="text-gray-400 hover:text-gray-700"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="p-6 overflow-auto flex-1">
+                <div class="text-xs text-slate-600 bg-blue-50 border-l-2 border-blue-400 px-3 py-2 mb-3 rounded">
+                    Items <b>WAJIB</b> auto-check (tidak bisa uncheck). Items <b>Opsional</b> bisa Anda pilih. Item dgn <em>sell price &gt; HPP</em> akan auto-generate baris margin.
+                </div>
+                <div id="boq-tmpl-checklist-body" class="space-y-1.5"></div>
+            </div>
+            <div class="border-t px-6 py-3 flex justify-end gap-2">
+                <button onclick="closeModal('modal-boq-tmpl-checklist')" class="px-4 py-2 bg-gray-100 rounded text-sm">Batal</button>
+                <button onclick="confirmLoadTemplateWithChecklist()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-bold"><i data-lucide="download" class="w-4 h-4 inline"></i> Load ke Form</button>
             </div>
         </div>
     </div>
@@ -9033,6 +9079,6 @@
     <script src="js/ops-home.js?v=20260827e"></script>
     <script src="js/finance-home.js?v=20260827e"></script>
     <script src="js/mgmt-home.js?v=20260827e"></script>
-    <script src="js/boq.js?v=20260902-6c"></script>
+    <script src="js/boq.js?v=20260903-6d"></script>
 </body>
 </html>
