@@ -368,6 +368,167 @@
             font-size: 0.8rem;
             margin-top: 0.25rem;
         }
+        /* Phase 6e: Tab UI reusable untuk modul-panjang.
+           Pola: <div class="umar-tabs" data-tab-key="finance">
+                     <div class="umar-tab-strip">
+                         <button class="umar-tab" data-tab="a">Label A</button>
+                         <button class="umar-tab" data-tab="b">Label B</button>
+                     </div>
+                     <div class="umar-tab-panel" data-tab="a">...</div>
+                     <div class="umar-tab-panel" data-tab="b">...</div>
+                 </div>
+           JS: umarInitTabs(container). Active tab persist di localStorage
+           dgn key "umar-tab-<data-tab-key>". */
+        .umar-tab-strip {
+            display: flex;
+            gap: 4px;
+            padding: 6px;
+            background: #F4F1EA;
+            border-radius: 0.75rem;
+            margin-bottom: 1rem;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .umar-tab-strip::-webkit-scrollbar { display: none; }
+        .umar-tab {
+            flex: 0 0 auto;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: #6b7280;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: color 0.15s, background 0.15s, box-shadow 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .umar-tab:hover { color: #78350F; }
+        .umar-tab.is-active {
+            color: #78350F;
+            background: #ffffff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        .umar-tab-badge {
+            background: #DC2626;
+            color: white;
+            font-size: 0.625rem;
+            font-weight: 700;
+            padding: 0 6px;
+            border-radius: 999px;
+            min-width: 18px;
+            text-align: center;
+        }
+        .umar-tab-panel[hidden] { display: none; }
+        /* Phase 6f: Card UI konsisten dgn tampilan Home (rounded generous,
+           border cream, header icon+judul+badge, empty state prominent).
+           Pemakaian:
+             <div class="umar-card">
+               <div class="umar-card-header">
+                 <h3 class="umar-card-title"><i data-lucide="..."></i>Judul</h3>
+                 <span class="umar-card-badge">3</span>  (opsional)
+                 <div class="umar-card-actions">...tools...</div>  (opsional)
+               </div>
+               <div class="umar-card-body">konten</div>
+             </div>
+        */
+        .umar-card {
+            background: #ffffff;
+            border: 1px solid #F4F1EA;
+            border-radius: 1rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            overflow: hidden;
+        }
+        .umar-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid #F4F1EA;
+            flex-wrap: wrap;
+        }
+        .umar-card-title {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: #1D1D1B;
+            margin: 0;
+        }
+        .umar-card-title i[data-lucide] {
+            color: #B8860B;
+        }
+        .umar-card-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 24px;
+            height: 22px;
+            padding: 0 8px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            background: #F4F1EA;
+            color: #78350F;
+        }
+        .umar-card-badge.is-alert { background: #FEE2E2; color: #B91C1C; }
+        .umar-card-badge.is-warn  { background: #FEF3C7; color: #92400E; }
+        .umar-card-badge.is-ok    { background: #DCFCE7; color: #166534; }
+        .umar-card-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .umar-card-body { padding: 1rem 1.25rem; }
+        .umar-card-body-tight { padding: 0.5rem; }
+        .umar-card-hint {
+            padding: 0 1.25rem 0.75rem;
+            font-size: 0.75rem;
+            color: #6B7280;
+            margin-top: -0.25rem;
+        }
+        /* Phase 6f: Filter chip pill (toggle group). Pemakaian:
+             <div class="umar-filter-chips" data-chip-key="finance-piutang">
+               <button class="umar-filter-chip" data-value="all">Semua</button>
+               <button class="umar-filter-chip" data-value="Lunas">Lunas</button>
+             </div>
+           JS: umarInitFilterChips(container, {tableSelector, matchCol, onChange}).
+           Bisa langsung filter <tbody tr> berdasarkan data attribute, atau
+           pakai onChange callback untuk re-fetch.
+        */
+        .umar-filter-chips {
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+            padding: 3px;
+            background: #F4F1EA;
+            border-radius: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .umar-filter-chip {
+            padding: 4px 12px;
+            border-radius: 0.375rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #6B7280;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: color 0.15s, background 0.15s, box-shadow 0.15s;
+        }
+        .umar-filter-chip:hover { color: #78350F; }
+        .umar-filter-chip.is-active {
+            color: #78350F;
+            background: #ffffff;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+        }
     </style>
 </head>
 <body class="text-gray-800 antialiased overflow-hidden h-screen flex">
@@ -450,6 +611,9 @@
                 </a>
                 <a href="#" id="nav-mgmt-home" onclick="showPage('mgmt-home')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
                     <i data-lucide="crown" class="w-4 h-4"></i> Home Management
+                </a>
+                <a href="#" id="nav-mgmt-targets" onclick="showPage('mgmt-targets')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
+                    <i data-lucide="target" class="w-4 h-4"></i> Target Perusahaan & Sales
                 </a>
                 <a href="#" id="nav-risk-register" onclick="showPage('risk-register')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
                     <i data-lucide="alert-triangle" class="w-4 h-4"></i> Risk Register
@@ -1287,25 +1451,33 @@
                     <a href="/daftar" target="_blank" class="text-[11px] px-3 py-1.5 rounded shrink-0" style="background:var(--umar-gold);color:#1D1D1B;font-weight:600;"><i data-lucide="external-link" class="w-3.5 h-3.5 inline"></i> Form Publik</a>
                 </div>
                 <div id="inbox-stats" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
-                <div class="bg-white rounded-xl shadow-sm border p-6">
-                    <div class="flex justify-between items-center mb-4 border-b pb-4 gap-4">
-                        <div class="text-xs text-gray-500 font-medium">Antrian Pendaftaran</div>
+                <div class="umar-card">
+                    <div class="umar-card-header">
+                        <h3 class="umar-card-title"><i data-lucide="inbox" class="w-5 h-5"></i>Antrian Pendaftaran</h3>
+                        <div class="umar-filter-chips" data-chip-key="inbox-status">
+                            <button type="button" class="umar-filter-chip" data-value="all">Semua</button>
+                            <button type="button" class="umar-filter-chip" data-value="Pending">Pending</button>
+                            <button type="button" class="umar-filter-chip" data-value="Diterima">Diterima</button>
+                            <button type="button" class="umar-filter-chip" data-value="Ditolak">Ditolak</button>
+                        </div>
                     </div>
-                    <p class="text-xs text-gray-500 mb-4">Data mentah dari form publik (<code>/daftar</code>) &mdash; belum tercatat sebagai jamaah sampai Anda <b>Terima</b>. Cocokkan &amp; lengkapi data sebelum diproses.</p>
-                    <div class="overflow-auto rounded-lg border border-gray-100">
-                        <table class="w-full text-sm text-left">
-                            <thead class="text-xs text-gray-500 uppercase bg-gray-50">
-                                <tr>
-                                    <th class="px-4 py-3">Tanggal Masuk</th>
-                                    <th class="px-4 py-3">Nama</th>
-                                    <th class="px-4 py-3">No. WhatsApp</th>
-                                    <th class="px-4 py-3">Kewarganegaraan</th>
-                                    <th class="px-4 py-3">Status</th>
-                                    <th class="px-4 py-3 text-center">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody id="table-inbox" class="divide-y"></tbody>
-                        </table>
+                    <p class="umar-card-hint">Data mentah dari form publik (<code>/daftar</code>) &mdash; belum tercatat sebagai jamaah sampai Anda <b>Terima</b>. Cocokkan &amp; lengkapi data sebelum diproses.</p>
+                    <div class="umar-card-body">
+                        <div class="overflow-auto rounded-lg border border-gray-100">
+                            <table class="w-full text-sm text-left" data-filter-target="status">
+                                <thead class="text-xs text-gray-500 uppercase bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-3">Tanggal Masuk</th>
+                                        <th class="px-4 py-3">Nama</th>
+                                        <th class="px-4 py-3">No. WhatsApp</th>
+                                        <th class="px-4 py-3">Kewarganegaraan</th>
+                                        <th class="px-4 py-3">Status</th>
+                                        <th class="px-4 py-3 text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-inbox" class="divide-y"></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1322,12 +1494,21 @@
                         </div>
                     </div>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div class="p-6 border-b flex justify-between items-center bg-gray-50/50 gap-3 flex-wrap">
-                        <div class="text-xs text-gray-500 font-medium">Filter &amp; pencarian</div>
-                        <div class="flex gap-2">
+                <div class="umar-card">
+                    <div class="umar-card-header">
+                        <h3 class="umar-card-title"><i data-lucide="filter" class="w-5 h-5"></i>Filter &amp; Pencarian</h3>
+                        <div class="umar-card-actions">
                             <select id="filter-jamaah-cs" class="px-3 py-2 text-sm border rounded-lg bg-white" onchange="renderTables()">
                                 <option value="">Semua CS</option>
+                            </select>
+                            <select id="filter-jamaah-region" class="px-3 py-2 text-sm border rounded-lg bg-white" onchange="renderTables()">
+                                <option value="">Semua Daerah</option>
+                            </select>
+                            <select id="filter-jamaah-package" class="px-3 py-2 text-sm border rounded-lg bg-white" onchange="renderTables()">
+                                <option value="">Semua Paket</option>
+                            </select>
+                            <select id="filter-jamaah-status" class="px-3 py-2 text-sm border rounded-lg bg-white" onchange="renderTables()">
+                                <option value="">Semua Status</option>
                             </select>
                             <input type="text" id="search-jamaah" placeholder="Cari Nama/NIK..." class="px-4 py-2 text-sm border rounded-lg" onkeyup="filterTable('table-jamaah', this.value)">
                         </div>
@@ -1752,116 +1933,187 @@
                         </div>
                     </div>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
-                    <div class="p-4 border-b flex items-center justify-between">
-                        <div class="text-xs text-gray-500 font-medium">Panel Keuangan</div>
+                <!-- Phase 6e: tab UI (piutang / komisi / ledger / analitik).
+                     Ganti 1 mega-card dgn inner-scroll (bikin double scrollbar
+                     yg bikin binggung "scroll yang mana") -> 4 tab natural
+                     scroll page. Active tab persist di localStorage. -->
+                <div class="umar-tabs" id="finance-tabs" data-tab-key="finance">
+                    <div class="umar-tab-strip">
+                        <button type="button" class="umar-tab" data-tab="piutang">
+                            <i data-lucide="wallet-cards" class="w-4 h-4"></i>Piutang Jamaah
+                        </button>
+                        <button type="button" class="umar-tab" data-tab="refund">
+                            <i data-lucide="undo-2" class="w-4 h-4"></i>Refund
+                        </button>
+                        <button type="button" class="umar-tab" data-tab="komisi">
+                            <i data-lucide="handshake" class="w-4 h-4"></i>Komisi Agen
+                        </button>
+                        <button type="button" class="umar-tab" data-tab="ledger">
+                            <i data-lucide="book-open" class="w-4 h-4"></i>Buku Kas & Cost
+                        </button>
+                        <button type="button" class="umar-tab" data-tab="analitik">
+                            <i data-lucide="bar-chart-3" class="w-4 h-4"></i>Analitik
+                        </button>
                     </div>
-                    <div class="p-4 space-y-8 h-[calc(100vh-200px)] overflow-y-auto custom-scrollbar">
-                        
-                        <!-- Bagian Pembayaran Jamaah -->
-                        <div class="bg-white rounded-lg border p-4">
-                            <h4 class="font-medium text-gray-700 mb-3 border-b pb-2">Tagihan & Pembayaran Jamaah</h4>
-                            <div class="overflow-x-auto">
-                                <table class="w-full text-sm text-left border">
-                                    <thead class="text-xs text-gray-500 uppercase bg-gray-50"><tr><th class="px-4 py-3">Nama Jamaah</th><th class="px-4 py-3">Total Tagihan</th><th class="px-4 py-3">Terbayar</th><th class="px-4 py-3">Status Gatekeeper</th><th class="px-4 py-3 text-center">Aksi / Verifikasi</th></tr></thead>
-                                    <tbody id="table-finance" class="divide-y"></tbody>
-                                </table>
+
+                    <!-- Tab: Piutang Jamaah -->
+                    <div class="umar-tab-panel" data-tab="piutang">
+                        <div class="umar-card">
+                            <div class="umar-card-header">
+                                <h3 class="umar-card-title"><i data-lucide="wallet-cards" class="w-5 h-5"></i>Tagihan & Pembayaran Jamaah</h3>
+                                <div class="umar-filter-chips" id="fin-chips-piutang" data-chip-key="finance-piutang">
+                                    <button type="button" class="umar-filter-chip" data-value="all">Semua</button>
+                                    <button type="button" class="umar-filter-chip" data-value="belum">Belum Bayar</button>
+                                    <button type="button" class="umar-filter-chip" data-value="cicilan">Cicilan / DP</button>
+                                    <button type="button" class="umar-filter-chip" data-value="lunas">Lunas</button>
+                                </div>
+                            </div>
+                            <div class="umar-card-body">
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-sm text-left border" data-filter-target="piutang">
+                                        <thead class="text-xs text-gray-500 uppercase bg-gray-50"><tr><th class="px-4 py-3">Nama Jamaah</th><th class="px-4 py-3">Total Tagihan</th><th class="px-4 py-3">Terbayar</th><th class="px-4 py-3">Status Gatekeeper</th><th class="px-4 py-3 text-center">Aksi / Verifikasi</th></tr></thead>
+                                        <tbody id="table-finance" class="divide-y"></tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Bagian Permintaan Refund -->
-                        <div class="bg-white rounded-lg border p-4">
-                            <h4 class="font-medium text-gray-700 mb-3 border-b pb-2 flex items-center justify-between">
-                                <span>Permintaan Refund</span>
-                                <span class="text-xs font-normal text-gray-400">CS ajukan &rarr; Manajemen setujui &rarr; Finance cairkan</span>
-                            </h4>
-                            <div class="overflow-x-auto">
-                                <table class="w-full text-sm text-left border">
-                                    <thead class="text-xs text-gray-500 uppercase bg-gray-50"><tr><th class="px-4 py-3">Nama Jamaah</th><th class="px-4 py-3">Nominal</th><th class="px-4 py-3">Alasan</th><th class="px-4 py-3">Status</th><th class="px-4 py-3 text-center">Aksi</th></tr></thead>
-                                    <tbody id="table-refund-requests" class="divide-y"></tbody>
-                                </table>
+                    <!-- Tab: Refund -->
+                    <div class="umar-tab-panel" data-tab="refund">
+                        <div class="umar-card">
+                            <div class="umar-card-header">
+                                <h3 class="umar-card-title"><i data-lucide="undo-2" class="w-5 h-5"></i>Permintaan Refund</h3>
+                                <div class="umar-filter-chips" id="fin-chips-refund" data-chip-key="finance-refund">
+                                    <button type="button" class="umar-filter-chip" data-value="all">Semua</button>
+                                    <button type="button" class="umar-filter-chip" data-value="Pending">Pending</button>
+                                    <button type="button" class="umar-filter-chip" data-value="Disetujui">Disetujui</button>
+                                    <button type="button" class="umar-filter-chip" data-value="Dicairkan">Dicairkan</button>
+                                    <button type="button" class="umar-filter-chip" data-value="Ditolak">Ditolak</button>
+                                </div>
+                            </div>
+                            <p class="umar-card-hint">CS ajukan &rarr; Manajemen setujui &rarr; Finance cairkan.</p>
+                            <div class="umar-card-body">
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-sm text-left border" data-filter-target="refund">
+                                        <thead class="text-xs text-gray-500 uppercase bg-gray-50"><tr><th class="px-4 py-3">Nama Jamaah</th><th class="px-4 py-3">Nominal</th><th class="px-4 py-3">Alasan</th><th class="px-4 py-3">Status</th><th class="px-4 py-3 text-center">Aksi</th></tr></thead>
+                                        <tbody id="table-refund-requests" class="divide-y"></tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Bagian Klaim Komisi Agen -->
-                        <div class="bg-white rounded-lg border p-4">
-                            <h4 class="font-medium text-gray-700 mb-3 border-b pb-2 flex items-center justify-between">
-                                <span>Klaim Komisi Agen</span>
-                                <span class="text-xs font-normal text-gray-400">Otomatis saat Lunas &rarr; Manajemen setujui &rarr; Finance cairkan</span>
-                            </h4>
-                            <div class="overflow-x-auto">
-                                <table class="w-full text-sm text-left border">
-                                    <thead class="text-xs text-gray-500 uppercase bg-gray-50"><tr><th class="px-4 py-3">Agen</th><th class="px-4 py-3">Jamaah</th><th class="px-4 py-3">Paket</th><th class="px-4 py-3">Nominal Komisi</th><th class="px-4 py-3">Status</th><th class="px-4 py-3 text-center">Aksi</th></tr></thead>
-                                    <tbody id="table-commission-claims" class="divide-y"></tbody>
-                                </table>
+                    <!-- Tab: Komisi Agen -->
+                    <div class="umar-tab-panel" data-tab="komisi">
+                        <div class="umar-card">
+                            <div class="umar-card-header">
+                                <h3 class="umar-card-title"><i data-lucide="handshake" class="w-5 h-5"></i>Klaim Komisi Agen</h3>
+                                <div class="umar-filter-chips" id="fin-chips-komisi" data-chip-key="finance-komisi">
+                                    <button type="button" class="umar-filter-chip" data-value="all">Semua</button>
+                                    <button type="button" class="umar-filter-chip" data-value="Pending">Pending</button>
+                                    <button type="button" class="umar-filter-chip" data-value="Disetujui">Disetujui</button>
+                                    <button type="button" class="umar-filter-chip" data-value="Dicairkan">Dicairkan</button>
+                                    <button type="button" class="umar-filter-chip" data-value="Ditolak">Ditolak</button>
+                                </div>
+                            </div>
+                            <p class="umar-card-hint">Otomatis saat Lunas &rarr; Manajemen setujui &rarr; Finance cairkan.</p>
+                            <div class="umar-card-body">
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-sm text-left border" data-filter-target="komisi">
+                                        <thead class="text-xs text-gray-500 uppercase bg-gray-50"><tr><th class="px-4 py-3">Agen</th><th class="px-4 py-3">Jamaah</th><th class="px-4 py-3">Paket</th><th class="px-4 py-3">Nominal Komisi</th><th class="px-4 py-3">Status</th><th class="px-4 py-3 text-center">Aksi</th></tr></thead>
+                                        <tbody id="table-commission-claims" class="divide-y"></tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Bagian Pengeluaran Operasional & Cashflow -->
+                    <!-- Tab: Buku Kas & Cost -->
+                    <div class="umar-tab-panel" data-tab="ledger">
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <div id="finance-write-panel" class="border rounded-xl p-4 bg-gray-50 hidden">
-                                <h4 class="font-medium text-gray-700 mb-4 border-b pb-2">Catat Pengeluaran (Cost)</h4>
-                                <form id="form-expense" class="space-y-4">
-                                    <div><label class="block text-xs text-gray-600">Kategori</label><select id="exp-cat" class="w-full p-2 border rounded text-sm bg-white select2-smart"><option value="operational">Operasional Kantor</option><option value="marketing">Marketing & Ads</option><option value="other">Biaya Lainnya</option></select></div>
-                                    <div><label class="block text-xs text-gray-600">Alokasi HPP Paket (Opsional)</label><select id="exp-pkg" class="w-full p-2 border rounded text-sm bg-white select2-smart"><option value="">-- Beban Umum Kantor Pribadi --</option></select></div>
-                                    <div><label class="block text-xs text-gray-600">Nominal (Rp)</label><input type="text" id="exp-amount" class="w-full p-2 border rounded text-sm" required oninput="formatCurrencyInput(this)"></div>
-                                    <div><label class="block text-xs text-gray-600">Keterangan Khusus</label><input type="text" id="exp-desc" class="w-full p-2 border rounded text-sm" required></div>
-                                    <button type="submit" class="w-full py-2 bg-orange-600 text-white rounded text-sm hover:bg-orange-700 font-medium shadow-sm">Simpan Pengeluaran</button>
-                                </form>
-                                
-                                <div class="mt-6 border-t border-gray-200 pt-4">
-                                    <h4 class="font-medium text-gray-700 mb-2">Automasi Penggajian Karyawan</h4>
-                                    <p class="text-xs text-gray-500 mb-3">Sistem akan memotong saldo berdasarkan total gaji pokok seluruh karyawan bulan ini ke dalam buku kas secara otomatis.</p>
-                                    <button onclick="processPayroll()" class="w-full py-2 bg-indigo-600 text-white rounded text-sm hover:bg-indigo-700 font-medium shadow-sm">Proses Pencairan Payroll</button>
+                            <div id="finance-write-panel" class="umar-card hidden">
+                                <div class="umar-card-header">
+                                    <h3 class="umar-card-title"><i data-lucide="receipt" class="w-5 h-5"></i>Catat Pengeluaran (Cost)</h3>
+                                </div>
+                                <div class="umar-card-body">
+                                    <form id="form-expense" class="space-y-4">
+                                        <div><label class="block text-xs text-gray-600">Kategori</label><select id="exp-cat" class="w-full p-2 border rounded text-sm bg-white select2-smart"><option value="operational">Operasional Kantor</option><option value="marketing">Marketing & Ads</option><option value="other">Biaya Lainnya</option></select></div>
+                                        <div><label class="block text-xs text-gray-600">Alokasi HPP Paket (Opsional)</label><select id="exp-pkg" class="w-full p-2 border rounded text-sm bg-white select2-smart"><option value="">-- Beban Umum Kantor Pribadi --</option></select></div>
+                                        <div><label class="block text-xs text-gray-600">Nominal (Rp)</label><input type="text" id="exp-amount" class="w-full p-2 border rounded text-sm" required oninput="formatCurrencyInput(this)"></div>
+                                        <div><label class="block text-xs text-gray-600">Keterangan Khusus</label><input type="text" id="exp-desc" class="w-full p-2 border rounded text-sm" required></div>
+                                        <button type="submit" class="w-full py-2 bg-orange-600 text-white rounded text-sm hover:bg-orange-700 font-medium shadow-sm">Simpan Pengeluaran</button>
+                                    </form>
+                                    <div class="mt-6 border-t border-gray-200 pt-4">
+                                        <h4 class="font-medium text-gray-700 mb-2 flex items-center gap-2"><i data-lucide="users" class="w-4 h-4" style="color:#B8860B;"></i>Automasi Penggajian Karyawan</h4>
+                                        <p class="text-xs text-gray-500 mb-3">Sistem akan memotong saldo berdasarkan total gaji pokok seluruh karyawan bulan ini ke dalam buku kas secara otomatis.</p>
+                                        <button onclick="processPayroll()" class="w-full py-2 bg-indigo-600 text-white rounded text-sm hover:bg-indigo-700 font-medium shadow-sm">Proses Pencairan Payroll</button>
+                                    </div>
                                 </div>
                             </div>
-
-                            <div class="border rounded-xl p-4 flex flex-col h-[450px]">
-                                <div class="flex justify-between items-center mb-4 border-b pb-2 shrink-0">
-                                    <h4 class="font-medium text-gray-700">Buku Kas (Ledger)</h4>
-                                    <div class="text-xs font-bold bg-emerald-100 text-emerald-800 px-3 py-1 rounded shadow-inner" id="saldo-akhir">Saldo: Rp 0</div>
+                            <div class="umar-card flex flex-col h-[520px]">
+                                <div class="umar-card-header">
+                                    <h3 class="umar-card-title"><i data-lucide="book-open" class="w-5 h-5"></i>Buku Kas (Ledger)</h3>
+                                    <span class="text-xs font-bold bg-emerald-100 text-emerald-800 px-3 py-1 rounded shadow-inner" id="saldo-akhir">Saldo: Rp 0</span>
                                 </div>
-                                <div class="overflow-y-auto flex-1 custom-scrollbar pr-2">
-                                    <table class="w-full text-xs text-left">
+                                <div class="px-4 pt-2 pb-1">
+                                    <div class="umar-filter-chips" id="fin-chips-transactions" data-chip-key="finance-transactions">
+                                        <button type="button" class="umar-filter-chip" data-value="all">Semua</button>
+                                        <button type="button" class="umar-filter-chip" data-value="PAYMENT">Payment</button>
+                                        <button type="button" class="umar-filter-chip" data-value="EXPENSE">Expense</button>
+                                        <button type="button" class="umar-filter-chip" data-value="REFUND">Refund</button>
+                                        <button type="button" class="umar-filter-chip" data-value="PAYROLL">Payroll</button>
+                                    </div>
+                                </div>
+                                <div class="overflow-y-auto flex-1 custom-scrollbar px-3 py-2">
+                                    <table class="w-full text-xs text-left" data-filter-target="transactions">
                                         <thead class="text-gray-500 bg-gray-50 sticky top-0 shadow-sm"><tr><th class="py-2 px-2">Tanggal</th><th class="py-2 px-2">Keterangan Transaksi</th><th class="py-2 px-2 text-right">Nominal</th></tr></thead>
                                         <tbody id="table-transactions" class="divide-y"></tbody>
                                     </table>
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Laporan Laba Rugi per Paket -->
-                        <div class="bg-white rounded-lg border p-4">
-                            <h4 class="font-medium text-gray-700 mb-3 border-b pb-2">Laporan Laba/Rugi (Profit & Loss) per Paket</h4>
-                            <div class="overflow-x-auto bg-white rounded border">
-                                <table class="w-full text-sm text-left">
-                                    <thead class="text-xs text-gray-500 uppercase bg-gray-50"><tr><th class="px-4 py-3">Nama Paket</th><th class="px-4 py-3 text-blue-600">Omset (Proyeksi)</th><th class="px-4 py-3 text-emerald-600">Pemasukan Riil</th><th class="px-4 py-3 text-red-600">Pengeluaran (HPP+Komisi)</th><th class="px-4 py-3 font-bold text-gray-800">Profit Bersih</th></tr></thead>
-                                    <tbody id="table-pnl" class="divide-y"></tbody>
-                                </table>
+                    <!-- Tab: Analitik (P&L per Paket + Matrik Pengeluaran) -->
+                    <div class="umar-tab-panel space-y-4" data-tab="analitik">
+                        <div class="umar-card">
+                            <div class="umar-card-header">
+                                <h3 class="umar-card-title"><i data-lucide="trending-up" class="w-5 h-5"></i>Laporan Laba/Rugi (Profit & Loss) per Paket</h3>
                             </div>
-                        </div>
-
-                        <!-- Matrik Pengeluaran per Projek -->
-                        <div class="bg-white rounded-lg border p-4">
-                            <div class="flex justify-between items-center mb-3 border-b pb-2 flex-wrap gap-2">
-                                <h4 class="font-medium text-gray-700">Matrik Pengeluaran per Projek</h4>
-                                <div class="flex gap-0.5 bg-gray-100 rounded-lg p-0.5">
-                                    <button id="btn-expmatrix-all" onclick="switchExpenseMatrixFilter('all')" class="px-3 py-1.5 rounded-md text-xs font-medium bg-white shadow-sm">Semua</button>
-                                    <button id="btn-expmatrix-Paket" onclick="switchExpenseMatrixFilter('Paket')" class="px-3 py-1.5 rounded-md text-xs font-medium text-gray-500">Paket Keberangkatan</button>
-                                    <button id="btn-expmatrix-Anggaran" onclick="switchExpenseMatrixFilter('Anggaran')" class="px-3 py-1.5 rounded-md text-xs font-medium text-gray-500">Expense Project</button>
+                            <div class="umar-card-body">
+                                <div class="overflow-x-auto bg-white rounded border">
+                                    <table class="w-full text-sm text-left">
+                                        <thead class="text-xs text-gray-500 uppercase bg-gray-50"><tr><th class="px-4 py-3">Nama Paket</th><th class="px-4 py-3 text-blue-600">Omset (Proyeksi)</th><th class="px-4 py-3 text-emerald-600">Pemasukan Riil</th><th class="px-4 py-3 text-red-600">Pengeluaran (HPP+Komisi)</th><th class="px-4 py-3 font-bold text-gray-800">Profit Bersih</th></tr></thead>
+                                        <tbody id="table-pnl" class="divide-y"></tbody>
+                                    </table>
                                 </div>
                             </div>
-                            <div id="expense-matrix-chart-empty" class="hidden text-center text-xs text-gray-400 italic py-6">Belum ada pengeluaran untuk ditampilkan di grafik.</div>
-                            <div class="mb-5" style="position: relative;">
-                                <canvas id="chart-expense-matrix"></canvas>
+                        </div>
+                        <div class="umar-card">
+                            <div class="umar-card-header">
+                                <h3 class="umar-card-title"><i data-lucide="bar-chart-3" class="w-5 h-5"></i>Matrik Pengeluaran per Projek</h3>
+                                <div class="umar-card-actions">
+                                    <div class="flex gap-0.5 bg-gray-100 rounded-lg p-0.5">
+                                        <button id="btn-expmatrix-all" onclick="switchExpenseMatrixFilter('all')" class="px-3 py-1.5 rounded-md text-xs font-medium bg-white shadow-sm">Semua</button>
+                                        <button id="btn-expmatrix-Paket" onclick="switchExpenseMatrixFilter('Paket')" class="px-3 py-1.5 rounded-md text-xs font-medium text-gray-500">Paket Keberangkatan</button>
+                                        <button id="btn-expmatrix-Anggaran" onclick="switchExpenseMatrixFilter('Anggaran')" class="px-3 py-1.5 rounded-md text-xs font-medium text-gray-500">Expense Project</button>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="overflow-x-auto bg-white rounded border">
-                                <table class="w-full text-sm text-left">
-                                    <thead class="text-xs text-gray-500 uppercase bg-gray-50">
-                                        <tr id="thead-expense-matrix"></tr>
-                                    </thead>
-                                    <tbody id="table-expense-matrix" class="divide-y"></tbody>
-                                </table>
+                            <div class="umar-card-body">
+                                <div id="expense-matrix-chart-empty" class="hidden text-center text-xs text-gray-400 italic py-6">Belum ada pengeluaran untuk ditampilkan di grafik.</div>
+                                <div class="mb-5" style="position: relative;">
+                                    <canvas id="chart-expense-matrix"></canvas>
+                                </div>
+                                <div class="overflow-x-auto bg-white rounded border">
+                                    <table class="w-full text-sm text-left">
+                                        <thead class="text-xs text-gray-500 uppercase bg-gray-50">
+                                            <tr id="thead-expense-matrix"></tr>
+                                        </thead>
+                                        <tbody id="table-expense-matrix" class="divide-y"></tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1880,100 +2132,141 @@
                         </div>
                     </div>
                 </div>
-                <div class="space-y-6">
-                    <!-- Section: Visa & Rooming -->
-                    <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
-                        <div class="p-4 border-b bg-purple-50/50 flex flex-wrap justify-between items-center gap-4">
-                            <h3 class="font-semibold text-purple-800 flex items-center gap-2"><i data-lucide="plane-takeoff" class="w-5 h-5"></i>Manajemen Visa & Rooming List</h3>
-                            <div class="flex flex-wrap gap-2">
-                                <input type="text" id="search-ops" placeholder="Cari jamaah di tabel..." class="text-sm border rounded px-3 py-1.5 bg-white shadow-sm w-48 focus:ring-blue-500" onkeyup="filterTable('table-ops', this.value)">
-                                <select id="manifest-package" class="text-sm border rounded px-2 py-1.5 bg-white shadow-sm"></select>
-                                <button id="btn-save-ops" onclick="saveAllOps()" class="bg-blue-600 text-white text-xs px-3 py-1.5 rounded-md hover:bg-blue-700 shadow-sm flex items-center gap-1 hidden"><i data-lucide="save-all" class="w-3 h-3"></i>Simpan Semua</button>
-                                <button onclick="exportManifest()" class="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-md hover:bg-emerald-700 shadow-sm flex items-center gap-1"><i data-lucide="printer" class="w-3 h-3"></i>Cetak Manifest</button>
-                                <button onclick="printPackageDoc('manifest-pdf')" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-md hover:bg-slate-800 shadow-sm flex items-center gap-1"><i data-lucide="file-text" class="w-3 h-3"></i>Manifest PDF</button>
-                                <button onclick="openRoomGroupsModal()" class="bg-indigo-600 text-white text-xs px-3 py-1.5 rounded-md hover:bg-indigo-700 shadow-sm flex items-center gap-1"><i data-lucide="bed-double" class="w-3 h-3"></i>Atur Kelompok Kamar</button>
-                                <button onclick="printPackageDoc('absensi-pdf')" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-md hover:bg-slate-800 shadow-sm flex items-center gap-1"><i data-lucide="clipboard-check" class="w-3 h-3"></i>Absensi PDF</button>
+                <!-- Phase 6e: tab UI (visa/rooming, stok+aset, serah terima) -->
+                <div class="umar-tabs" id="operasional-tabs" data-tab-key="operasional">
+                    <div class="umar-tab-strip">
+                        <button type="button" class="umar-tab" data-tab="visa">
+                            <i data-lucide="plane-takeoff" class="w-4 h-4"></i>Visa & Rooming
+                        </button>
+                        <button type="button" class="umar-tab" data-tab="stok-aset">
+                            <i data-lucide="archive" class="w-4 h-4"></i>Stok & Aset
+                        </button>
+                        <button type="button" class="umar-tab" data-tab="serah-terima">
+                            <i data-lucide="package-check" class="w-4 h-4"></i>Serah Terima
+                        </button>
+                    </div>
+
+                    <!-- Tab: Visa & Rooming -->
+                    <div class="umar-tab-panel" data-tab="visa">
+                        <div class="umar-card">
+                            <div class="umar-card-header">
+                                <h3 class="umar-card-title"><i data-lucide="plane-takeoff" class="w-5 h-5"></i>Manajemen Visa & Rooming List</h3>
+                                <div class="umar-card-actions">
+                                    <div class="umar-filter-chips" data-chip-key="operasional-visa">
+                                        <button type="button" class="umar-filter-chip" data-value="all">Semua</button>
+                                        <button type="button" class="umar-filter-chip" data-value="Belum Proses">Belum Proses</button>
+                                        <button type="button" class="umar-filter-chip" data-value="Masuk MOFA">Masuk MOFA</button>
+                                        <button type="button" class="umar-filter-chip" data-value="Stamping">Stamping</button>
+                                        <button type="button" class="umar-filter-chip" data-value="Visa Approved">Approved</button>
+                                    </div>
+                                    <input type="text" id="search-ops" placeholder="Cari jamaah di tabel..." class="text-sm border rounded px-3 py-1.5 bg-white shadow-sm w-48 focus:ring-blue-500" onkeyup="filterTable('table-ops', this.value)">
+                                    <select id="manifest-package" class="text-sm border rounded px-2 py-1.5 bg-white shadow-sm"></select>
+                                    <button id="btn-save-ops" onclick="saveAllOps()" class="bg-blue-600 text-white text-xs px-3 py-1.5 rounded-md hover:bg-blue-700 shadow-sm flex items-center gap-1 hidden"><i data-lucide="save-all" class="w-3 h-3"></i>Simpan Semua</button>
+                                    <button onclick="exportManifest()" class="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-md hover:bg-emerald-700 shadow-sm flex items-center gap-1"><i data-lucide="printer" class="w-3 h-3"></i>Cetak Manifest</button>
+                                    <button onclick="printPackageDoc('manifest-pdf')" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-md hover:bg-slate-800 shadow-sm flex items-center gap-1"><i data-lucide="file-text" class="w-3 h-3"></i>Manifest PDF</button>
+                                    <button onclick="openRoomGroupsModal()" class="bg-indigo-600 text-white text-xs px-3 py-1.5 rounded-md hover:bg-indigo-700 shadow-sm flex items-center gap-1"><i data-lucide="bed-double" class="w-3 h-3"></i>Atur Kelompok Kamar</button>
+                                    <button onclick="printPackageDoc('absensi-pdf')" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-md hover:bg-slate-800 shadow-sm flex items-center gap-1"><i data-lucide="clipboard-check" class="w-3 h-3"></i>Absensi PDF</button>
+                                </div>
                             </div>
-                        </div>
-                        <div class="overflow-auto p-2 custom-scrollbar" style="max-height: 550px;">
-                            <table class="w-full text-sm text-left">
-                                <thead class="text-[10px] text-gray-500 uppercase bg-gray-50 sticky top-0 shadow-sm z-10 tracking-wider">
-                                    <tr>
-                                        <th class="px-3 py-3 w-40">Jamaah & Paket</th>
-                                        <th class="px-2 py-3 w-28">Paspor</th>
-                                        <th class="px-2 py-3 w-24">Exp. Date</th>
-                                        <th class="px-2 py-3 w-28">Visa Status</th>
-                                        <th class="px-2 py-3 w-24">Tipe Kamar</th>
-                                        <th class="px-2 py-3 w-16">No.Kamar</th>
-                                        <th class="px-2 py-3 w-16">Bus</th>
-                                        <th class="px-2 py-3 w-24">Logistik</th>
-                                        <th class="px-2 py-3 w-20 text-center">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="table-ops" class="divide-y bg-white"></tbody>
-                            </table>
+                            <div class="overflow-auto p-2 custom-scrollbar" style="max-height: 620px;">
+                                <table class="w-full text-sm text-left" data-filter-target="visa">
+                                    <thead class="text-[10px] text-gray-500 uppercase bg-gray-50 sticky top-0 shadow-sm z-10 tracking-wider">
+                                        <tr>
+                                            <th class="px-3 py-3 w-40">Jamaah & Paket</th>
+                                            <th class="px-2 py-3 w-28">Paspor</th>
+                                            <th class="px-2 py-3 w-24">Exp. Date</th>
+                                            <th class="px-2 py-3 w-28">Visa Status</th>
+                                            <th class="px-2 py-3 w-24">Tipe Kamar</th>
+                                            <th class="px-2 py-3 w-16">No.Kamar</th>
+                                            <th class="px-2 py-3 w-16">Bus</th>
+                                            <th class="px-2 py-3 w-24">Logistik</th>
+                                            <th class="px-2 py-3 w-20 text-center">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="table-ops" class="divide-y bg-white"></tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
-                    
-                    <!-- Section: Inventory, Aset & Handover -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- Master Stok Barang Jamaah -->
-                        <div class="bg-white rounded-xl shadow-sm border overflow-hidden flex flex-col">
-                            <div class="p-4 border-b bg-orange-50/50 flex justify-between items-center gap-3">
-                                <h3 class="font-semibold text-orange-800 flex items-center gap-2"><i data-lucide="archive" class="w-5 h-5"></i>Stok Gudang (Barang Jamaah)</h3>
-                                <button onclick="openAddInventoryModal()" class="bg-orange-600 text-white text-xs px-3 py-1.5 rounded-md hover:bg-orange-700 shadow-sm flex items-center gap-1"><i data-lucide="plus" class="w-3 h-3"></i>Tambah Item</button>
-                            </div>
-                            <div class="p-4 flex-1 flex flex-col justify-between">
-                                <table class="w-full text-sm text-left mb-4">
-                                    <thead class="text-xs text-gray-500 uppercase bg-gray-50"><tr><th>Item</th><th>Sisa Stok</th><th class="text-center">Aksi</th></tr></thead>
-                                    <tbody id="table-inventory" class="divide-y"></tbody>
-                                </table>
-                                <div class="border-t pt-4">
-                                    <h4 class="text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">Restock Pembelian Logistik</h4>
-                                    <form id="form-restock" class="space-y-3">
-                                        <div class="flex gap-2">
-                                            <select id="rs-item" class="flex-1 p-2 border rounded text-xs bg-gray-50" required></select>
-                                            <input type="number" id="rs-qty" placeholder="Jml Pcs" class="w-20 p-2 border rounded text-xs bg-gray-50" required min="1">
-                                        </div>
-                                        <div><input type="text" id="rs-cost" placeholder="Total Harga Beli (Otomatis potong Kas) - Opsional" class="w-full p-2 border rounded text-xs bg-gray-50" oninput="formatCurrencyInput(this)"></div>
-                                        <button type="submit" class="w-full py-2 bg-orange-600 text-white rounded text-xs hover:bg-orange-700 font-bold shadow-sm">Beli & Tambah Stok</button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
 
-                        <!-- Aset Perusahaan -->
-                        <div class="bg-white rounded-xl shadow-sm border overflow-hidden flex flex-col">
-                            <div class="p-4 border-b bg-indigo-50/50 flex justify-between items-center gap-3">
-                                <h3 class="font-semibold text-indigo-800 flex items-center gap-2"><i data-lucide="laptop" class="w-5 h-5"></i>Aset Perusahaan</h3>
-                                <button onclick="openAddAssetModal()" class="bg-indigo-600 text-white text-xs px-3 py-1.5 rounded-md hover:bg-indigo-700 shadow-sm flex items-center gap-1"><i data-lucide="plus" class="w-3 h-3"></i>Tambah Aset</button>
-                            </div>
-                            <div class="p-4 flex-1 overflow-x-auto">
-                                <div class="flex gap-2 mb-3">
-                                    <div class="relative flex-1">
-                                        <i data-lucide="scan-line" class="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                                        <input type="text" id="asset-scan-input" placeholder="Scan atau ketik kode aset (AST-0001)..." class="w-full border rounded-md pl-8 pr-2 py-1.5 text-xs bg-gray-50">
+                    <!-- Tab: Stok Gudang + Aset Perusahaan (2-column grid) -->
+                    <div class="umar-tab-panel" data-tab="stok-aset">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="umar-card flex flex-col">
+                                <div class="umar-card-header">
+                                    <h3 class="umar-card-title"><i data-lucide="archive" class="w-5 h-5"></i>Stok Gudang (Barang Jamaah)</h3>
+                                    <div class="umar-card-actions">
+                                        <div class="umar-filter-chips" data-chip-key="operasional-stok">
+                                            <button type="button" class="umar-filter-chip" data-value="all">Semua</button>
+                                            <button type="button" class="umar-filter-chip" data-value="menipis">Menipis</button>
+                                            <button type="button" class="umar-filter-chip" data-value="aman">Aman</button>
+                                        </div>
+                                        <button onclick="openAddInventoryModal()" class="bg-orange-600 text-white text-xs px-3 py-1.5 rounded-md hover:bg-orange-700 shadow-sm flex items-center gap-1"><i data-lucide="plus" class="w-3 h-3"></i>Tambah</button>
                                     </div>
                                 </div>
-                                <div id="asset-scan-result" class="hidden border border-indigo-200 bg-indigo-50/50 rounded-lg p-3 mb-3"></div>
-                                <div id="asset-bulk-bar" class="hidden items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 mb-3">
-                                    <span class="text-xs text-blue-700"><b id="asset-bulk-count">0</b> aset dipilih</span>
-                                    <button onclick="bulkPrintAssetLabels()" class="px-2.5 py-1 bg-indigo-600 text-white rounded-md text-xs font-medium hover:bg-indigo-700 flex items-center gap-1"><i data-lucide="printer" class="w-3 h-3"></i>Cetak Label Terpilih</button>
+                                <div class="umar-card-body flex-1 flex flex-col justify-between">
+                                    <table class="w-full text-sm text-left mb-4" data-filter-target="stok">
+                                        <thead class="text-xs text-gray-500 uppercase bg-gray-50"><tr><th>Item</th><th>Sisa Stok</th><th class="text-center">Aksi</th></tr></thead>
+                                        <tbody id="table-inventory" class="divide-y"></tbody>
+                                    </table>
+                                    <div class="border-t pt-4">
+                                        <h4 class="text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide flex items-center gap-2"><i data-lucide="shopping-cart" class="w-3.5 h-3.5" style="color:#B8860B;"></i>Restock Pembelian Logistik</h4>
+                                        <form id="form-restock" class="space-y-3">
+                                            <div class="flex gap-2">
+                                                <select id="rs-item" class="flex-1 p-2 border rounded text-xs bg-gray-50" required></select>
+                                                <input type="number" id="rs-qty" placeholder="Jml Pcs" class="w-20 p-2 border rounded text-xs bg-gray-50" required min="1">
+                                            </div>
+                                            <div><input type="text" id="rs-cost" placeholder="Total Harga Beli (Otomatis potong Kas) - Opsional" class="w-full p-2 border rounded text-xs bg-gray-50" oninput="formatCurrencyInput(this)"></div>
+                                            <button type="submit" class="w-full py-2 bg-orange-600 text-white rounded text-xs hover:bg-orange-700 font-bold shadow-sm">Beli & Tambah Stok</button>
+                                        </form>
+                                    </div>
                                 </div>
-                                <table class="w-full text-sm text-left">
-                                    <thead class="text-xs text-gray-500 uppercase bg-gray-50"><tr>
-                                        <th class="w-6 px-2"></th>
-                                        <th>Nama Aset</th><th>Kode Aset</th><th>Kondisi</th><th>Dipegang Oleh</th><th class="text-right">Aksi</th>
-                                    </tr></thead>
-                                    <tbody id="table-assets" class="divide-y"></tbody>
-                                </table>
+                            </div>
+
+                            <div class="umar-card flex flex-col">
+                                <div class="umar-card-header">
+                                    <h3 class="umar-card-title"><i data-lucide="laptop" class="w-5 h-5"></i>Aset Perusahaan</h3>
+                                    <div class="umar-card-actions">
+                                        <div class="umar-filter-chips" data-chip-key="operasional-aset">
+                                            <button type="button" class="umar-filter-chip" data-value="all">Semua</button>
+                                            <button type="button" class="umar-filter-chip" data-value="Baik">Baik</button>
+                                            <button type="button" class="umar-filter-chip" data-value="Perbaikan">Perbaikan</button>
+                                            <button type="button" class="umar-filter-chip" data-value="Rusak">Rusak</button>
+                                        </div>
+                                        <button onclick="openAddAssetModal()" class="bg-indigo-600 text-white text-xs px-3 py-1.5 rounded-md hover:bg-indigo-700 shadow-sm flex items-center gap-1"><i data-lucide="plus" class="w-3 h-3"></i>Tambah</button>
+                                    </div>
+                                </div>
+                                <div class="umar-card-body flex-1 overflow-x-auto">
+                                    <div class="flex gap-2 mb-3">
+                                        <div class="relative flex-1">
+                                            <i data-lucide="scan-line" class="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                            <input type="text" id="asset-scan-input" placeholder="Scan atau ketik kode aset (AST-0001)..." class="w-full border rounded-md pl-8 pr-2 py-1.5 text-xs bg-gray-50">
+                                        </div>
+                                    </div>
+                                    <div id="asset-scan-result" class="hidden border border-indigo-200 bg-indigo-50/50 rounded-lg p-3 mb-3"></div>
+                                    <div id="asset-bulk-bar" class="hidden items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 mb-3">
+                                        <span class="text-xs text-blue-700"><b id="asset-bulk-count">0</b> aset dipilih</span>
+                                        <button onclick="bulkPrintAssetLabels()" class="px-2.5 py-1 bg-indigo-600 text-white rounded-md text-xs font-medium hover:bg-indigo-700 flex items-center gap-1"><i data-lucide="printer" class="w-3 h-3"></i>Cetak Label Terpilih</button>
+                                    </div>
+                                    <table class="w-full text-sm text-left" data-filter-target="aset">
+                                        <thead class="text-xs text-gray-500 uppercase bg-gray-50"><tr>
+                                            <th class="w-6 px-2"></th>
+                                            <th>Nama Aset</th><th>Kode Aset</th><th>Kondisi</th><th>Dipegang Oleh</th><th class="text-right">Aksi</th>
+                                        </tr></thead>
+                                        <tbody id="table-assets" class="divide-y"></tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Serah Terima -->
-                        <div class="bg-white rounded-xl shadow-sm border overflow-hidden md:col-span-2">
-                            <div class="p-4 border-b bg-indigo-50/50"><h3 class="font-semibold text-indigo-800 flex items-center gap-2"><i data-lucide="package-check" class="w-5 h-5"></i>Serah Terima Perlengkapan</h3></div>
-                            <div class="p-4">
+                    <!-- Tab: Serah Terima Perlengkapan -->
+                    <div class="umar-tab-panel" data-tab="serah-terima">
+                        <div class="umar-card max-w-2xl mx-auto">
+                            <div class="umar-card-header">
+                                <h3 class="umar-card-title"><i data-lucide="package-check" class="w-5 h-5"></i>Serah Terima Perlengkapan</h3>
+                            </div>
+                            <div class="umar-card-body">
                                 <form id="form-handover" class="space-y-4">
                                     <div><label class="block text-xs font-medium text-gray-700">Pilih Jamaah</label><select id="ho-jamaah" class="w-full p-2 border rounded text-sm bg-gray-50 select2-smart" required></select></div>
                                     <div>
@@ -2004,15 +2297,22 @@
                         </div>
                     </div>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm border p-6">
-                    <div class="flex justify-between items-center mb-4 border-b pb-4 gap-4 flex-wrap">
-                        <div class="text-xs text-gray-500 font-medium">Daftar Kontrak &amp; Deposit</div>
-                        <div class="flex items-center gap-2">
+                <div class="umar-card">
+                    <div class="umar-card-header">
+                        <h3 class="umar-card-title"><i data-lucide="file-text" class="w-5 h-5"></i>Daftar Kontrak &amp; Deposit</h3>
+                        <div class="umar-card-actions">
+                            <div class="umar-filter-chips" data-chip-key="procurement-status">
+                                <button type="button" class="umar-filter-chip" data-value="all">Semua</button>
+                                <button type="button" class="umar-filter-chip" data-value="Pending">Pending</button>
+                                <button type="button" class="umar-filter-chip" data-value="Approved">Approved</button>
+                                <button type="button" class="umar-filter-chip" data-value="Paid">Paid</button>
+                                <button type="button" class="umar-filter-chip" data-value="Rejected">Rejected</button>
+                            </div>
                             <div class="flex gap-0.5 bg-gray-100 rounded-lg p-0.5">
                                 <button id="btn-proc-view-table" onclick="switchProcurementView('table')" class="px-3 py-1.5 rounded-md text-xs font-medium bg-white shadow-sm">Tabel</button>
                                 <button id="btn-proc-view-card" onclick="switchProcurementView('card')" class="px-3 py-1.5 rounded-md text-xs font-medium text-gray-500">Kartu</button>
                             </div>
-                            <button id="btn-add-procurement" onclick="openAddProcurementModal()" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 font-medium shadow-sm hidden"><i data-lucide="plus" class="inline w-4 h-4 mr-1"></i>Input Kontrak Baru</button>
+                            <button id="btn-add-procurement" onclick="openAddProcurementModal()" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 font-medium shadow-sm hidden"><i data-lucide="plus" class="inline w-4 h-4 mr-1"></i>Kontrak Baru</button>
                         </div>
                     </div>
 
@@ -2024,8 +2324,8 @@
                         </div>
                     </div>
 
-                    <div id="proc-view-table" class="overflow-x-auto">
-                        <table class="w-full text-sm text-left border">
+                    <div id="proc-view-table" class="overflow-x-auto umar-card-body">
+                        <table class="w-full text-sm text-left border" data-filter-target="status">
                             <thead class="text-xs text-gray-500 uppercase bg-gray-50 border-b">
                                 <tr><th class="px-3 py-3 w-8"></th><th class="px-4 py-3">Tanggal Kontrak</th><th class="px-4 py-3">Nama Vendor & Layanan</th><th class="px-4 py-3">Paket</th><th class="px-4 py-3 text-red-600">Total Tagihan</th><th class="px-4 py-3">Sisa</th><th class="px-4 py-3">Status</th><th class="px-4 py-3 text-right">Aksi</th></tr>
                             </thead>
@@ -2048,15 +2348,27 @@
                         </div>
                     </div>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm border p-6">
-                    <div class="flex justify-between items-center mb-6 border-b pb-4 gap-4">
-                        <div class="text-xs text-gray-500 font-medium">Daftar User</div>
-                        <button id="btn-add-user" onclick="openAddUserModal()" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 hidden"><i data-lucide="plus" class="inline w-4 h-4 mr-1"></i>Tambah User</button>
+                <div class="umar-card">
+                    <div class="umar-card-header">
+                        <h3 class="umar-card-title"><i data-lucide="user-cog" class="w-5 h-5"></i>Daftar User</h3>
+                        <div class="umar-card-actions">
+                            <div class="umar-filter-chips" data-chip-key="users-role">
+                                <button type="button" class="umar-filter-chip" data-value="all">Semua</button>
+                                <button type="button" class="umar-filter-chip" data-value="admin">Admin</button>
+                                <button type="button" class="umar-filter-chip" data-value="sales">Sales</button>
+                                <button type="button" class="umar-filter-chip" data-value="ops">Operasional</button>
+                                <button type="button" class="umar-filter-chip" data-value="finance">Finance</button>
+                                <button type="button" class="umar-filter-chip" data-value="management">Mgmt</button>
+                            </div>
+                            <button id="btn-add-user" onclick="openAddUserModal()" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 hidden"><i data-lucide="plus" class="inline w-4 h-4 mr-1"></i>Tambah</button>
+                        </div>
                     </div>
-                    <table class="w-full text-sm text-left">
-                        <thead class="text-xs text-gray-500 uppercase bg-gray-50"><tr><th class="px-4 py-3">Nama Lengkap</th><th class="px-4 py-3">Username</th><th class="px-4 py-3">Role Divisi</th><th class="px-4 py-3">No. HP</th><th class="px-4 py-3">Gaji Pokok / Bln</th><th class="px-4 py-3 text-center">Aksi</th></tr></thead>
-                        <tbody id="table-users" class="divide-y"></tbody>
-                    </table>
+                    <div class="umar-card-body">
+                        <table class="w-full text-sm text-left" data-filter-target="role">
+                            <thead class="text-xs text-gray-500 uppercase bg-gray-50"><tr><th class="px-4 py-3">Nama Lengkap</th><th class="px-4 py-3">Username</th><th class="px-4 py-3">Role Divisi</th><th class="px-4 py-3">No. HP</th><th class="px-4 py-3">Gaji Pokok / Bln</th><th class="px-4 py-3 text-center">Aksi</th></tr></thead>
+                            <tbody id="table-users" class="divide-y"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -2109,8 +2421,22 @@
                     </div>
                 </div>
 
-                <!-- Target Sales Bulanan (admin & management) -->
-                <div id="section-sales-targets" class="bg-white rounded-xl shadow-sm border p-6 mt-6 hidden">
+            </div>
+
+            <!-- PAGE: TARGET PERUSAHAAN & SALES (admin & management) -->
+            <div id="page-mgmt-targets" class="page-content hidden space-y-4">
+                <div class="umar-module-hero">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="target" class="w-6 h-6" style="color: var(--umar-gold);"></i>
+                        <div>
+                            <div class="umar-module-hero-title">Target Perusahaan & Sales</div>
+                            <div class="umar-module-hero-subtitle">Set target closing &amp; omzet bulanan per sales dan target agregat company. Aktual dihitung otomatis dari jamaah non-Cancelled berdasarkan <code>order_date</code>.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Target Sales Bulanan -->
+                <div id="section-sales-targets" class="bg-white rounded-xl shadow-sm border p-6">
                     <div class="flex flex-wrap items-center justify-between gap-3 border-b pb-4 mb-4">
                         <h3 class="font-semibold text-gray-800 flex items-center gap-2"><i data-lucide="target" class="w-5 h-5" style="color:#B8860B;"></i>Target Sales Bulanan</h3>
                         <div class="flex items-center gap-2">
@@ -2119,7 +2445,7 @@
                             <button onclick="loadSalesTargets()" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-bold">Muat</button>
                         </div>
                     </div>
-                    <p class="text-xs text-gray-500 mb-3">Target closing (jumlah jamaah) dan omzet (Rp) per sales, per bulan. Aktual dihitung otomatis dari jamaah non-Cancelled dengan <code>order_date</code> di bulan tsb. Sales melihat progress mereka di Home Sales.</p>
+                    <p class="text-xs text-gray-500 mb-3">Target closing (jumlah jamaah) dan omzet (Rp) per sales, per bulan. Sales melihat progress mereka di Home Sales.</p>
                     <div class="overflow-auto rounded-lg border">
                         <table class="w-full text-sm">
                             <thead class="text-xs uppercase bg-gray-50 text-gray-500">
@@ -2137,8 +2463,8 @@
                     </div>
                 </div>
 
-                <!-- Target Company Bulanan (admin & management) -->
-                <div id="section-company-targets" class="bg-white rounded-xl shadow-sm border p-6 mt-6 hidden">
+                <!-- Target Company Bulanan -->
+                <div id="section-company-targets" class="bg-white rounded-xl shadow-sm border p-6">
                     <div class="flex flex-wrap items-center justify-between gap-3 border-b pb-4 mb-4">
                         <h3 class="font-semibold text-gray-800 flex items-center gap-2"><i data-lucide="crown" class="w-5 h-5" style="color:#B8860B;"></i>Target Company Bulanan</h3>
                         <div class="flex items-center gap-2">
@@ -2179,12 +2505,17 @@
                     </div>
                 </div>
                 <div id="followup-stats" class="grid grid-cols-2 lg:grid-cols-5 gap-4"></div>
-                <div class="bg-white rounded-xl shadow-sm border p-6">
-                    <div class="flex justify-between items-center mb-4 border-b pb-4">
-                        <div class="text-xs text-gray-500 font-medium">Jadwal Follow-up</div>
-                        <span class="text-xs text-gray-400">Merah = jatuh tempo / terlewat</span>
+                <div class="umar-card">
+                    <div class="umar-card-header">
+                        <h3 class="umar-card-title"><i data-lucide="calendar-clock" class="w-5 h-5"></i>Jadwal Follow-up</h3>
+                        <div class="umar-filter-chips" data-chip-key="followup-jadwal">
+                            <button type="button" class="umar-filter-chip" data-value="all">Semua</button>
+                            <button type="button" class="umar-filter-chip" data-value="overdue">Overdue</button>
+                            <button type="button" class="umar-filter-chip" data-value="today">Hari Ini</button>
+                            <button type="button" class="umar-filter-chip" data-value="upcoming">Akan Datang</button>
+                        </div>
                     </div>
-                    <table class="w-full text-sm text-left">
+                    <table class="w-full text-sm text-left" data-filter-target="jadwal">
                         <thead class="text-xs text-gray-500 uppercase bg-gray-50"><tr><th class="px-4 py-3">Nama</th><th class="px-4 py-3">Paket</th><th class="px-4 py-3">Status</th><th class="px-4 py-3">Follow-up</th><th class="px-4 py-3">Kontak Terakhir</th><th class="px-4 py-3">Aksi</th></tr></thead>
                         <tbody id="table-followup" class="divide-y"></tbody>
                     </table>
@@ -2212,65 +2543,104 @@
                 </div>
                 <div id="agent-stats" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
 
-                <div class="bg-white rounded-xl shadow-sm border p-6 mb-6">
-                    <div class="flex justify-between items-center mb-4 border-b pb-4 gap-4">
-                        <h3 class="font-semibold text-gray-800 flex items-center gap-2"><i data-lucide="inbox" class="w-5 h-5 text-emerald-600"></i>Kotak Masuk Pendaftaran Agen<span id="agent-inbox-badge" class="hidden bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center ml-1"></span></h3>
-                        <a href="/daftar-agen" target="_blank" class="text-xs text-indigo-600 hover:underline flex items-center gap-1"><i data-lucide="external-link" class="w-3.5 h-3.5"></i>Buka Form Publik</a>
+                <!-- Phase 6e: tab UI (inbox / roster / expand report) -->
+                <div class="umar-tabs" id="agents-tabs" data-tab-key="agents">
+                    <div class="umar-tab-strip">
+                        <button type="button" class="umar-tab" data-tab="inbox">
+                            <i data-lucide="inbox" class="w-4 h-4"></i>Kotak Masuk
+                            <span id="agent-inbox-badge" class="umar-tab-badge hidden">0</span>
+                        </button>
+                        <button type="button" class="umar-tab" data-tab="roster">
+                            <i data-lucide="network" class="w-4 h-4"></i>Roster Agen
+                        </button>
+                        <button type="button" class="umar-tab" data-tab="report">
+                            <i data-lucide="trending-up" class="w-4 h-4"></i>Expand Report
+                        </button>
                     </div>
-                    <p class="text-xs text-gray-500 mb-4">Data mentah dari form publik (<code>/daftar-agen</code>) &mdash; belum tercatat sebagai mitra/agen sampai Anda <b>Terima</b>. Cocokkan &amp; lengkapi data sebelum diproses.</p>
-                    <div class="overflow-auto rounded-lg border border-gray-100">
-                        <table class="w-full text-sm text-left">
-                            <thead class="text-xs text-gray-500 uppercase bg-gray-50">
-                                <tr>
-                                    <th class="px-4 py-3">Tanggal Masuk</th>
-                                    <th class="px-4 py-3">Nama</th>
-                                    <th class="px-4 py-3">No. WhatsApp</th>
-                                    <th class="px-4 py-3">Kota/Provinsi</th>
-                                    <th class="px-4 py-3">Status</th>
-                                    <th class="px-4 py-3 text-center">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody id="table-agent-inbox" class="divide-y"></tbody>
-                        </table>
-                    </div>
-                </div>
 
-                <div class="bg-white rounded-xl shadow-sm border p-6">
-                    <div class="flex justify-between items-center mb-6 border-b pb-4 gap-4">
-                        <h3 class="font-semibold text-gray-800 flex items-center gap-2"><i data-lucide="network" class="w-5 h-5 text-emerald-600"></i>Manajemen Keagenan & Komisi</h3>
-                        <div class="flex gap-2">
-                            <select id="filter-agent-cs" class="px-3 py-2 text-sm border rounded-lg bg-white" onchange="fetchAgents()">
-                                <option value="">Semua CS</option>
-                            </select>
-                            <button onclick="exportAgentsExcel()" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 font-medium shadow-sm flex items-center gap-1"><i data-lucide="download" class="w-4 h-4"></i>Export Excel</button>
-                            <button id="btn-add-agent" onclick="openAddAgentModal()" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 hidden"><i data-lucide="plus" class="inline w-4 h-4 mr-1"></i>Tambah Agen</button>
+                    <!-- Tab: Kotak Masuk -->
+                    <div class="umar-tab-panel" data-tab="inbox">
+                        <div class="umar-card">
+                            <div class="umar-card-header">
+                                <h3 class="umar-card-title"><i data-lucide="inbox" class="w-5 h-5"></i>Kotak Masuk Pendaftaran Agen</h3>
+                                <div class="umar-card-actions">
+                                    <div class="umar-filter-chips" data-chip-key="agents-inbox">
+                                        <button type="button" class="umar-filter-chip" data-value="all">Semua</button>
+                                        <button type="button" class="umar-filter-chip" data-value="Pending">Pending</button>
+                                        <button type="button" class="umar-filter-chip" data-value="Diterima">Diterima</button>
+                                        <button type="button" class="umar-filter-chip" data-value="Ditolak">Ditolak</button>
+                                    </div>
+                                    <a href="/daftar-agen" target="_blank" class="text-xs text-indigo-600 hover:underline flex items-center gap-1"><i data-lucide="external-link" class="w-3.5 h-3.5"></i>Buka Form Publik</a>
+                                </div>
+                            </div>
+                            <p class="umar-card-hint">Data mentah dari form publik (<code>/daftar-agen</code>) &mdash; belum tercatat sebagai mitra/agen sampai Anda <b>Terima</b>. Cocokkan &amp; lengkapi data sebelum diproses.</p>
+                            <div class="umar-card-body">
+                                <div class="overflow-auto rounded-lg border border-gray-100">
+                                    <table class="w-full text-sm text-left" data-filter-target="inbox">
+                                        <thead class="text-xs text-gray-500 uppercase bg-gray-50">
+                                            <tr>
+                                                <th class="px-4 py-3">Tanggal Masuk</th>
+                                                <th class="px-4 py-3">Nama</th>
+                                                <th class="px-4 py-3">No. WhatsApp</th>
+                                                <th class="px-4 py-3">Kota/Provinsi</th>
+                                                <th class="px-4 py-3">Status</th>
+                                                <th class="px-4 py-3 text-center">Aksi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="table-agent-inbox" class="divide-y"></tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <table class="w-full text-sm text-left">
-                        <thead class="text-xs text-gray-500 uppercase bg-gray-50"><tr><th class="px-4 py-3">Nama Agen / Mitra</th><th class="px-4 py-3">No. WhatsApp</th><th class="px-4 py-3">CS</th><th class="px-4 py-3">Jamaah Terkirim</th><th class="px-4 py-3 text-center">Aksi</th></tr></thead>
-                        <tbody id="table-agents" class="divide-y"></tbody>
-                    </table>
-                </div>
 
-                <div class="bg-white rounded-xl shadow-sm border p-6 mt-6">
-                    <div class="flex justify-between items-center mb-4 border-b pb-4 gap-4 flex-wrap">
-                        <h3 class="font-semibold text-gray-800 flex items-center gap-2"><i data-lucide="trending-up" class="w-5 h-5 text-purple-600"></i>Expand Report — Ranking Closing per Periode</h3>
-                        <div class="flex gap-2">
-                            <select id="er-month" class="text-sm border rounded px-2 py-1.5 bg-white shadow-sm">
-                                <option value="">Semua Bulan</option>
-                                <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option><option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option><option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option><option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
-                            </select>
-                            <select id="er-year" class="text-sm border rounded px-2 py-1.5 bg-white shadow-sm">
-                                <option value="">Semua Tahun</option>
-                                <option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option>
-                            </select>
-                            <button onclick="fetchExpandReport()" class="bg-purple-600 text-white text-xs px-3 py-1.5 rounded-md hover:bg-purple-700 shadow-sm flex items-center gap-1"><i data-lucide="filter" class="w-3 h-3"></i>Terapkan</button>
+                    <!-- Tab: Roster Agen -->
+                    <div class="umar-tab-panel" data-tab="roster">
+                        <div class="umar-card">
+                            <div class="umar-card-header">
+                                <h3 class="umar-card-title"><i data-lucide="network" class="w-5 h-5"></i>Manajemen Keagenan & Komisi</h3>
+                                <div class="umar-card-actions">
+                                    <select id="filter-agent-cs" class="px-3 py-2 text-sm border rounded-lg bg-white" onchange="fetchAgents()">
+                                        <option value="">Semua CS</option>
+                                    </select>
+                                    <button onclick="exportAgentsExcel()" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 font-medium shadow-sm flex items-center gap-1"><i data-lucide="download" class="w-4 h-4"></i>Export Excel</button>
+                                    <button id="btn-add-agent" onclick="openAddAgentModal()" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 hidden"><i data-lucide="plus" class="inline w-4 h-4 mr-1"></i>Tambah Agen</button>
+                                </div>
+                            </div>
+                            <div class="umar-card-body">
+                                <table class="w-full text-sm text-left">
+                                    <thead class="text-xs text-gray-500 uppercase bg-gray-50"><tr><th class="px-4 py-3">Nama Agen / Mitra</th><th class="px-4 py-3">No. WhatsApp</th><th class="px-4 py-3">CS</th><th class="px-4 py-3">Jamaah Terkirim</th><th class="px-4 py-3 text-center">Aksi</th></tr></thead>
+                                    <tbody id="table-agents" class="divide-y"></tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
-                    <table class="w-full text-sm text-left">
-                        <thead class="text-xs text-gray-500 uppercase bg-gray-50"><tr><th class="px-4 py-3">Peringkat</th><th class="px-4 py-3">Nama Agen</th><th class="px-4 py-3">Jumlah Closing</th><th class="px-4 py-3">Total Komisi</th><th class="px-4 py-3 text-center">Aksi</th></tr></thead>
-                        <tbody id="table-expand-report" class="divide-y"></tbody>
-                    </table>
+
+                    <!-- Tab: Expand Report -->
+                    <div class="umar-tab-panel" data-tab="report">
+                        <div class="umar-card">
+                            <div class="umar-card-header">
+                                <h3 class="umar-card-title"><i data-lucide="trending-up" class="w-5 h-5"></i>Expand Report &mdash; Ranking Closing per Periode</h3>
+                                <div class="umar-card-actions">
+                                    <select id="er-month" class="text-sm border rounded px-2 py-1.5 bg-white shadow-sm">
+                                        <option value="">Semua Bulan</option>
+                                        <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option><option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option><option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option><option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
+                                    </select>
+                                    <select id="er-year" class="text-sm border rounded px-2 py-1.5 bg-white shadow-sm">
+                                        <option value="">Semua Tahun</option>
+                                        <option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option>
+                                    </select>
+                                    <button onclick="fetchExpandReport()" class="bg-purple-600 text-white text-xs px-3 py-1.5 rounded-md hover:bg-purple-700 shadow-sm flex items-center gap-1"><i data-lucide="filter" class="w-3 h-3"></i>Terapkan</button>
+                                </div>
+                            </div>
+                            <div class="umar-card-body">
+                                <table class="w-full text-sm text-left">
+                                    <thead class="text-xs text-gray-500 uppercase bg-gray-50"><tr><th class="px-4 py-3">Peringkat</th><th class="px-4 py-3">Nama Agen</th><th class="px-4 py-3">Jumlah Closing</th><th class="px-4 py-3">Total Komisi</th><th class="px-4 py-3 text-center">Aksi</th></tr></thead>
+                                    <tbody id="table-expand-report" class="divide-y"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -2294,27 +2664,38 @@
                     <div id="expense-project-list" class="flex flex-wrap gap-2"></div>
                 </div>
 
-                <div class="bg-white rounded-xl shadow-sm border p-6">
-                    <div class="flex justify-between items-center mb-6 border-b pb-4 gap-4">
-                        <h3 class="font-semibold text-gray-800 flex items-center gap-2"><i data-lucide="receipt" class="w-5 h-5 text-emerald-600"></i>Expense Report</h3>
-                        <button onclick="openNewExpenseReportModal()" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 font-medium shadow-sm flex items-center gap-1"><i data-lucide="plus" class="w-4 h-4"></i>Buat Expense Report</button>
+                <div class="umar-card">
+                    <div class="umar-card-header">
+                        <h3 class="umar-card-title"><i data-lucide="receipt" class="w-5 h-5"></i>Expense Report</h3>
+                        <div class="umar-card-actions">
+                            <div class="umar-filter-chips" data-chip-key="expense-status">
+                                <button type="button" class="umar-filter-chip" data-value="all">Semua</button>
+                                <button type="button" class="umar-filter-chip" data-value="Draft">Draft</button>
+                                <button type="button" class="umar-filter-chip" data-value="Submitted">Submitted</button>
+                                <button type="button" class="umar-filter-chip" data-value="Approved">Approved</button>
+                                <button type="button" class="umar-filter-chip" data-value="Paid">Paid</button>
+                            </div>
+                            <button onclick="openNewExpenseReportModal()" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 font-medium shadow-sm flex items-center gap-1"><i data-lucide="plus" class="w-4 h-4"></i>Buat</button>
+                        </div>
                     </div>
-                    <div class="overflow-auto rounded-lg border border-gray-100">
-                        <table class="w-full text-sm text-left">
-                            <thead class="text-xs text-gray-500 uppercase bg-gray-50">
-                                <tr>
-                                    <th class="px-4 py-3">Ref</th>
-                                    <th class="px-4 py-3">Project</th>
-                                    <th class="px-4 py-3" id="expense-th-karyawan">Karyawan</th>
-                                    <th class="px-4 py-3">Periode</th>
-                                    <th class="px-4 py-3">Approver</th>
-                                    <th class="px-4 py-3">Total (incl. pajak)</th>
-                                    <th class="px-4 py-3">Status</th>
-                                    <th class="px-4 py-3 text-center">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody id="table-expense-reports" class="divide-y"></tbody>
-                        </table>
+                    <div class="umar-card-body">
+                        <div class="overflow-auto rounded-lg border border-gray-100">
+                            <table class="w-full text-sm text-left" data-filter-target="status">
+                                <thead class="text-xs text-gray-500 uppercase bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-3">Ref</th>
+                                        <th class="px-4 py-3">Project</th>
+                                        <th class="px-4 py-3" id="expense-th-karyawan">Karyawan</th>
+                                        <th class="px-4 py-3">Periode</th>
+                                        <th class="px-4 py-3">Approver</th>
+                                        <th class="px-4 py-3">Total (incl. pajak)</th>
+                                        <th class="px-4 py-3">Status</th>
+                                        <th class="px-4 py-3 text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-expense-reports" class="divide-y"></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2334,12 +2715,19 @@
                         </div>
                     </div>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm border p-6">
-                    <div class="flex justify-between items-center mb-6 border-b pb-4 gap-4">
-                        <div class="text-xs text-gray-500 font-medium">Daftar Paket</div>
-                        <button id="btn-add-pkg" onclick="openAddPackageModal()" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 hidden"><i data-lucide="plus" class="inline w-4 h-4 mr-1"></i>Tambah Paket</button>
+                <div class="umar-card">
+                    <div class="umar-card-header">
+                        <h3 class="umar-card-title"><i data-lucide="package" class="w-5 h-5"></i>Daftar Paket</h3>
+                        <div class="umar-card-actions">
+                            <div class="umar-filter-chips" data-chip-key="packages-status">
+                                <button type="button" class="umar-filter-chip" data-value="all">Semua</button>
+                                <button type="button" class="umar-filter-chip" data-value="aktif">Upcoming</button>
+                                <button type="button" class="umar-filter-chip" data-value="selesai">Sudah Berangkat</button>
+                            </div>
+                            <button id="btn-add-pkg" onclick="openAddPackageModal()" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 hidden"><i data-lucide="plus" class="inline w-4 h-4 mr-1"></i>Tambah</button>
+                        </div>
                     </div>
-                    <table class="w-full text-sm text-left">
+                    <table class="w-full text-sm text-left" data-filter-target="status">
                         <thead class="text-xs text-gray-500 uppercase bg-gray-50"><tr><th class="px-4 py-3">Nama Paket & Keberangkatan</th><th class="px-4 py-3">Sisa Kuota Kursi</th><th class="px-4 py-3">Tour Leader / Mutawwif</th><th class="px-4 py-3">Harga Pendaftaran</th><th class="px-4 py-3">Detail Paket</th><th class="px-4 py-3 text-center">Aksi</th></tr></thead>
                         <tbody id="table-packages" class="divide-y"></tbody>
                     </table>
@@ -4090,17 +4478,17 @@
                 document.getElementById('set-logo-preview').src = publicAsset(s.logo_url || 'umar-Logo.png');
                 if (typeof lucide !== 'undefined') lucide.createIcons();
             } catch (e) { showToast('Gagal memuat pengaturan', 'error'); }
-            // Target Sales + Company section: hanya admin/management
-            if (currentUser && ['admin', 'management'].includes(currentUser.role)) {
-                document.getElementById('section-sales-targets').classList.remove('hidden');
-                const picker = document.getElementById('target-month-picker');
-                if (!picker.value) picker.value = new Date().toISOString().slice(0, 7);
-                loadSalesTargets();
-                document.getElementById('section-company-targets').classList.remove('hidden');
-                const ctMonth = document.getElementById('ct-month');
-                if (!ctMonth.value) ctMonth.value = new Date().toISOString().slice(0, 7);
-                loadCompanyTargets();
-            }
+        }
+
+        // Init halaman Target Perusahaan & Sales (admin & management). Endpoint sudah
+        // role-gated (admin/management) di routes/sales.py + routes/mgmt_targets.py.
+        function initMgmtTargets() {
+            const picker = document.getElementById('target-month-picker');
+            if (picker && !picker.value) picker.value = new Date().toISOString().slice(0, 7);
+            const ctMonth = document.getElementById('ct-month');
+            if (ctMonth && !ctMonth.value) ctMonth.value = new Date().toISOString().slice(0, 7);
+            if (typeof loadSalesTargets === 'function') loadSalesTargets();
+            if (typeof loadCompanyTargets === 'function') loadCompanyTargets();
         }
 
         async function loadCompanyTargets() {
@@ -4243,8 +4631,10 @@
                     const today = new Date().toISOString().slice(0, 10);
                     tbody.innerHTML = fu.map(j => {
                         const overdue = j.next_follow_up && j.next_follow_up <= today;
+                        const isToday = j.next_follow_up === today;
+                        const _fuBucket = overdue && !isToday ? 'overdue' : (isToday ? 'today' : 'upcoming');
                         const waLink = j.phone ? `<a href="https://wa.me/${j.phone.replace(/\D/g, '').replace(/^0/, '62')}" target="_blank" class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-medium hover:bg-green-200"><i data-lucide="message-circle" class="w-3 h-3 inline"></i> WA</a>` : '';
-                        return `<tr class="hover:bg-gray-50">
+                        return `<tr class="hover:bg-gray-50" data-filter="${_fuBucket}">
                             <td class="px-4 py-3 font-medium">${j.name}<br><span class="text-xs text-gray-400">${j.phone || '-'}</span></td>
                             <td class="px-4 py-3 text-xs">${j.package_type || '-'}</td>
                             <td class="px-4 py-3"><span class="px-2 py-1 rounded text-[11px] font-bold ${j.status === 'Cancelled' ? 'bg-red-100 text-red-700' : (j.status || '').includes('Lead') ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700'}">${j.status}</span></td>
@@ -5009,6 +5399,7 @@
                 document.getElementById('nav-sales-home').classList.remove('hidden');
                 document.getElementById('nav-reconcile').classList.remove('hidden');
                 document.getElementById('nav-risk-register').classList.remove('hidden');
+                document.getElementById('nav-mgmt-targets').classList.remove('hidden');
             } else if (currentUser.role === 'sales') {
                 document.getElementById('nav-finance').classList.add('hidden');
                 document.getElementById('nav-operasional').classList.add('hidden');
@@ -5066,6 +5457,7 @@
                 document.getElementById('nav-inbox').classList.add('hidden');
                 // Management: Home Management + Home Finance + Home Ops + Insiden untuk oversight
                 document.getElementById('nav-mgmt-home').classList.remove('hidden');
+                document.getElementById('nav-mgmt-targets').classList.remove('hidden');
                 document.getElementById('nav-finance-home').classList.remove('hidden');
                 document.getElementById('nav-ops-home').classList.remove('hidden');
                 document.getElementById('nav-incidents').classList.remove('hidden');
@@ -5117,14 +5509,14 @@
             return false;
         }
 
-        const pageTitles = { 'dashboard': 'Dashboard', 'pendaftaran': 'Pendaftaran Baru', 'jamaah': 'Master Data Jamaah', 'finance': 'Keuangan & P&L', 'operasional': 'Operasional & Logistik', 'whatsapp': 'Manajemen WA', 'users': 'Master Data Karyawan', 'packages': 'Master Paket Umroh', 'agents': 'Manajemen Keagenan', 'tactical': 'Kesiapan Operasional & Audit', 'procurement': 'Manajemen Vendor / Procurement', 'settings': 'Pengaturan Aplikasi', 'followup': 'Follow-up Lead (CRM Sales)', 'expense': 'Expense Report', 'inbox': 'Kotak Masuk Pendaftaran Publik', 'leave': 'Ajukan Izin', 'marketing': 'Marketing Analytics', 'sales-home': 'Home Sales', 'ops-home': 'Home Operasional', 'incidents': 'Insiden Lapangan', 'finance-home': 'Home Finance', 'mgmt-home': 'Home Management', 'aged-receivable': 'Aged Receivable', 'reconcile': 'Rekonsiliasi Bank', 'risk-register': 'Risk Register', 'boq': 'Simulasi Paket (BOQ)' };
+        const pageTitles = { 'dashboard': 'Dashboard', 'pendaftaran': 'Pendaftaran Baru', 'jamaah': 'Master Data Jamaah', 'finance': 'Keuangan & P&L', 'operasional': 'Operasional & Logistik', 'whatsapp': 'Manajemen WA', 'users': 'Master Data Karyawan', 'packages': 'Master Paket Umroh', 'agents': 'Manajemen Keagenan', 'tactical': 'Kesiapan Operasional & Audit', 'procurement': 'Manajemen Vendor / Procurement', 'settings': 'Pengaturan Aplikasi', 'followup': 'Follow-up Lead (CRM Sales)', 'expense': 'Expense Report', 'inbox': 'Kotak Masuk Pendaftaran Publik', 'leave': 'Ajukan Izin', 'marketing': 'Marketing Analytics', 'sales-home': 'Home Sales', 'ops-home': 'Home Operasional', 'incidents': 'Insiden Lapangan', 'finance-home': 'Home Finance', 'mgmt-home': 'Home Management', 'mgmt-targets': 'Target Perusahaan & Sales', 'aged-receivable': 'Aged Receivable', 'reconcile': 'Rekonsiliasi Bank', 'risk-register': 'Risk Register', 'boq': 'Simulasi Paket (BOQ)' };
 
         // --- SIDEBAR: kategori yang bisa dilipat (accordion), status tersimpan per browser ---
         const NAV_GROUPS = ['crm', 'finance', 'ops', 'tools'];
         const PAGE_TO_NAV_GROUP = {
             pendaftaran: 'crm', inbox: 'crm', jamaah: 'crm', followup: 'crm', agents: 'crm', marketing: 'crm',
             'sales-home': 'crm',
-            'finance-home': 'finance', 'mgmt-home': 'finance', finance: 'finance', expense: 'finance', reconcile: 'finance', 'aged-receivable': 'finance', 'risk-register': 'finance',
+            'finance-home': 'finance', 'mgmt-home': 'finance', 'mgmt-targets': 'finance', finance: 'finance', expense: 'finance', reconcile: 'finance', 'aged-receivable': 'finance', 'risk-register': 'finance',
             operasional: 'ops', procurement: 'ops', 'ops-home': 'ops', incidents: 'ops',
             leave: 'tools', tactical: 'tools', whatsapp: 'tools', packages: 'tools', boq: 'tools', users: 'tools', settings: 'tools',
         };
@@ -5197,24 +5589,25 @@
             }
             
             if(id === 'dashboard' || id === 'pendaftaran') { fetchStats(); fetchPackages(); fetchAgents(); fetchData(); if(id === 'pendaftaran') wilayahLoadPromise = loadWilayah(); }
-            if(id === 'users') fetchUsers();
-            if(id === 'packages') fetchPackagesList();
-            if(id === 'finance') { fetchTransactions(); fetchPnL(); fetchExpenseMatrix(); fetchRefundRequests(); fetchCommissionClaims(); }
-            if(id === 'agents') { fetchAgents(); fetchExpandReport(); fetchAgentInbox(); }
+            if(id === 'users') { fetchUsers(); if (typeof umarWireChipsInPage === 'function') setTimeout(() => umarWireChipsInPage('page-users'), 500); }
+            if(id === 'packages') { fetchPackagesList(); if (typeof umarWireChipsInPage === 'function') setTimeout(() => umarWireChipsInPage('page-packages'), 500); }
+            if(id === 'finance') { fetchTransactions(); fetchPnL(); fetchExpenseMatrix(); fetchRefundRequests(); fetchCommissionClaims(); if (typeof umarInitTabs === 'function') umarInitTabs('finance-tabs'); if (typeof umarWireChipsInPage === 'function') setTimeout(() => umarWireChipsInPage('page-finance'), 500); }
+            if(id === 'agents') { fetchAgents(); fetchExpandReport(); fetchAgentInbox(); if (typeof umarInitTabs === 'function') umarInitTabs('agents-tabs'); if (typeof umarWireChipsInPage === 'function') setTimeout(() => umarWireChipsInPage('page-agents'), 500); }
             if(id === 'leave') fetchLeaveRequests();
-            if(id === 'operasional') { fetchInventory(); fetchCompanyAssets(); }
+            if(id === 'operasional') { fetchInventory(); fetchCompanyAssets(); if (typeof umarInitTabs === 'function') umarInitTabs('operasional-tabs'); if (typeof umarWireChipsInPage === 'function') setTimeout(() => umarWireChipsInPage('page-operasional'), 500); }
             if(id === 'ops-home' && typeof initOpsHome === 'function') initOpsHome();
             if(id === 'incidents' && typeof initIncidentsPage === 'function') initIncidentsPage();
             if(id === 'tactical') fetchTactical();
-            if(id === 'procurement') fetchProcurement();
+            if(id === 'procurement') { fetchProcurement(); if (typeof umarWireChipsInPage === 'function') setTimeout(() => umarWireChipsInPage('page-procurement'), 500); }
             if(id === 'settings') loadSettings();
-            if(id === 'followup') loadFollowups();
-            if(id === 'expense') { fetchExpenseProjects(); fetchExpenseReports(); }
-            if(id === 'inbox') fetchInbox();
+            if(id === 'followup') { loadFollowups(); if (typeof umarWireChipsInPage === 'function') setTimeout(() => umarWireChipsInPage('page-followup'), 500); }
+            if(id === 'expense') { fetchExpenseProjects(); fetchExpenseReports(); if (typeof umarWireChipsInPage === 'function') setTimeout(() => umarWireChipsInPage('page-expense'), 500); }
+            if(id === 'inbox') { fetchInbox(); if (typeof umarWireChipsInPage === 'function') setTimeout(() => umarWireChipsInPage('page-inbox'), 500); }
             if(id === 'marketing' && typeof initMarketingPage === 'function') initMarketingPage();
             if(id === 'sales-home' && typeof initSalesHome === 'function') initSalesHome();
             if(id === 'finance-home' && typeof initFinanceHome === 'function') initFinanceHome();
             if(id === 'mgmt-home' && typeof initMgmtHome === 'function') initMgmtHome();
+            if(id === 'mgmt-targets') initMgmtTargets();
             if(id === 'aged-receivable' && typeof initAgedReceivable === 'function') initAgedReceivable();
             if(id === 'reconcile' && typeof initReconcile === 'function') initReconcile();
             if(id === 'risk-register' && typeof initRiskRegister === 'function') initRiskRegister();
@@ -5573,7 +5966,7 @@
                     tb.innerHTML = list.map(r => {
                         const badgeCls = INBOX_STATUS_BADGE[r.status] || 'bg-gray-100 text-gray-700 border-gray-200';
                         const nikFlag = r.nik_exists ? '<span title="NIK sudah ada di database jamaah" class="ml-1 text-amber-500"><i data-lucide="alert-triangle" class="w-3.5 h-3.5 inline"></i></span>' : '';
-                        return `<tr class="hover:bg-gray-50/50 cursor-pointer" onclick="openInboxDetail(${r.id})">
+                        return `<tr class="hover:bg-gray-50/50 cursor-pointer" onclick="openInboxDetail(${r.id})" data-filter="${r.status}">
                             <td class="px-4 py-3 text-xs text-gray-500 align-top">${new Date(r.created_at).toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'})}</td>
                             <td class="px-4 py-3 text-sm font-medium align-top">${r.name}${nikFlag}</td>
                             <td class="px-4 py-3 text-xs align-top">${r.phone || '-'}</td>
@@ -5677,7 +6070,7 @@
                 if (tb) {
                     tb.innerHTML = list.map(r => {
                         const badge = EXPENSE_STATUS_BADGE[r.status] || 'bg-gray-100 text-gray-700 border-gray-200';
-                        return `<tr class="hover:bg-gray-50/50 cursor-pointer" onclick="openExpenseDetail(${r.id})">
+                        return `<tr class="hover:bg-gray-50/50 cursor-pointer" onclick="openExpenseDetail(${r.id})" data-filter="${r.status}">
                             <td class="px-4 py-3 text-xs font-bold text-emerald-700 align-top">${r.ref}</td>
                             <td class="px-4 py-3 text-xs align-top">${r.project_name || '-'}</td>
                             <td class="px-4 py-3 text-xs font-medium align-top ${isReviewer ? '' : 'hidden'}"><div class="flex items-center gap-1.5">${picAvatarHtml(r.user_name, 'w-5 h-5 text-[8px]')}${r.user_name}</div></td>
@@ -5943,8 +6336,29 @@
                         .map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
                 csFilterEl.value = currentCsFilter;
             }
+            // 3 filter dropdown tambahan: Asal Daerah (city), Paket (package_type), Status.
+            // Opsi diturunkan dari data jamaah yang sudah dimuat -- distinct values, sorted.
+            const _populateSelect = (elId, values, allLabel) => {
+                const el = document.getElementById(elId);
+                if (!el) return '';
+                const current = el.value;
+                const opts = Array.from(new Set(values.filter(Boolean))).sort((a, b) => a.localeCompare(b));
+                el.innerHTML = `<option value="">${allLabel}</option>` +
+                    opts.map(v => `<option value="${v}">${v}</option>`).join('');
+                el.value = current;
+                return el.value;
+            };
+            const regionFilterValue = _populateSelect('filter-jamaah-region', allJamaah.map(j => j.city), 'Semua Daerah');
+            const pkgFilterValue = _populateSelect('filter-jamaah-package', allJamaah.map(j => j.package_type), 'Semua Paket');
+            const statusFilterValue = _populateSelect('filter-jamaah-status', allJamaah.map(j => j.status), 'Semua Status');
             const csFilterValue = csFilterEl ? csFilterEl.value : '';
-            const jamaahForTable = csFilterValue ? allJamaah.filter(j => String(j.sales_id) === csFilterValue) : allJamaah;
+            const jamaahForTable = allJamaah.filter(j => {
+                if (csFilterValue && String(j.sales_id) !== csFilterValue) return false;
+                if (regionFilterValue && j.city !== regionFilterValue) return false;
+                if (pkgFilterValue && j.package_type !== pkgFilterValue) return false;
+                if (statusFilterValue && j.status !== statusFilterValue) return false;
+                return true;
+            });
 
             // Master Jamaah Table
             document.getElementById('table-jamaah').innerHTML = jamaahForTable.map(j => `
@@ -5970,12 +6384,17 @@
             if (typeof lucide !== 'undefined') lucide.createIcons();
 
             // Finance & Ops
-            document.getElementById('table-finance').innerHTML = allJamaah.map(j => `
-                <tr class="hover:bg-gray-50 border-b"><td class="px-4 py-3">${j.name}</td><td class="px-4 py-3">${formatRp(j.total_price)}</td><td class="px-4 py-3 text-emerald-600 font-semibold">${formatRp(j.paid_amount)}</td><td class="px-4 py-3">${j.status}</td>
+            document.getElementById('table-finance').innerHTML = allJamaah.map(j => {
+                const _paid = j.paid_amount || 0;
+                const _total = j.total_price || 0;
+                const _bucket = _paid === 0 ? 'belum' : (_paid >= _total ? 'lunas' : 'cicilan');
+                return `
+                <tr class="hover:bg-gray-50 border-b" data-filter="${_bucket}"><td class="px-4 py-3">${j.name}</td><td class="px-4 py-3">${formatRp(j.total_price)}</td><td class="px-4 py-3 text-emerald-600 font-semibold">${formatRp(j.paid_amount)}</td><td class="px-4 py-3">${j.status}</td>
                 <td class="px-4 py-3 text-center flex flex-col gap-1 items-center">
                     ${j.status !== 'Lunas' && j.status !== 'Cancelled' && ['admin', 'finance'].includes(currentUser.role) ? `<button onclick="openPaymentModal(${j.id}, '${j.name}')" class="text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded shadow-sm font-medium w-full hover:bg-blue-200 transition">Verify Dana</button>` : ''}
                     ${['Lunas', 'DP Masuk', 'Visa Approved', 'Proses Kedutaan', 'On Trip'].includes(j.status) ? `<button onclick="printKwitansi(${j.id})" class="text-[10px] bg-gray-800 text-white px-3 py-1 rounded shadow-sm w-full hover:bg-gray-900 transition flex items-center justify-center gap-1"><i data-lucide="printer" class="w-3 h-3"></i>Kwitansi</button>` : ''}
-                </td></tr>`).join('');
+                </td></tr>`;
+            }).join('');
             
             // Tampilkan di Ops HANYA JIKA status Lunas/DP Masuk (Verifikasi Finance)
             document.getElementById('table-ops').innerHTML = allJamaah.filter(j => ['Lunas', 'DP Masuk', 'Visa Approved', 'Proses Kedutaan'].includes(j.status)).map(j => {
@@ -5986,7 +6405,7 @@
                     if (expDate < sixMonthsFromNow) expWarning = '<i data-lucide="alert-triangle" class="inline w-4 h-4 text-red-600 shrink-0" title="Peringatan: Masa Berlaku < 6 Bulan!"></i>';
                 }
                 
-                return `<tr class="hover:bg-blue-50/40 border-b align-middle transition-colors group" data-id="${j.id}">
+                return `<tr class="hover:bg-blue-50/40 border-b align-middle transition-colors group" data-id="${j.id}" data-filter="${j.visa_status || 'Belum Proses'}">
                     <td class="px-3 py-2">
                         <div class="font-bold text-gray-800 text-xs truncate w-36" title="${j.name}">${j.name}</div>
                         <div class="text-[9px] text-gray-500 mt-0.5 truncate w-36" title="${j.package_type}">${j.package_type}</div>
@@ -6813,7 +7232,7 @@
 
                 document.getElementById('table-inventory').innerHTML = inv.map(i => {
                     const low = i.stock <= i.min_stock_threshold;
-                    return `<tr class="${low ? 'bg-red-50' : ''}">
+                    return `<tr class="${low ? 'bg-red-50' : ''}" data-filter="${low ? 'menipis' : 'aman'}">
                         <td class="px-2 py-2 font-medium">${i.item_name}${low ? ' <span class="text-[10px] text-red-600 font-bold">(Menipis)</span>' : ''}</td>
                         <td class="px-2 py-2"><span class="px-2 py-1 rounded text-xs font-bold ${low ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">${i.stock} Pcs</span></td>
                         <td class="px-2 py-2 text-center">
@@ -6960,7 +7379,7 @@
                 assetsCache = list;
                 document.getElementById('table-assets').innerHTML = list.map(a => {
                     const badge = ASSET_CONDITION_BADGE[a.condition] || 'bg-gray-100 text-gray-700';
-                    return `<tr>
+                    return `<tr data-filter="${a.condition}">
                         <td class="px-2 py-2"><input type="checkbox" onchange="toggleAssetSelect(${a.id}, this.checked)" ${assetSelected.has(a.id) ? 'checked' : ''} class="w-4 h-4 rounded border-gray-300"></td>
                         <td class="px-2 py-2 font-medium">${a.item_name}</td>
                         <td class="px-2 py-2 text-xs"><span class="inline-flex items-center gap-1 bg-gray-100 rounded px-1.5 py-0.5 font-mono"><i data-lucide="qr-code" class="w-3 h-3"></i>${a.asset_code || '-'}</span></td>
@@ -7671,7 +8090,7 @@
                     const dateObj = new Date(t.created_at).toLocaleDateString('id-ID', {day:'2-digit', month:'short'});
                     const btnDel = currentUser.role === 'admin' ? `<button onclick="delTx(${t.id})" class="text-red-400 hover:text-red-700 ml-3" title="Koreksi Hapus Transaksi"><i data-lucide="trash-2" class="w-4 h-4"></i></button>` : '';
 
-                    return `<tr>
+                    return `<tr data-filter="${(t.category || '').toUpperCase()}">
                         <td class="py-2 px-2 border-b whitespace-nowrap">${dateObj}</td>
                         <td class="py-2 px-2 border-b">
                             <div class="font-medium truncate max-w-[200px]" title="${t.description}">${t.description}</div>
@@ -7735,7 +8154,7 @@
                         actions = '<span class="text-gray-300 text-xs">-</span>';
                     }
                     const cancelTag = r.cancel_booking ? '<span class="block mt-0.5 text-[10px] font-bold text-red-600"><i data-lucide="ban" class="w-3 h-3 inline mr-0.5"></i>Akan membatalkan booking</span>' : '';
-                    return `<tr class="hover:bg-gray-50/50">
+                    return `<tr class="hover:bg-gray-50/50" data-filter="${r.status}">
                         <td class="px-4 py-3 text-sm font-medium">${r.jamaah_name || '-'}</td>
                         <td class="px-4 py-3 text-sm font-bold text-gray-800">${formatRp(r.amount)}</td>
                         <td class="px-4 py-3 text-xs text-gray-600 max-w-[220px] truncate" title="${r.reason}">${r.reason}${cancelTag}</td>
@@ -8177,7 +8596,7 @@
                 if (tb) {
                     tb.innerHTML = list.map(r => {
                         const badgeCls = INBOX_STATUS_BADGE[r.status] || 'bg-gray-100 text-gray-700 border-gray-200';
-                        return `<tr class="hover:bg-gray-50/50 cursor-pointer" onclick="openAgentInboxDetail(${r.id})">
+                        return `<tr class="hover:bg-gray-50/50 cursor-pointer" onclick="openAgentInboxDetail(${r.id})" data-filter="${r.status}">
                             <td class="px-4 py-3 text-xs text-gray-500 align-top">${new Date(r.created_at).toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'})}</td>
                             <td class="px-4 py-3 text-sm font-medium align-top">${r.name}</td>
                             <td class="px-4 py-3 text-xs align-top">${r.phone || '-'}</td>
@@ -8310,7 +8729,7 @@
                     } else {
                         actions = '<span class="text-gray-300 text-xs">-</span>';
                     }
-                    return `<tr class="hover:bg-gray-50/50">
+                    return `<tr class="hover:bg-gray-50/50" data-filter="${c.status}">
                         <td class="px-4 py-3 text-sm font-medium">${c.agent_name || '-'}</td>
                         <td class="px-4 py-3 text-sm">${c.jamaah_name || '-'}</td>
                         <td class="px-4 py-3 text-xs">${c.package_type || '-'}</td>
@@ -8455,7 +8874,7 @@
                 const checkbox = (canReview && p.status === 'Pending')
                     ? `<input type="checkbox" onchange="toggleProcurementSelect(${p.id}, this.checked)" ${procurementSelected.has(p.id) ? 'checked' : ''} class="w-4 h-4 rounded border-gray-300">`
                     : '';
-                return `<tr class="hover:bg-gray-50/50">
+                return `<tr class="hover:bg-gray-50/50" data-filter="${p.status}">
                     <td class="px-3 py-3">${checkbox}</td>
                     <td class="px-4 py-3">${new Date(p.created_at).toLocaleDateString('id-ID')}</td>
                     <td class="px-4 py-3 font-medium">${p.vendor_name} <span class="text-[10px] ml-1 bg-gray-200 px-1 rounded">${p.service_type}</span></td>
@@ -8638,7 +9057,7 @@
             try {
                 const res = await authFetch('/users'); const u = await res.json();
                 usersCache = u;
-                document.getElementById('table-users').innerHTML = u.map(x => `<tr class="hover:bg-gray-50/50">
+                document.getElementById('table-users').innerHTML = u.map(x => `<tr class="hover:bg-gray-50/50" data-filter="${x.role}">
                     <td class="p-3 border-b">
                         <div class="flex items-center gap-2">
                             <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center font-bold text-emerald-700 text-xs bg-cover bg-center shrink-0" style="${x.photo_url ? `background-image:url('${fileUrl(x.photo_url)}')` : ''}">${x.photo_url ? '' : (x.name || '?').charAt(0).toUpperCase()}</div>
@@ -8893,7 +9312,9 @@
                 document.getElementById('table-packages').innerHTML = p.map(x => {
                     const safeTL = (x.tour_leader || '').replace(/'/g, "\\'");
                     const safeMut = (x.mutawwif || '').replace(/'/g, "\\'");
-                    return `<tr class="hover:bg-gray-50/50"><td class="p-3 border-b"><p class="font-bold text-gray-800">${x.name}</p><p class="text-xs text-gray-500">${x.departure_date}${x.return_date ? ' &ndash; ' + x.return_date : ''} (${x.duration} Hari)</p></td><td class="p-3 border-b"><span class="font-bold ${x.quota - x.filled <= 5 ? 'text-red-600' : 'text-emerald-600'}">${x.quota - x.filled}</span><span class="text-xs text-gray-500"> / ${x.quota}</span></td><td class="p-3 border-b text-xs"><div class="mb-1"><span class="font-semibold text-gray-600">TL:</span> ${x.tour_leader||'<i class="text-red-400">Belum diassign</i>'}</div><div><span class="font-semibold text-gray-600">Mutawwif:</span> ${x.mutawwif||'<i class="text-red-400">Belum diassign</i>'}</div></td><td class="p-3 border-b text-emerald-600 font-medium">${formatRp(x.price_quad || x.price)}</td><td class="p-3 border-b">${packageDetailHtml(x)}</td><td class="p-3 border-b text-center">${currentUser.role === 'admin' ? `<button class="bg-blue-50 text-blue-700 px-3 py-1 rounded text-xs hover:bg-blue-100 mb-1 block w-full shadow-sm" onclick="openEditPackageModal(${x.id})">Edit Paket</button>` : ''}${['admin', 'ops'].includes(currentUser.role) ? `<button class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded text-xs hover:bg-indigo-100 mb-1 block w-full shadow-sm" onclick="openAssign(${x.id}, '${safeTL}', '${safeMut}')">Tugaskan TL</button>` : ''}${currentUser.role === 'admin' ? `<button class="bg-red-50 text-red-600 px-3 py-1 rounded text-xs hover:bg-red-100 block w-full" onclick="delPkg(${x.id})">Hapus Paket</button>` : ''}</td></tr>`;
+                    const _today = new Date().toISOString().slice(0, 10);
+                    const _pkgStatus = (x.departure_date && x.departure_date >= _today) ? 'aktif' : 'selesai';
+                    return `<tr class="hover:bg-gray-50/50" data-filter="${_pkgStatus}"><td class="p-3 border-b"><p class="font-bold text-gray-800">${x.name}</p><p class="text-xs text-gray-500">${x.departure_date}${x.return_date ? ' &ndash; ' + x.return_date : ''} (${x.duration} Hari)</p></td><td class="p-3 border-b"><span class="font-bold ${x.quota - x.filled <= 5 ? 'text-red-600' : 'text-emerald-600'}">${x.quota - x.filled}</span><span class="text-xs text-gray-500"> / ${x.quota}</span></td><td class="p-3 border-b text-xs"><div class="mb-1"><span class="font-semibold text-gray-600">TL:</span> ${x.tour_leader||'<i class="text-red-400">Belum diassign</i>'}</div><div><span class="font-semibold text-gray-600">Mutawwif:</span> ${x.mutawwif||'<i class="text-red-400">Belum diassign</i>'}</div></td><td class="p-3 border-b text-emerald-600 font-medium">${formatRp(x.price_quad || x.price)}</td><td class="p-3 border-b">${packageDetailHtml(x)}</td><td class="p-3 border-b text-center">${currentUser.role === 'admin' ? `<button class="bg-blue-50 text-blue-700 px-3 py-1 rounded text-xs hover:bg-blue-100 mb-1 block w-full shadow-sm" onclick="openEditPackageModal(${x.id})">Edit Paket</button>` : ''}${['admin', 'ops'].includes(currentUser.role) ? `<button class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded text-xs hover:bg-indigo-100 mb-1 block w-full shadow-sm" onclick="openAssign(${x.id}, '${safeTL}', '${safeMut}')">Tugaskan TL</button>` : ''}${currentUser.role === 'admin' ? `<button class="bg-red-50 text-red-600 px-3 py-1 rounded text-xs hover:bg-red-100 block w-full" onclick="delPkg(${x.id})">Hapus Paket</button>` : ''}</td></tr>`;
                 }).join('');
                 if (typeof lucide !== 'undefined') lucide.createIcons();
             } catch(e) {}
@@ -9072,7 +9493,7 @@
 
     </script>
     <!-- UMAR Shared Hero (Phase 5a): time greeting + realtime clock + Islamic daily quote. -->
-    <script src="js/umar-hero.js?v=20260830a"></script>
+    <script src="js/umar-hero.js?v=20260904-6f"></script>
     <!-- Marketing Analytics: heatmap + chart (dimuat setelah inline JS supaya authFetch sudah terdefinisi). -->
     <script src="js/marketing.js?v=20260817d"></script>
     <script src="js/sales-home.js?v=20260827e"></script>

@@ -156,3 +156,150 @@ function umarRenderModuleHero(elId, icon, title, subtitle) {
     `;
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
+
+/* ============================================================================
+ * UMAR Tabs -- Phase 6e
+ * Init tab widget: bind click, toggle .is-active, show/hide panel. Active tab
+ * persist di localStorage (key "umar-tab-<data-tab-key>"). Idempotent (safe
+ * dipanggil ulang saat showPage re-open). Emit 'umar:tabchange' event.
+ * @param {HTMLElement|string} containerOrId
+ * @param {string?} defaultTab
+ * @returns {string|null} tab yg aktif
+ * ==========================================================================*/
+function umarInitTabs(containerOrId, defaultTab) {
+    const container = typeof containerOrId === 'string'
+        ? document.getElementById(containerOrId) : containerOrId;
+    if (!container) return null;
+    const key = container.getAttribute('data-tab-key');
+    const tabs = container.querySelectorAll(':scope > .umar-tab-strip > .umar-tab');
+    const panels = container.querySelectorAll(':scope > .umar-tab-panel');
+    if (!tabs.length) return null;
+    const storageKey = key ? `umar-tab-${key}` : null;
+
+    function activate(name) {
+        let matched = false;
+        tabs.forEach(t => {
+            const on = t.dataset.tab === name;
+            t.classList.toggle('is-active', on);
+            if (on) matched = true;
+        });
+        if (!matched) {
+            name = tabs[0].dataset.tab;
+            tabs[0].classList.add('is-active');
+        }
+        panels.forEach(p => { p.hidden = p.dataset.tab !== name; });
+        if (storageKey) {
+            try { localStorage.setItem(storageKey, name); } catch (e) {}
+        }
+        container.dispatchEvent(new CustomEvent('umar:tabchange', {detail: {tab: name}}));
+        return name;
+    }
+
+    if (!container.dataset.umarTabsReady) {
+        tabs.forEach(t => t.addEventListener('click', () => activate(t.dataset.tab)));
+        container.dataset.umarTabsReady = '1';
+    }
+
+    let saved = null;
+    if (storageKey) {
+        try { saved = localStorage.getItem(storageKey); } catch (e) {}
+    }
+    return activate(saved || defaultTab || tabs[0].dataset.tab);
+}
+
+/* ============================================================================
+ * UMAR Filter Chips -- Phase 6f
+ * Toggle chip filter untuk tabel. Chip aktif dipersist di localStorage
+ * (key: umar-chip-<data-chip-key>).
+ *
+ * Mode default (client-side): filter <tbody tr> berdasarkan data attribute.
+ * Setiap tr harus punya `data-filter="<value>"`. Chip data-value="all" tampilkan
+ * semua row.
+ *
+ * Mode callback: pass `opts.onChange(value)` untuk custom (mis. re-fetch dgn
+ * query param). Kalau onChange di-provide, row filtering client-side di-skip.
+ *
+ * @param {HTMLElement|string} containerOrId
+ * @param {Object} opts
+ *   - opts.tableSelector: string   Selector <table> utk filter row-based
+ *   - opts.onChange:      function Callback(value) utk custom filter
+ *   - opts.defaultValue:  string   Fallback kalau tidak ada di localStorage
+ * @returns {string|null} value chip yg aktif
+ * ==========================================================================*/
+function umarInitFilterChips(containerOrId, opts) {
+    opts = opts || {};
+    const container = typeof containerOrId === 'string'
+        ? document.getElementById(containerOrId) : containerOrId;
+    if (!container) return null;
+    const key = container.getAttribute('data-chip-key');
+    const chips = container.querySelectorAll(':scope > .umar-filter-chip');
+    if (!chips.length) return null;
+    const storageKey = key ? `umar-chip-${key}` : null;
+
+    function applyRowFilter(value) {
+        if (!opts.tableSelector) return;
+        const table = document.querySelector(opts.tableSelector);
+        if (!table) return;
+        table.querySelectorAll('tbody > tr').forEach(tr => {
+            const rowVal = tr.dataset.filter;
+            const show = value === 'all' || rowVal === value;
+            tr.style.display = show ? '' : 'none';
+        });
+    }
+
+    function activate(value) {
+        let matched = false;
+        chips.forEach(c => {
+            const on = c.dataset.value === value;
+            c.classList.toggle('is-active', on);
+            if (on) matched = true;
+        });
+        if (!matched) {
+            value = chips[0].dataset.value;
+            chips[0].classList.add('is-active');
+        }
+        if (storageKey) {
+            try { localStorage.setItem(storageKey, value); } catch (e) {}
+        }
+        if (typeof opts.onChange === 'function') {
+            opts.onChange(value);
+        } else {
+            applyRowFilter(value);
+        }
+        container.dispatchEvent(new CustomEvent('umar:chipchange', {detail: {value}}));
+        return value;
+    }
+
+    if (!container.dataset.umarChipsReady) {
+        chips.forEach(c => c.addEventListener('click', () => activate(c.dataset.value)));
+        container.dataset.umarChipsReady = '1';
+    }
+
+    let saved = null;
+    if (storageKey) {
+        try { saved = localStorage.getItem(storageKey); } catch (e) {}
+    }
+    return activate(saved || opts.defaultValue || chips[0].dataset.value);
+}
+
+/* Wiring otomatis chip filter di 1 page. Container hrs punya `data-chip-key`,
+   tabel sibling dgn `data-filter-target="<suffix>"` dimana <suffix> = bagian
+   setelah dash pertama di chip-key (mis. chip-key="finance-piutang" -> tabel
+   data-filter-target="piutang"). Row di-render dgn `data-filter="<enum>"`. */
+function umarWireChipsInPage(pageOrId) {
+    const page = typeof pageOrId === 'string' ? document.getElementById(pageOrId) : pageOrId;
+    if (!page) return;
+    page.querySelectorAll('.umar-filter-chips[data-chip-key]').forEach(container => {
+        const key = container.getAttribute('data-chip-key');
+        const targetSuffix = key.split('-').slice(1).join('-');
+        const card = container.closest('.umar-card');
+        const table = card ? card.querySelector(`table[data-filter-target="${targetSuffix}"]`) : null;
+        if (table) {
+            umarInitFilterChips(container, {
+                tableSelector: `#${page.id} table[data-filter-target="${targetSuffix}"]`,
+            });
+        } else {
+            umarInitFilterChips(container, {});
+        }
+    });
+}
