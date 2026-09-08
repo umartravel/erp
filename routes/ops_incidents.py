@@ -20,8 +20,28 @@ from deps import (
     notify,
     require_role,
 )
+from deps.notifications import notify_role, notify_user  # Phase 8f-2
 
 router = APIRouter(tags=["ops-incidents"])
+
+
+def _uid_by_name(name: str | None) -> int | None:
+    if not name:
+        return None
+    row = db.query_one("SELECT id FROM users WHERE name = ?", (name,))
+    return row["id"] if row else None
+
+
+def _notify_severity_bump(iid: int, package: str | None, severity: str, text: str | None):
+    """Kirim notif ke management + ops kalau severity Critical/High.
+    Fire-and-forget."""
+    if severity not in ("Critical", "High"):
+        return
+    body = (text or "")[:200]
+    link = "#page-incidents"
+    title = f"Insiden {severity}: {package or 'Umum'}"
+    notify_role("management", "incident_critical", title, body, link)
+    notify_role("ops", "incident_critical", title, body, link)
 
 
 @router.get("/api/incidents")
@@ -66,6 +86,11 @@ async def incidents_create(body: dict = Depends(json_body), user=Depends(authent
     )
     log_action(user, "INCIDENT_CREATE", f"pkg={body.get('package_name')} sev={body.get('severity')}")
     notify("data_updated", "incident")
+    # Phase 8f-2: bump notif utk incident Critical/High
+    new_id = db.query_one("SELECT last_insert_rowid() AS lid")["lid"]
+    _notify_severity_bump(new_id, body.get("package_name"),
+                          body.get("severity") or "Medium",
+                          body.get("incident_text"))
     return {"message": "Laporan insiden berhasil dikirim ke Pusat."}
 
 
@@ -90,4 +115,17 @@ async def incidents_update(iid: int, body: dict = Depends(json_body), user=Depen
     )
     log_action(user, "INCIDENT_UPDATE", f"id={iid} status={status} sev={severity}")
     notify("data_updated", "incident")
+    # Phase 8f-2: (a) severity bump ke Critical/High (bila naik dari lebih rendah),
+    # (b) assignee baru -> notif user yg di-assign.
+    prev_sev = row["severity"] or "Medium"
+    rank = {"Low": 0, "Medium": 1, "High": 2, "Critical": 3}
+    if severity in ("Critical", "High") and rank.get(severity, 1) > rank.get(prev_sev, 1):
+        _notify_severity_bump(iid, row["package_name"], severity, row["incident_text"])
+    if assigned_to and assigned_to != (row["assigned_to"] or ""):
+        notify_user(
+            _uid_by_name(assigned_to), "incident_assigned",
+            f"Anda di-assign insiden: {row['package_name'] or 'Umum'}",
+            f"Severity {severity}. {(row['incident_text'] or '')[:150]}",
+            "#page-incidents",
+        )
     return {"message": "Insiden diperbarui."}

@@ -97,3 +97,97 @@ def test_refund_creates_notif_for_management(client, admin_token, sales_token, m
     after = client.get("/api/notifications/count",
                        headers=bearer(management_token)).json()["unread"]
     assert after > before, "Manager belum menerima notif refund_pending"
+
+
+# ============================================================================
+# Phase 8f: perluas cakupan notif -- procurement, incident, vendor.
+# ============================================================================
+def test_procurement_create_notifs_mgmt(client, finance_token, management_token):
+    before = client.get("/api/notifications/count",
+                        headers=bearer(management_token)).json()["unread"]
+    r = client.post("/api/procurement", json={
+        "vendor_name": "TEST Vendor Notif", "service_type": "hotel_mekkah",
+        "total_stock": 40, "total_price": 5_000_000, "package_name": None,
+    }, headers=bearer(finance_token))
+    assert r.status_code == 200, r.text
+    after = client.get("/api/notifications/count",
+                       headers=bearer(management_token)).json()["unread"]
+    assert after > before, "Management belum dapat notif procurement_pending"
+
+
+def test_procurement_approve_notifs_finance(client, finance_token, management_token):
+    """Approve PO -> notif ke role finance (ready_pay) + owner (approved)."""
+    r = client.post("/api/procurement", json={
+        "vendor_name": "TEST Vendor Approve", "service_type": "hotel_madinah",
+        "total_stock": 20, "total_price": 2_000_000, "package_name": None,
+    }, headers=bearer(finance_token))
+    pid = r.json()["id"]
+    before = client.get("/api/notifications/count",
+                        headers=bearer(finance_token)).json()["unread"]
+    r = client.put(f"/api/procurement/{pid}/review",
+                   json={"action": "approve"}, headers=bearer(management_token))
+    assert r.status_code == 200
+    after = client.get("/api/notifications/count",
+                       headers=bearer(finance_token)).json()["unread"]
+    # finance1 = pengaju (finance role) -> dapat 2 notif: approved (personal) + ready_pay (role)
+    assert after >= before + 2, f"Finance belum dapat notif approve (before={before}, after={after})"
+
+
+def test_incident_critical_notif_mgmt_and_ops(
+        client, admin_token, management_token, ops_token):
+    before_mgmt = client.get("/api/notifications/count",
+                             headers=bearer(management_token)).json()["unread"]
+    before_ops = client.get("/api/notifications/count",
+                            headers=bearer(ops_token)).json()["unread"]
+    r = client.post("/api/incidents", json={
+        "package_name": "TEST Paket X", "incident_text": "hotel double-book kritis",
+        "severity": "Critical",
+    }, headers=bearer(admin_token))
+    assert r.status_code == 200, r.text
+    after_mgmt = client.get("/api/notifications/count",
+                            headers=bearer(management_token)).json()["unread"]
+    after_ops = client.get("/api/notifications/count",
+                           headers=bearer(ops_token)).json()["unread"]
+    assert after_mgmt > before_mgmt, "Management belum dapat notif incident Critical"
+    assert after_ops > before_ops, "Ops belum dapat notif incident Critical"
+
+
+def test_incident_medium_no_notif(client, admin_token, management_token):
+    """Severity Medium/Low -> jangan spam management."""
+    before = client.get("/api/notifications/count",
+                        headers=bearer(management_token)).json()["unread"]
+    client.post("/api/incidents", json={
+        "package_name": "TEST Small", "incident_text": "info kecil",
+        "severity": "Medium",
+    }, headers=bearer(admin_token))
+    after = client.get("/api/notifications/count",
+                       headers=bearer(management_token)).json()["unread"]
+    assert after == before, "Medium harusnya tidak menghasilkan notif"
+
+
+def test_vendor_cancelled_notif_mgmt_ops(
+        client, admin_token, management_token, ops_token):
+    pkg = client.get("/api/packages", headers=bearer(admin_token)).json()[0]
+    r = client.post(f"/api/packages/{pkg['id']}/vendors", json={
+        "vendor_type": "hotel_mekkah", "vendor_name": "Hotel TEST Cancel",
+        "status": "Booked", "total_amount": 100_000_000,
+    }, headers=bearer(admin_token))
+    assert r.status_code == 200
+    # Ambil id vendor (list dari paket ini).
+    vlist = client.get(f"/api/packages/{pkg['id']}/vendors",
+                       headers=bearer(admin_token)).json()
+    vid = next(v["id"] for v in vlist if v["vendor_name"] == "Hotel TEST Cancel")
+
+    before_mgmt = client.get("/api/notifications/count",
+                             headers=bearer(management_token)).json()["unread"]
+    before_ops = client.get("/api/notifications/count",
+                            headers=bearer(ops_token)).json()["unread"]
+    r = client.patch(f"/api/vendors/{vid}",
+                     json={"status": "Cancelled"}, headers=bearer(admin_token))
+    assert r.status_code == 200
+    after_mgmt = client.get("/api/notifications/count",
+                            headers=bearer(management_token)).json()["unread"]
+    after_ops = client.get("/api/notifications/count",
+                           headers=bearer(ops_token)).json()["unread"]
+    assert after_mgmt > before_mgmt, "Management belum dapat notif vendor_cancelled"
+    assert after_ops > before_ops, "Ops belum dapat notif vendor_cancelled"

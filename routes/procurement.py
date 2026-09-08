@@ -20,8 +20,18 @@ from deps import (
     parse_int,
     require_role,
 )
+from deps.notifications import notify_role, notify_user  # Phase 8f-1
 
 router = APIRouter(tags=["procurement"])
+
+
+def _uid_by_name(name: str | None) -> int | None:
+    """Cari user.id dari kolom procurement.created_by (yg simpan nama).
+    Return None kalau tidak ketemu -- notify_user akan diam saja."""
+    if not name:
+        return None
+    row = db.query_one("SELECT id FROM users WHERE name = ?", (name,))
+    return row["id"] if row else None
 
 
 @router.get("/api/procurement")
@@ -53,6 +63,13 @@ async def procurement_create(body: dict = Depends(json_body), user=Depends(authe
     )
     log_action(user, "CREATE_PROCUREMENT", f"Mengajukan kontrak vendor: {vendor_name} ({g('service_type')})")
     notify("data_updated", "procurement")
+    # Phase 8f-1: notif ke management (approver)
+    notify_role(
+        "management", "procurement_pending",
+        f"Kontrak vendor menunggu review: {vendor_name}",
+        f"Nilai Rp {total_price:,} (Blok {total_stock} pax). Diajukan {user['name']}.".replace(",", "."),
+        "#page-procurement",
+    )
     return {"message": "Kontrak vendor berhasil diajukan, menunggu persetujuan.", "id": last_id}
 
 
@@ -124,6 +141,13 @@ async def procurement_review(pid: int, body: dict = Depends(json_body), user=Dep
             (user["name"], reason, pid),
         )
         log_action(user, "REJECT_PROCUREMENT", f"Menolak kontrak vendor {row['vendor_name']}: {reason}")
+        # Phase 8f-1: notif ke pengaju bahwa PO ditolak
+        notify_user(
+            _uid_by_name(row["created_by"]), "procurement_rejected",
+            f"Kontrak vendor Anda ditolak: {row['vendor_name']}",
+            f"Alasan: {reason}",
+            "#page-procurement",
+        )
     else:
         db.execute(
             "UPDATE procurement SET status = 'Aktif', reviewed_by = ?, "
@@ -131,6 +155,19 @@ async def procurement_review(pid: int, body: dict = Depends(json_body), user=Dep
             (user["name"], pid),
         )
         log_action(user, "APPROVE_PROCUREMENT", f"Menyetujui kontrak vendor {row['vendor_name']}")
+        # Phase 8f-1: notif ke pengaju + finance (siap pembayaran deposit)
+        notify_user(
+            _uid_by_name(row["created_by"]), "procurement_approved",
+            f"Kontrak vendor Anda disetujui: {row['vendor_name']}",
+            f"Disetujui {user['name']}. Kontrak sudah Aktif.",
+            "#page-procurement",
+        )
+        notify_role(
+            "finance", "procurement_ready_pay",
+            f"Kontrak vendor siap dibayar: {row['vendor_name']}",
+            f"Total Rp {(row['total_price'] or 0):,} (Blok {row['total_stock']} pax).".replace(",", "."),
+            "#page-procurement",
+        )
     notify("data_updated", "procurement")
     return {"message": "Kontrak vendor berhasil " + ("ditolak." if action == "reject" else "disetujui.")}
 
@@ -168,6 +205,17 @@ async def procurement_payment(pid: int, body: dict = Depends(json_body), user=De
     )
     notify("data_updated", "transaction")
     notify("data_updated", "procurement")
+    # Phase 8f-1: notif ke pengaju kontrak bahwa pembayaran sudah dicatat
+    new_paid = (row["deposit_paid"] or 0) + amount
+    total = row["total_price"] or 0
+    sisa_after = total - new_paid
+    lunas_note = " -- LUNAS." if sisa_after <= 0 else f" Sisa Rp {sisa_after:,}.".replace(",", ".")
+    notify_user(
+        _uid_by_name(row["created_by"]), "procurement_paid",
+        f"Pembayaran dicatat: {row['vendor_name']}",
+        f"Rp {amount:,} oleh {user['name']}.{lunas_note}".replace(",", "."),
+        "#page-procurement",
+    )
     return {"message": "Pembayaran vendor berhasil dicatat."}
 
 

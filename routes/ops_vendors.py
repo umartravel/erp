@@ -21,6 +21,7 @@ from deps import (
     notify,
     require_role,
 )
+from deps.notifications import notify_role  # Phase 8f-3
 
 router = APIRouter(tags=["ops-vendors"])
 
@@ -104,6 +105,14 @@ async def vendors_update(vid: int, body: dict = Depends(json_body), user=Depends
     )
     log_action(user, "VENDOR_UPDATE", f"id={vid} status={status}")
     notify("data_updated", "vendor")
+    # Phase 8f-3: notif ke ops + management kalau vendor Cancelled (paling kritis).
+    if status == "Cancelled" and row["status"] != "Cancelled":
+        pkg = db.query_one("SELECT name FROM packages WHERE id = ?", (row["package_id"],))
+        pkg_name = (pkg or {}).get("name") or f"Paket #{row['package_id']}"
+        title = f"Vendor DIBATALKAN: {row['vendor_name'] or row['vendor_type']}"
+        body_txt = f"Paket {pkg_name}. Segera cari pengganti / rebook."
+        notify_role("management", "vendor_cancelled", title, body_txt, "#page-packages")
+        notify_role("ops", "vendor_cancelled", title, body_txt, "#page-packages")
     return {"message": "Vendor booking diperbarui."}
 
 
