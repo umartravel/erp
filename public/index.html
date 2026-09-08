@@ -789,6 +789,22 @@
                 <button onclick="openPalette()" class="md:hidden p-2 rounded-lg hover:bg-gray-100" title="Cari" aria-label="Cari">
                     <i data-lucide="search" class="w-5 h-5 text-gray-700"></i>
                 </button>
+                <!-- Phase 8c-4: Notification bell -->
+                <div class="relative">
+                    <button onclick="toggleNotifDropdown()" class="p-2 rounded-lg hover:bg-gray-100 relative" title="Notifikasi" aria-label="Notifikasi" id="btn-notif-bell">
+                        <i data-lucide="bell" class="w-5 h-5 text-gray-700"></i>
+                        <span id="notif-badge" class="hidden absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center">0</span>
+                    </button>
+                    <div id="notif-dropdown" class="hidden absolute right-0 top-full mt-1 w-80 bg-white border rounded-xl shadow-xl z-40 max-h-96 flex flex-col overflow-hidden">
+                        <div class="px-3 py-2 border-b flex items-center justify-between bg-gray-50">
+                            <span class="text-sm font-bold text-gray-700">Notifikasi</span>
+                            <button onclick="notifMarkAllRead()" class="text-[11px] text-blue-600 hover:underline">Tandai semua dibaca</button>
+                        </div>
+                        <div id="notif-list" class="overflow-y-auto flex-1 custom-scrollbar">
+                            <div class="p-4 text-center text-xs text-gray-400 italic">Memuat...</div>
+                        </div>
+                    </div>
+                </div>
                 <button onclick="toggleTheme()" class="p-2 rounded-lg hover:bg-gray-100" title="Toggle Tema" aria-label="Toggle Tema" id="btn-theme-toggle">
                     <i data-lucide="moon" class="w-5 h-5 text-gray-700" id="theme-icon-light"></i>
                     <i data-lucide="sun" class="w-5 h-5 text-gray-700 hidden" id="theme-icon-dark"></i>
@@ -5067,6 +5083,87 @@
         // Sync icon setelah Lucide render pertama kali
         document.addEventListener('DOMContentLoaded', () => setTimeout(syncThemeIcon, 100));
 
+        // ========== Phase 8c-4: Notification bell ==========
+        let __notifPollTimer = null;
+        window.toggleNotifDropdown = async function() {
+            const dd = document.getElementById('notif-dropdown');
+            if (!dd) return;
+            const isOpen = !dd.classList.contains('hidden');
+            if (isOpen) { dd.classList.add('hidden'); return; }
+            dd.classList.remove('hidden');
+            // Load list saat dibuka.
+            try {
+                const res = await authFetch('/notifications?limit=30');
+                if (!res.ok) throw new Error('gagal');
+                const items = await res.json();
+                const listEl = document.getElementById('notif-list');
+                if (!items || items.length === 0) {
+                    listEl.innerHTML = '<div class="p-4 text-center text-xs text-gray-400 italic">Belum ada notifikasi.</div>';
+                    return;
+                }
+                listEl.innerHTML = items.map(n => {
+                    const unreadCls = n.is_read ? 'bg-white' : 'bg-blue-50';
+                    const clickHandler = n.link
+                        ? `onclick="notifClick(${n.id}, '${(n.link || '').replace(/'/g, "&#39;")}')"`
+                        : `onclick="notifMarkRead(${n.id})"`;
+                    return `<div class="px-3 py-2 border-b hover:bg-gray-50 cursor-pointer ${unreadCls}" ${clickHandler}>
+                        <div class="text-xs font-bold text-gray-800">${n.title}</div>
+                        ${n.body ? `<div class="text-[11px] text-gray-600 mt-0.5">${n.body}</div>` : ''}
+                        <div class="text-[10px] text-gray-400 mt-1">${n.created_at ? new Date(n.created_at.replace(' ', 'T') + 'Z').toLocaleString('id-ID', {dateStyle: 'medium', timeStyle: 'short'}) : ''}</div>
+                    </div>`;
+                }).join('');
+            } catch (e) {
+                document.getElementById('notif-list').innerHTML =
+                    '<div class="p-4 text-center text-xs text-red-500">Gagal memuat notifikasi.</div>';
+            }
+        };
+        window.notifClick = async function(nid, link) {
+            await notifMarkRead(nid, false);
+            document.getElementById('notif-dropdown').classList.add('hidden');
+            // Deep link parsing: '#page-expense?rid=42' -> showPage('expense') + optional query
+            const m = /^#?page-([\w-]+)/.exec(link);
+            if (m && typeof showPage === 'function') showPage(m[1]);
+        };
+        window.notifMarkRead = async function(nid, reload = true) {
+            try {
+                await authFetch(`/notifications/${nid}/read`, {method: 'PUT'});
+                if (reload) toggleNotifDropdown();  // toggle -> close, need reopen
+                refreshNotifCount();
+            } catch (e) {}
+        };
+        window.notifMarkAllRead = async function() {
+            try {
+                await authFetch('/notifications/read-all', {method: 'PUT'});
+                refreshNotifCount();
+                document.getElementById('notif-list').innerHTML =
+                    '<div class="p-4 text-center text-xs text-gray-400 italic">Semua sudah dibaca.</div>';
+            } catch (e) {}
+        };
+        async function refreshNotifCount() {
+            try {
+                const res = await authFetch('/notifications/count');
+                if (!res.ok) return;
+                const {unread} = await res.json();
+                const badge = document.getElementById('notif-badge');
+                if (badge) {
+                    badge.textContent = unread > 99 ? '99+' : String(unread);
+                    badge.classList.toggle('hidden', unread <= 0);
+                }
+            } catch (e) {}
+        }
+        function startNotifPolling() {
+            if (__notifPollTimer) return;
+            refreshNotifCount();
+            __notifPollTimer = setInterval(refreshNotifCount, 30000);  // poll 30s
+        }
+        // Close dropdown when clicking outside.
+        document.addEventListener('click', (e) => {
+            const dd = document.getElementById('notif-dropdown');
+            const btn = document.getElementById('btn-notif-bell');
+            if (!dd || dd.classList.contains('hidden')) return;
+            if (!dd.contains(e.target) && !btn.contains(e.target)) dd.classList.add('hidden');
+        });
+
         // ========== M-E: RISK REGISTER ==========
         const RR_SEVERITY_STYLE = {
             'CRITICAL': {bar: 'bg-red-500',    badge: 'bg-red-100 text-red-700 border-red-200'},
@@ -5445,6 +5542,11 @@
         if (socket) {
             socket.on('wa_status', (statusData) => {
                 if (document.getElementById('page-whatsapp') && !document.getElementById('page-whatsapp').classList.contains('hidden')) checkWaStatus();
+            });
+
+            // Phase 8c-4: realtime notif refresh (per-user + role broadcast)
+            socket.on('user_notification', () => {
+                if (typeof refreshNotifCount === 'function') refreshNotifCount();
             });
 
             // Sinkronisasi Real-Time Global (Menggantikan Polling)
@@ -5840,6 +5942,9 @@
             setAvatarEl(document.getElementById('user-avatar'), currentUser.name, currentUser.photo_url);
             // Phase 6g: mulai idle-timeout session monitor (30 mnt idle -> warning 60 dtk -> logout)
             if (typeof umarSessionStart === 'function') umarSessionStart();
+
+            // Phase 8c-4: start notif polling & initial fetch
+            if (typeof startNotifPolling === 'function') startNotifPolling();
 
             // Default State
             document.getElementById('nav-finance').classList.remove('hidden');
