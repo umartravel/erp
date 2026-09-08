@@ -33,6 +33,10 @@ playwright>=1.49.1
 # Generate PDF Expense Report (hardcopy)
 reportlab>=4.2.5
 
+# Phase 8a: Excel export bulanan (jamaah closingan, paket rekap, finance rekap,
+# jamaah per paket). openpyxl untuk write .xlsx tanpa dependency Excel/COM.
+openpyxl>=3.1.5
+
 # WhatsApp (pengganti Baileys). Opsional: jika tidak terpasang,
 # whatsapp.py otomatis memakai backend stub agar aplikasi tetap berjalan.
 # neonize berbasis whatsmeow (Go) - mendukung multi-device, QR, media.
