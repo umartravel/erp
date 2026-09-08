@@ -118,6 +118,55 @@ async def agents_update(aid: int, body: dict = Depends(json_body), user=Depends(
     return {"message": "Data mitra/agen berhasil diperbarui."}
 
 
+# Phase 7b-1: Transfer 1 agen dari CS lama ke CS baru. Dibuat terpisah dari
+# agents_update() sengaja -- reassignment adalah operasi admin (bukan sales),
+# butuh audit trail tersendiri (log-nya menampilkan from->to CS), dan
+# frontend butuh endpoint yg simple (cukup kirim 1 field). Guard `admin only`
+# per keputusan di project_edit_jamaah_agent_transfer_plan.md.
+@router.put("/api/agents/{aid}/handler")
+async def agents_transfer_handler(
+    aid: int, body: dict = Depends(json_body), user=Depends(authenticate_token)
+):
+    require_role(user, "admin")
+    new_cs_id = parse_int(body.get("handler_cs_id"), "handler CS")
+    note = (body.get("note") or "").strip()
+
+    agent = db.query_one("SELECT * FROM agents WHERE id = ?", (aid,))
+    if not agent:
+        raise HTTPException(status_code=404, detail="Mitra/Agen tidak ditemukan")
+
+    target = db.query_one("SELECT id, name, role FROM users WHERE id = ?", (new_cs_id,))
+    if not target:
+        raise HTTPException(status_code=404, detail="User CS tujuan tidak ditemukan")
+    if target["role"] != "sales":
+        raise HTTPException(
+            status_code=400,
+            detail=f"User tujuan ('{target['name']}') role-nya '{target['role']}', bukan CS/sales.",
+        )
+    if agent["handler_cs_id"] == new_cs_id:
+        raise HTTPException(
+            status_code=400, detail="Agen ini sudah dihandle CS tersebut."
+        )
+
+    old_cs = None
+    if agent["handler_cs_id"]:
+        old_cs = db.query_one("SELECT name FROM users WHERE id = ?", (agent["handler_cs_id"],))
+    from_label = old_cs["name"] if old_cs else "(tanpa CS)"
+
+    db.execute("UPDATE agents SET handler_cs_id = ? WHERE id = ?", (new_cs_id, aid))
+    detail = f"Agen '{agent['name']}' dipindah dari {from_label} ke {target['name']}"
+    if note:
+        detail += f" -- catatan: {note}"
+    log_action(user, "TRANSFER_AGENT", detail)
+    notify("data_updated", "agent")
+    return {
+        "message": f"Agen '{agent['name']}' berhasil dipindah ke {target['name']}.",
+        "agent_id": aid,
+        "from_cs_id": agent["handler_cs_id"],
+        "to_cs_id": new_cs_id,
+    }
+
+
 # Pengecualian fee komisi per (agen, paket) -- opsional. Kalau tidak ada baris yang
 # cocok untuk kombinasi agen+paket tertentu, dipakai fee default milik paket itu sendiri
 # (packages.default_commission_fee).
