@@ -529,32 +529,90 @@
             background: #ffffff;
             box-shadow: 0 1px 2px rgba(0,0,0,0.06);
         }
+        /* Phase 6h: Login screen visual panel. Ken Burns = zoom + pan halus dari
+           default state ke sedikit di-zoom + geser, infinite alternate. Bikin
+           background terasa hidup + cinematic saat user buka aplikasi.
+           CSS media query custom (Tailwind CDN kadang tidak generate md: class
+           dinamis dgn reliabel; pakai vanilla @media supaya pasti trigger). */
+        #login-visual { display: none; }
+        #login-form-panel { width: 100%; }
+        @media (min-width: 768px) {
+            #login-visual { display: flex !important; width: 60% !important; }
+            #login-form-panel { width: 40% !important; }
+        }
+        .login-ken-burns {
+            animation: umar-ken-burns 18s ease-in-out infinite alternate;
+            background-size: cover !important;
+            background-position: center !important;
+            transform-origin: center center;
+        }
+        @keyframes umar-ken-burns {
+            0%   { transform: scale(1.0)   translate(0, 0); }
+            100% { transform: scale(1.12) translate(-1.5%, -1%); }
+        }
+        /* Phase 6i: spinner keyframe (loader-2 icon rotation) untuk tombol login. */
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="text-gray-800 antialiased overflow-hidden h-screen flex">
 
     <!-- LOGIN SCREEN -->
-    <div id="login-screen" class="fixed inset-0 bg-white z-50 flex items-center justify-center">
-        <div class="bg-white p-8 rounded-xl shadow-2xl w-96 border border-gray-100">
-            <div class="text-center mb-8">
-                <img src="umar-Logo.png" alt="Logo Umar Travel" class="brand-logo h-24 mx-auto mb-4 object-contain drop-shadow-md" onerror="this.src='https://placehold.co/200x100/ffffff/10b981?text=UMAR+TRAVEL'">
-                <h1 class="brand-name text-2xl font-bold text-gray-800">UMAR CRM</h1>
-                <p class="text-gray-500 text-sm">Manajemen Travel Umroh Terpadu</p>
+    <!-- Phase 6h: Login screen immersive -- split layout (kiri visual 60% + kanan form 40%).
+         Background gradient rotasi berdasarkan waktu (fajar/pagi/sore/malam). Ken Burns
+         zoom + gradient overlay + greeting + quote realtime. Mobile: form full-width,
+         visual panel di-hidden. -->
+    <div id="login-screen" class="fixed inset-0 z-50 flex" style="background:#F4F1EA;">
+        <!-- KIRI: Visual immersive (desktop only, hidden < 768px via CSS above) -->
+        <div id="login-visual" class="relative overflow-hidden" style="background:#0f1729;">
+            <div id="login-bg" class="absolute inset-0 login-ken-burns" style="background:linear-gradient(135deg,#0f1729 0%,#1e3a5f 40%,#B8860B 100%);"></div>
+            <div class="absolute inset-0" style="background:linear-gradient(180deg,rgba(0,0,0,0.15) 0%,rgba(0,0,0,0.55) 100%);"></div>
+            <div class="relative z-10 flex flex-col justify-end p-10 lg:p-14 text-white w-full">
+                <div id="login-hijri" class="text-xs uppercase tracking-widest mb-2" style="color:#F8BE20;opacity:0.9;">&nbsp;</div>
+                <h1 id="login-greeting" class="text-3xl lg:text-4xl font-bold mb-1" style="text-shadow:0 2px 8px rgba(0,0,0,0.4);">Assalamu'alaikum</h1>
+                <p id="login-subgreeting" class="text-base lg:text-lg mb-6 opacity-90">Selamat datang di sistem manajemen UMAR Travel</p>
+                <div id="login-quote" class="max-w-md border-l-2 pl-4" style="border-color:#F8BE20;opacity:0;transition:opacity 0.5s;">
+                    <p id="login-quote-text" class="text-sm lg:text-base italic leading-relaxed mb-1"></p>
+                    <p id="login-quote-source" class="text-xs" style="color:#F8BE20;"></p>
+                </div>
             </div>
-            <form id="login-form" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Username</label>
-                    <input type="text" id="username" class="mt-1 block w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-emerald-500" required>
+        </div>
+        <!-- KANAN: Form login (mobile full, desktop 40% via CSS above) -->
+        <div id="login-form-panel" class="flex items-center justify-center p-6 md:p-10" style="background:#F4F1EA;">
+            <div class="w-full max-w-sm">
+                <div class="text-center mb-8">
+                    <img src="umar-Logo.png" alt="Logo Umar Travel" class="brand-logo h-20 mx-auto mb-4 object-contain drop-shadow-md" onerror="this.src='https://placehold.co/200x100/ffffff/B8860B?text=UMAR+TRAVEL'">
+                    <h1 class="brand-name text-2xl font-bold" style="color:#1D1D1B;">Umar Travel</h1>
+                    <p class="text-sm mt-1" style="color:#78350F;">Sistem Manajemen Terpadu</p>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Password</label>
-                    <input type="password" id="password" class="mt-1 block w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-emerald-500" required>
-                </div>
-                <div id="login-error" class="text-red-500 text-sm hidden">Login gagal. Cek kembali username/password.</div>
-                <button type="submit" class="w-full flex justify-center py-2 px-4 rounded-lg text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700">
-                    Masuk Sistem
-                </button>
-            </form>
+                <form id="login-form" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1" style="color:#1D1D1B;">Username</label>
+                        <input type="text" id="username" autocomplete="username" class="block w-full px-4 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2" style="border-color:#E8DFC8;" onfocus="this.style.borderColor='#B8860B';this.style.boxShadow='0 0 0 3px rgba(184,134,11,0.15)';" onblur="this.style.borderColor='#E8DFC8';this.style.boxShadow='none';" required>
+                    </div>
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="text-sm font-medium" style="color:#1D1D1B;">Password</label>
+                            <span id="login-capslock" class="text-[10px] font-bold px-1.5 py-0.5 rounded hidden" style="background:#FEF3C7;color:#92400E;"><i data-lucide="alert-triangle" class="w-2.5 h-2.5 inline"></i> CAPS LOCK</span>
+                        </div>
+                        <div class="relative">
+                            <input type="password" id="password" autocomplete="current-password" class="block w-full pl-4 pr-10 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2" style="border-color:#E8DFC8;" onfocus="this.style.borderColor='#B8860B';this.style.boxShadow='0 0 0 3px rgba(184,134,11,0.15)';" onblur="this.style.borderColor='#E8DFC8';this.style.boxShadow='none';" required>
+                            <button type="button" id="btn-toggle-password" class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded hover:bg-gray-100" style="color:#6B7280;" title="Tampilkan/sembunyikan password" aria-label="Toggle password visibility">
+                                <i data-lucide="eye" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <label class="flex items-center gap-2 text-xs cursor-pointer select-none" style="color:#374151;">
+                        <input type="checkbox" id="login-remember" class="w-4 h-4 rounded" style="accent-color:#B8860B;">
+                        Ingat username di device ini
+                    </label>
+                    <div id="login-error" class="text-red-600 text-xs px-3 py-2 rounded hidden" style="background:#FEE2E2;">Login gagal. Cek kembali username/password.</div>
+                    <button type="submit" id="btn-login-submit" class="w-full flex justify-center items-center gap-2 py-2.5 px-4 rounded-lg text-sm font-bold shadow-sm transition-all" style="background:#B8860B;color:#fff;" onmouseover="if(!this.disabled)this.style.background='#78350F';" onmouseout="if(!this.disabled)this.style.background='#B8860B';">
+                        <span id="btn-login-label">Masuk Sistem</span>
+                        <i id="btn-login-spinner" data-lucide="loader-2" class="w-4 h-4 hidden" style="animation:spin 1s linear infinite;"></i>
+                    </button>
+                </form>
+                <p class="text-center text-[10px] mt-6" style="color:#6B7280;">UMAR Travel &middot; Sistem Manajemen Internal</p>
+            </div>
         </div>
     </div>
 
@@ -572,6 +630,22 @@
             <div class="px-2 mb-2 text-xs font-bold text-emerald-400 uppercase tracking-widest">Beranda</div>
             <a href="#" id="nav-dashboard" onclick="showPage('dashboard')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg bg-emerald-800 text-white font-semibold shadow-inner transition-colors duration-150">
                 <i data-lucide="layout-dashboard" class="w-5 h-5"></i> Dashboard
+            </a>
+            <!-- Phase 6k: Personal Home per role di BERANDA. Nav-btn ini adalah
+                 personal landing untuk role masing2 (Sales/Finance/Mgmt/Ops).
+                 Role visibility di setupWorkspace() cuma unhide 1 sesuai user.role.
+                 Item "Overview X" duplicate ada di grup divisi (utk admin/mgmt oversight). -->
+            <a href="#" id="nav-sales-home" onclick="showPage('sales-home')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
+                <i data-lucide="sun" class="w-5 h-5"></i> Home Sales
+            </a>
+            <a href="#" id="nav-finance-home" onclick="showPage('finance-home')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
+                <i data-lucide="sun" class="w-5 h-5"></i> Home Finance
+            </a>
+            <a href="#" id="nav-mgmt-home" onclick="showPage('mgmt-home')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
+                <i data-lucide="crown" class="w-5 h-5"></i> Home Management
+            </a>
+            <a href="#" id="nav-ops-home" onclick="showPage('ops-home')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
+                <i data-lucide="sun" class="w-5 h-5"></i> Home Operasional
             </a>
 
             <button type="button" id="navgrouphdr-crm" onclick="toggleNavGroup('crm')" class="w-full flex items-center gap-1.5 px-2 mt-6 mb-2 text-xs font-bold text-emerald-400 uppercase tracking-widest hover:text-emerald-200 transition-colors">
@@ -594,11 +668,14 @@
                 <a href="#" id="nav-agents" onclick="showPage('agents')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150">
                     <i data-lucide="network" class="w-4 h-4"></i> Keagenan (Mitra)
                 </a>
-                <a href="#" id="nav-sales-home" onclick="showPage('sales-home')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
-                    <i data-lucide="sun" class="w-4 h-4"></i> Home Sales
-                </a>
                 <a href="#" id="nav-marketing" onclick="showPage('marketing')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
                     <i data-lucide="map" class="w-4 h-4"></i> Marketing Analytics
+                </a>
+                <!-- Phase 6k: Overview Sales -- oversight nav utk admin/mgmt.
+                     Menuju ke page yg sama dgn Home Sales tapi label beda supaya jelas
+                     ini bukan personal home mereka, tapi ringkasan divisi Sales. -->
+                <a href="#" id="nav-sales-overview" onclick="showPage('sales-home')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
+                    <i data-lucide="eye" class="w-4 h-4"></i> Overview Sales
                 </a>
             </div>
 
@@ -606,11 +683,10 @@
                 <i data-lucide="chevron-right" class="w-3.5 h-3.5 nav-group-chevron transition-transform duration-150 shrink-0" id="chevron-finance"></i> Finance
             </button>
             <div id="navgroup-finance" class="space-y-1">
-                <a href="#" id="nav-finance-home" onclick="showPage('finance-home')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
-                    <i data-lucide="sun" class="w-4 h-4"></i> Home Finance
-                </a>
-                <a href="#" id="nav-mgmt-home" onclick="showPage('mgmt-home')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
-                    <i data-lucide="crown" class="w-4 h-4"></i> Home Management
+                <!-- Phase 6k: Overview Finance -- oversight utk admin/mgmt, sama page dgn
+                     Home Finance tapi label beda krn ini bukan personal home mereka. -->
+                <a href="#" id="nav-finance-overview" onclick="showPage('finance-home')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
+                    <i data-lucide="eye" class="w-4 h-4"></i> Overview Finance
                 </a>
                 <a href="#" id="nav-mgmt-targets" onclick="showPage('mgmt-targets')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
                     <i data-lucide="target" class="w-4 h-4"></i> Target Perusahaan & Sales
@@ -633,8 +709,10 @@
                 <i data-lucide="chevron-right" class="w-3.5 h-3.5 nav-group-chevron transition-transform duration-150 shrink-0" id="chevron-ops"></i> Operasional
             </button>
             <div id="navgroup-ops" class="space-y-1">
-                <a href="#" id="nav-ops-home" onclick="showPage('ops-home')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
-                    <i data-lucide="sun" class="w-4 h-4"></i> Home Operasional
+                <!-- Phase 6k: Overview Operasional -- oversight utk admin/mgmt, sama page
+                     dgn Home Operasional tapi label beda krn ini bukan personal home mereka. -->
+                <a href="#" id="nav-ops-overview" onclick="showPage('ops-home')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
+                    <i data-lucide="eye" class="w-4 h-4"></i> Overview Operasional
                 </a>
                 <a href="#" id="nav-operasional" onclick="showPage('operasional')" class="nav-btn flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150">
                     <span class="flex items-center gap-3"><i data-lucide="box" class="w-4 h-4"></i> Logistik & Operasional</span>
@@ -2719,16 +2797,17 @@
                     <div class="umar-card-header">
                         <h3 class="umar-card-title"><i data-lucide="package" class="w-5 h-5"></i>Daftar Paket</h3>
                         <div class="umar-card-actions">
-                            <div class="umar-filter-chips" data-chip-key="packages-status">
+                            <!-- Phase 6j: chip di-generate dinamis di fetchPackagesList() supaya
+                                 tahun-tahun paket lampau muncul otomatis (auto-extend saat data baru). -->
+                            <div class="umar-filter-chips" data-chip-key="packages-status" id="chips-packages">
                                 <button type="button" class="umar-filter-chip" data-value="all">Semua</button>
-                                <button type="button" class="umar-filter-chip" data-value="aktif">Upcoming</button>
-                                <button type="button" class="umar-filter-chip" data-value="selesai">Sudah Berangkat</button>
+                                <button type="button" class="umar-filter-chip" data-value="upcoming">Upcoming</button>
                             </div>
                             <button id="btn-add-pkg" onclick="openAddPackageModal()" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 hidden"><i data-lucide="plus" class="inline w-4 h-4 mr-1"></i>Tambah</button>
                         </div>
                     </div>
                     <table class="w-full text-sm text-left" data-filter-target="status">
-                        <thead class="text-xs text-gray-500 uppercase bg-gray-50"><tr><th class="px-4 py-3">Nama Paket & Keberangkatan</th><th class="px-4 py-3">Sisa Kuota Kursi</th><th class="px-4 py-3">Tour Leader / Mutawwif</th><th class="px-4 py-3">Harga Pendaftaran</th><th class="px-4 py-3">Detail Paket</th><th class="px-4 py-3 text-center">Aksi</th></tr></thead>
+                        <thead class="text-xs text-gray-500 uppercase bg-gray-50"><tr><th class="px-4 py-3">Nama Paket & Keberangkatan</th><th class="px-4 py-3">Sisa Kuota Kursi</th><th class="px-4 py-3">Tour Leader / Mutawwif</th><th class="px-4 py-3">Harga Pendaftaran</th><th class="px-4 py-3">BOQ</th><th class="px-4 py-3">Detail Paket</th><th class="px-4 py-3 text-center">Aksi</th></tr></thead>
                         <tbody id="table-packages" class="divide-y"></tbody>
                     </table>
                 </div>
@@ -4432,7 +4511,7 @@
             if (!path) return '';
             const base = API_URL.replace('/api', '');
             const sep = path.includes('?') ? '&' : '?';
-            return `${base}${path}${sep}token=${encodeURIComponent(localStorage.getItem('token') || '')}`;
+            return `${base}${path}${sep}token=${encodeURIComponent(sessionStorage.getItem('token') || '')}`;
         };
         // Aset publik (logo) tidak butuh token.
         const publicAsset = (path) => path ? `${API_URL.replace('/api','')}${path}` : '';
@@ -4767,7 +4846,7 @@
 
         window.initRiskRegister = async function() {
             try {
-                const t = localStorage.getItem('token');
+                const t = sessionStorage.getItem('token');
                 const r = await fetch('/api/mgmt/risk-register', {headers: {Authorization: 'Bearer '+t}});
                 if (!r.ok) { showToast('Gagal memuat risk register', 'error'); return; }
                 const data = await r.json();
@@ -4826,7 +4905,7 @@
         let recCurrentMid = null;
 
         async function recFetch(url, opts={}) {
-            const t = localStorage.getItem('token');
+            const t = sessionStorage.getItem('token');
             const headers = Object.assign({'Content-Type':'application/json', Authorization:'Bearer '+t}, opts.headers||{});
             const r = await fetch(url, Object.assign({}, opts, {headers}));
             if(!r.ok) throw new Error((await r.json().catch(()=>({detail:r.statusText}))).detail || r.statusText);
@@ -5303,18 +5382,165 @@
             });
         }
 
+        // Phase 6h: Render visual panel login (gradient rotasi waktu, greeting, hijri, quote).
+        function _umarRenderLoginVisual() {
+            const bgEl = document.getElementById('login-bg');
+            const greetEl = document.getElementById('login-greeting');
+            const subEl = document.getElementById('login-subgreeting');
+            const hijriEl = document.getElementById('login-hijri');
+            const quoteBox = document.getElementById('login-quote');
+            const quoteText = document.getElementById('login-quote-text');
+            const quoteSource = document.getElementById('login-quote-source');
+            const h = new Date().getHours();
+            let gradient, subgreeting, slot;
+            if (h >= 4 && h < 11) {
+                slot = 'fajar';
+                gradient = 'linear-gradient(135deg,#3D2914 0%,#8B5A3C 30%,#D4A574 60%,#F5E6D3 100%)';
+                subgreeting = 'Semoga hari ini penuh berkah dan produktivitas.';
+            } else if (h >= 11 && h < 15) {
+                slot = 'siang';
+                gradient = 'linear-gradient(135deg,#3E2723 0%,#8D6E63 40%,#D4AF37 100%)';
+                subgreeting = 'Semoga rezeki Allah lapangkan untuk Anda hari ini.';
+            } else if (h >= 15 && h < 18) {
+                slot = 'sore';
+                gradient = 'linear-gradient(135deg,#4A148C 0%,#E65100 50%,#FF8F00 100%)';
+                subgreeting = 'Semoga Allah kabulkan setiap doa yang Anda panjatkan.';
+            } else {
+                slot = 'malam';
+                gradient = 'linear-gradient(135deg,#0f1729 0%,#1e3a5f 50%,#B8860B 100%)';
+                subgreeting = 'Selamat beristirahat setelah amanah hari ini.';
+            }
+            // Phase 6i: coba load real image dari /assets/login-bg/<slot>.jpg dulu.
+            // Kalau image ada + berhasil di-load, pakai image + darkening overlay
+            // supaya text tetap terbaca. Kalau tidak ada / gagal, fallback ke gradient.
+            if (bgEl) {
+                bgEl.style.background = gradient; // fallback dulu
+                const imgUrl = `/assets/login-bg/${slot}.jpg`;
+                const probe = new Image();
+                probe.onload = () => {
+                    // Success -- pakai image dgn overlay tipis biar tetap moody
+                    bgEl.style.background =
+                        `linear-gradient(180deg,rgba(0,0,0,0.15) 0%,rgba(0,0,0,0.35) 100%), url('${imgUrl}') center/cover no-repeat`;
+                };
+                probe.onerror = () => { /* fallback gradient sudah ter-set */ };
+                probe.src = imgUrl;
+            }
+            const greetingWord = (h >= 4 && h < 11) ? 'Selamat Pagi'
+                : (h >= 11 && h < 15) ? 'Selamat Siang'
+                : (h >= 15 && h < 18) ? 'Selamat Sore' : 'Selamat Malam';
+            if (greetEl) greetEl.textContent = "Assalamu'alaikum, " + greetingWord;
+            if (subEl) subEl.textContent = subgreeting;
+            // Hijri date -- pakai Intl kalau tersedia (locale islamic-umalqura), fallback manual
+            if (hijriEl) {
+                try {
+                    const hijri = new Intl.DateTimeFormat('id-ID-u-ca-islamic-umalqura', {
+                        day: 'numeric', month: 'long', year: 'numeric',
+                    }).format(new Date());
+                    hijriEl.textContent = hijri.replace(/\s?H$/, '') + ' Hijriyah';
+                } catch (e) {
+                    hijriEl.innerHTML = '&nbsp;';
+                }
+            }
+            // Quote of the day (deterministic per hari) -- reuse umarLoadQuotes()
+            if (typeof umarLoadQuotes === 'function' && quoteText) {
+                umarLoadQuotes().then(quotes => {
+                    if (!quotes || !quotes.length) return;
+                    const dayIdx = Math.floor(Date.now() / (1000 * 60 * 60 * 24));
+                    const q = quotes[dayIdx % quotes.length];
+                    quoteText.textContent = '"' + (q.translation || '') + '"';
+                    quoteSource.textContent = '— ' + (q.source || '');
+                    if (quoteBox) quoteBox.style.opacity = '1';
+                }).catch(() => {});
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
-            const token = localStorage.getItem('token');
-            const userStr = localStorage.getItem('user');
+            const token = sessionStorage.getItem('token');
+            const userStr = sessionStorage.getItem('user');
             document.getElementById('current-date').innerText = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
             loadBranding(); // terapkan logo & nama perusahaan (juga di layar login)
-            if (token && userStr) { currentUser = JSON.parse(userStr); setupWorkspace(); }
+            _umarRenderLoginVisual(); // Phase 6h: render visual panel login
+            _umarSetupLoginPolish(); // Phase 6i: polish (remember/toggle/capslock)
+            if (token && userStr) {
+                currentUser = JSON.parse(userStr);
+                setupWorkspace();
+            } else {
+                // Phase 6g: kalau baru saja auto-logout (idle atau tombol "Logout Sekarang" di modal
+                // warning), tampilkan alasan di login form supaya user paham kenapa harus login lagi.
+                try {
+                    const reason = sessionStorage.getItem('_umar_logout_reason');
+                    if (reason) {
+                        const errEl = document.getElementById('login-error');
+                        if (errEl) { errEl.textContent = reason; errEl.classList.remove('hidden'); }
+                        sessionStorage.removeItem('_umar_logout_reason');
+                    }
+                } catch (e) {}
+            }
         });
+
+        // Phase 6i: Polish features -- setup dijalankan setelah DOMContentLoaded.
+        function _umarSetupLoginPolish() {
+            const usernameEl = document.getElementById('username');
+            const passwordEl = document.getElementById('password');
+            const rememberEl = document.getElementById('login-remember');
+            const capslockEl = document.getElementById('login-capslock');
+            const toggleBtn = document.getElementById('btn-toggle-password');
+
+            // Remember username: restore + prefill + focus tepat
+            try {
+                const saved = localStorage.getItem('umar-last-username');
+                if (saved && usernameEl) {
+                    usernameEl.value = saved;
+                    if (rememberEl) rememberEl.checked = true;
+                    if (passwordEl) passwordEl.focus(); // langsung fokus ke password
+                } else if (usernameEl) {
+                    usernameEl.focus();
+                }
+            } catch (e) {}
+
+            // Show/hide password toggle
+            if (toggleBtn && passwordEl) {
+                toggleBtn.addEventListener('click', () => {
+                    const showing = passwordEl.type === 'text';
+                    passwordEl.type = showing ? 'password' : 'text';
+                    const icon = toggleBtn.querySelector('i');
+                    if (icon) icon.setAttribute('data-lucide', showing ? 'eye' : 'eye-off');
+                    if (typeof lucide !== 'undefined') lucide.createIcons();
+                });
+            }
+
+            // Caps Lock indicator -- deteksi via getModifierState di keydown/keyup
+            if (passwordEl && capslockEl) {
+                const checkCaps = (e) => {
+                    try {
+                        const on = e.getModifierState && e.getModifierState('CapsLock');
+                        capslockEl.classList.toggle('hidden', !on);
+                    } catch (err) {}
+                };
+                passwordEl.addEventListener('keydown', checkCaps);
+                passwordEl.addEventListener('keyup', checkCaps);
+                passwordEl.addEventListener('blur', () => capslockEl.classList.add('hidden'));
+            }
+        }
 
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const btn = document.getElementById('btn-login-submit');
+            const btnLabel = document.getElementById('btn-login-label');
+            const btnSpinner = document.getElementById('btn-login-spinner');
+            const errEl = document.getElementById('login-error');
+            // Loading state -- disable button + tampilkan spinner
+            if (btn) {
+                btn.disabled = true;
+                btn.style.opacity = '0.7';
+                btn.style.cursor = 'not-allowed';
+            }
+            if (btnLabel) btnLabel.textContent = 'Memproses...';
+            if (btnSpinner) btnSpinner.classList.remove('hidden');
+            if (errEl) errEl.classList.add('hidden');
             try {
-                const res = await fetch(`${API_URL}/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: document.getElementById('username').value, password: document.getElementById('password').value }) });
+                const username = document.getElementById('username').value;
+                const res = await fetch(`${API_URL}/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password: document.getElementById('password').value }) });
                 let data;
                 try {
                     data = await res.json();
@@ -5322,20 +5548,46 @@
                     throw new Error('Koneksi ke Server gagal (bukan format JSON). Pastikan backend Node.js berjalan.');
                 }
                 if (!res.ok) throw new Error(data.error || 'Terjadi kesalahan saat login.');
-                localStorage.setItem('token', data.token); localStorage.setItem('user', JSON.stringify(data.user));
+                sessionStorage.setItem('token', data.token); sessionStorage.setItem('user', JSON.stringify(data.user));
+                // Remember username -- simpan hanya kalau checkbox on (BUKAN password)
+                try {
+                    const remember = document.getElementById('login-remember');
+                    if (remember && remember.checked) {
+                        localStorage.setItem('umar-last-username', username);
+                    } else {
+                        localStorage.removeItem('umar-last-username');
+                    }
+                } catch (e) {}
                 currentUser = data.user; setupWorkspace();
             } catch (err) {
                 const errMsg = err.message === 'Failed to fetch' || err.message.includes('NetworkError') ? 'Koneksi ke server terputus. Pastikan backend berjalan.' : err.message;
-                document.getElementById('login-error').textContent = errMsg; document.getElementById('login-error').classList.remove('hidden');
+                if (errEl) { errEl.textContent = errMsg; errEl.classList.remove('hidden'); }
+                // Restore button state on error
+                if (btn) {
+                    btn.disabled = false;
+                    btn.style.opacity = '';
+                    btn.style.cursor = '';
+                }
+                if (btnLabel) btnLabel.textContent = 'Masuk Sistem';
+                if (btnSpinner) btnSpinner.classList.add('hidden');
             }
         });
 
-        function logout() { localStorage.clear(); location.reload(); }
+        function logout() {
+            // Phase 6g: token+user disimpan di sessionStorage (auto-hilang saat browser close).
+            // Preferences (umar-tab-*, umar-chip-*, navgroup-*, dark mode) tetap di localStorage.
+            try {
+                sessionStorage.removeItem('token');
+                sessionStorage.removeItem('user');
+            } catch (e) {}
+            if (typeof umarSessionStop === 'function') umarSessionStop();
+            location.reload();
+        }
         async function authFetch(end, opt = {}) {
             // Toleran terhadap pemanggil yang salah mengawali dengan '/api/' -- strip prefix
             // itu supaya tidak jadi '/api/api/...'. Pemanggil idealnya kirim path tanpa /api.
             if (end && end.startsWith('/api/')) end = end.slice(4);
-            const res = await fetch(`${API_URL}${end}`, { ...opt, headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json', ...opt.headers } });
+            const res = await fetch(`${API_URL}${end}`, { ...opt, headers: { 'Authorization': `Bearer ${sessionStorage.getItem('token')}`, 'Content-Type': 'application/json', ...opt.headers } });
             // 401 = sesi tidak valid/kedaluwarsa -> paksa login ulang.
             // 403 = sesi valid tapi role tidak berwenang untuk aksi ini -> cukup tampilkan
             // pesan error (lihat exception_handler di app.py yang mengubah HTTPException
@@ -5355,6 +5607,8 @@
             document.getElementById('user-name-display').innerText = currentUser.name;
             document.getElementById('user-role-display').innerText = currentUser.role;
             setAvatarEl(document.getElementById('user-avatar'), currentUser.name, currentUser.photo_url);
+            // Phase 6g: mulai idle-timeout session monitor (30 mnt idle -> warning 60 dtk -> logout)
+            if (typeof umarSessionStart === 'function') umarSessionStart();
 
             // Default State
             document.getElementById('nav-finance').classList.remove('hidden');
@@ -5393,10 +5647,14 @@
                 document.getElementById('nav-followup').classList.remove('hidden');
                 document.getElementById('finance-write-panel').classList.remove('hidden');
                 document.getElementById('btn-save-ops').classList.remove('hidden');
-                // Admin bisa lihat semua landing personal untuk audit + support
-                document.getElementById('nav-ops-home').classList.remove('hidden');
+                // Phase 6k: Admin punya Dashboard sbg personal home + Overview di setiap grup
+                // divisi utk oversight (Sales/Finance/Mgmt/Operasional). Dashboard tetap di
+                // BERANDA section; Overview X ada di grup masing2 dgn label distinct dari Home.
+                document.getElementById('nav-sales-overview').classList.remove('hidden');
+                document.getElementById('nav-finance-overview').classList.remove('hidden');
+                document.getElementById('nav-ops-overview').classList.remove('hidden');
+                document.getElementById('nav-mgmt-home').classList.remove('hidden'); // di BERANDA
                 document.getElementById('nav-incidents').classList.remove('hidden');
-                document.getElementById('nav-sales-home').classList.remove('hidden');
                 document.getElementById('nav-reconcile').classList.remove('hidden');
                 document.getElementById('nav-risk-register').classList.remove('hidden');
                 document.getElementById('nav-mgmt-targets').classList.remove('hidden');
@@ -5455,11 +5713,13 @@
                 // di backend memang dibatasi khusus admin+sales, jadi Management akan selalu 403
                 // bila mencoba mereview -- konsisten untuk tidak menampilkan nav yang pasti gagal.
                 document.getElementById('nav-inbox').classList.add('hidden');
-                // Management: Home Management + Home Finance + Home Ops + Insiden untuk oversight
-                document.getElementById('nav-mgmt-home').classList.remove('hidden');
+                // Phase 6k: Management personal home = Home Management di BERANDA.
+                // Overview Finance/Sales/Operasional di grup masing2 utk oversight cross-divisi.
+                document.getElementById('nav-mgmt-home').classList.remove('hidden'); // BERANDA
                 document.getElementById('nav-mgmt-targets').classList.remove('hidden');
-                document.getElementById('nav-finance-home').classList.remove('hidden');
-                document.getElementById('nav-ops-home').classList.remove('hidden');
+                document.getElementById('nav-finance-overview').classList.remove('hidden');
+                document.getElementById('nav-sales-overview').classList.remove('hidden');
+                document.getElementById('nav-ops-overview').classList.remove('hidden');
                 document.getElementById('nav-incidents').classList.remove('hidden');
                 document.getElementById('nav-risk-register').classList.remove('hidden');
                 document.getElementById('nav-dashboard').classList.add('hidden');
@@ -5530,10 +5790,25 @@
             localStorage.setItem(`navgroup-${key}`, willOpen ? '1' : '0');
         }
         function initNavGroups() {
+            // Phase 6l: Smart default expand.
+            // - Admin: semua grup expand (butuh akses ke semua modul, hindari klik header).
+            // - Role lain: expand grup yg ada nav-btn visible utk role tsb (relevan).
+            // - User yg pernah manual toggle: pakai localStorage (persistensi user preference).
+            const isAdmin = currentUser && currentUser.role === 'admin';
             NAV_GROUPS.forEach(key => {
                 const saved = localStorage.getItem(`navgroup-${key}`);
-                // Default pertama kali: cuma CRM & Sales yang terbuka, sisanya dilipat.
-                const open = saved === null ? (key === 'crm') : saved === '1';
+                let open;
+                if (saved !== null) {
+                    open = saved === '1'; // user preference tersimpan menang
+                } else if (isAdmin) {
+                    open = true; // admin: semua grup expand default
+                } else {
+                    // Role lain: expand grup yg punya minimal 1 nav-btn visible
+                    const container = document.getElementById(`navgroup-${key}`);
+                    const hasVisibleChild = container && [...container.querySelectorAll('.nav-btn')]
+                        .some(el => !el.classList.contains('hidden'));
+                    open = !!hasVisibleChild;
+                }
                 toggleNavGroup(key, open);
             });
         }
@@ -9154,7 +9429,7 @@
                     preview.innerText = '';
                     input.value = '';
                     currentUser.photo_url = data.photo_url;
-                    localStorage.setItem('user', JSON.stringify(currentUser));
+                    sessionStorage.setItem('user', JSON.stringify(currentUser));
                     setAvatarEl(document.getElementById('user-avatar'), currentUser.name, currentUser.photo_url);
                     if (['admin', 'management'].includes(currentUser.role)) fetchUsers();
                 } catch (err) { showToast(err.message, 'error'); }
@@ -9309,13 +9584,54 @@
             try {
                 const res = await authFetch('/packages'); const p = await res.json();
                 packagesCache = p;
+                const _today = new Date().toISOString().slice(0, 10);
+                // Phase 6j: kumpulkan tahun distinct dari paket lampau (sudah berangkat)
+                // supaya chip filter tampilkan tombol per tahun (Semua/Upcoming/2026/2025/2024).
+                const _pastYears = [...new Set(p
+                    .filter(x => x.departure_date && x.departure_date < _today)
+                    .map(x => x.departure_date.slice(0, 4))
+                )].sort().reverse();
+                const _chipsContainer = document.getElementById('chips-packages');
+                if (_chipsContainer) {
+                    _chipsContainer.innerHTML =
+                        '<button type="button" class="umar-filter-chip" data-value="all">Semua</button>' +
+                        '<button type="button" class="umar-filter-chip" data-value="upcoming">Upcoming</button>' +
+                        _pastYears.map(y => `<button type="button" class="umar-filter-chip" data-value="selesai-${y}">${y}</button>`).join('');
+                    delete _chipsContainer.dataset.umarChipsReady;  // paksa re-init supaya chip baru ke-bind
+                    if (typeof umarWireChipsInPage === 'function') setTimeout(() => umarWireChipsInPage('page-packages'), 50);
+                }
                 document.getElementById('table-packages').innerHTML = p.map(x => {
                     const safeTL = (x.tour_leader || '').replace(/'/g, "\\'");
                     const safeMut = (x.mutawwif || '').replace(/'/g, "\\'");
-                    const _today = new Date().toISOString().slice(0, 10);
-                    const _pkgStatus = (x.departure_date && x.departure_date >= _today) ? 'aktif' : 'selesai';
-                    return `<tr class="hover:bg-gray-50/50" data-filter="${_pkgStatus}"><td class="p-3 border-b"><p class="font-bold text-gray-800">${x.name}</p><p class="text-xs text-gray-500">${x.departure_date}${x.return_date ? ' &ndash; ' + x.return_date : ''} (${x.duration} Hari)</p></td><td class="p-3 border-b"><span class="font-bold ${x.quota - x.filled <= 5 ? 'text-red-600' : 'text-emerald-600'}">${x.quota - x.filled}</span><span class="text-xs text-gray-500"> / ${x.quota}</span></td><td class="p-3 border-b text-xs"><div class="mb-1"><span class="font-semibold text-gray-600">TL:</span> ${x.tour_leader||'<i class="text-red-400">Belum diassign</i>'}</div><div><span class="font-semibold text-gray-600">Mutawwif:</span> ${x.mutawwif||'<i class="text-red-400">Belum diassign</i>'}</div></td><td class="p-3 border-b text-emerald-600 font-medium">${formatRp(x.price_quad || x.price)}</td><td class="p-3 border-b">${packageDetailHtml(x)}</td><td class="p-3 border-b text-center">${currentUser.role === 'admin' ? `<button class="bg-blue-50 text-blue-700 px-3 py-1 rounded text-xs hover:bg-blue-100 mb-1 block w-full shadow-sm" onclick="openEditPackageModal(${x.id})">Edit Paket</button>` : ''}${['admin', 'ops'].includes(currentUser.role) ? `<button class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded text-xs hover:bg-indigo-100 mb-1 block w-full shadow-sm" onclick="openAssign(${x.id}, '${safeTL}', '${safeMut}')">Tugaskan TL</button>` : ''}${currentUser.role === 'admin' ? `<button class="bg-red-50 text-red-600 px-3 py-1 rounded text-xs hover:bg-red-100 block w-full" onclick="delPkg(${x.id})">Hapus Paket</button>` : ''}</td></tr>`;
+                    // Filter value: 'upcoming' utk paket akan datang, 'selesai-<year>' utk lampau
+                    const _pkgFilter = (x.departure_date && x.departure_date >= _today)
+                        ? 'upcoming'
+                        : ('selesai-' + (x.departure_date || '0000').slice(0, 4));
+                    // BOQ badge: tampilkan status BOQ untuk paket ini
+                    const _bq = x.boq_summary || {total: 0, approved: 0, draft: 0, pending: 0};
+                    let _bqBadge;
+                    if (_bq.total === 0) {
+                        _bqBadge = `<span class="text-[10px] text-gray-400 italic">Belum ada BOQ</span>`;
+                    } else if (_bq.approved > 0) {
+                        _bqBadge = `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded" style="background:#DCFCE7;color:#166534;"><i data-lucide="check-circle" class="w-3 h-3"></i>${_bq.approved} Approved</span>`;
+                        if (_bq.draft > 0 || _bq.pending > 0) {
+                            _bqBadge += `<div class="text-[9px] text-gray-500 mt-0.5">+${_bq.draft} Draft, ${_bq.pending} Pending</div>`;
+                        }
+                    } else if (_bq.pending > 0) {
+                        _bqBadge = `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded" style="background:#FEF3C7;color:#92400E;"><i data-lucide="hourglass" class="w-3 h-3"></i>${_bq.pending} Pending</span>`;
+                    } else if (_bq.draft > 0) {
+                        _bqBadge = `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded" style="background:#F3F4F6;color:#4B5563;"><i data-lucide="file-edit" class="w-3 h-3"></i>${_bq.draft} Draft</span>`;
+                    } else {
+                        _bqBadge = `<span class="text-[10px] text-gray-400 italic">${_bq.rejected || 0} Rejected</span>`;
+                    }
+                    const _bqCol = `<div>${_bqBadge}</div><button onclick="_openBoqForPackage(${x.id})" class="text-[10px] text-indigo-600 hover:underline mt-1"><i data-lucide="external-link" class="w-2.5 h-2.5 inline"></i> Kelola BOQ</button>`;
+                    return `<tr class="hover:bg-gray-50/50" data-filter="${_pkgFilter}"><td class="p-3 border-b"><p class="font-bold text-gray-800">${x.name}</p><p class="text-xs text-gray-500">${x.departure_date}${x.return_date ? ' &ndash; ' + x.return_date : ''} (${x.duration} Hari)</p></td><td class="p-3 border-b"><span class="font-bold ${x.quota - x.filled <= 5 ? 'text-red-600' : 'text-emerald-600'}">${x.quota - x.filled}</span><span class="text-xs text-gray-500"> / ${x.quota}</span></td><td class="p-3 border-b text-xs"><div class="mb-1"><span class="font-semibold text-gray-600">TL:</span> ${x.tour_leader||'<i class="text-red-400">Belum diassign</i>'}</div><div><span class="font-semibold text-gray-600">Mutawwif:</span> ${x.mutawwif||'<i class="text-red-400">Belum diassign</i>'}</div></td><td class="p-3 border-b text-emerald-600 font-medium">${formatRp(x.price_quad || x.price)}</td><td class="p-3 border-b">${_bqCol}</td><td class="p-3 border-b">${packageDetailHtml(x)}</td><td class="p-3 border-b text-center">${currentUser.role === 'admin' ? `<button class="bg-blue-50 text-blue-700 px-3 py-1 rounded text-xs hover:bg-blue-100 mb-1 block w-full shadow-sm" onclick="openEditPackageModal(${x.id})">Edit Paket</button>` : ''}${['admin', 'ops'].includes(currentUser.role) ? `<button class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded text-xs hover:bg-indigo-100 mb-1 block w-full shadow-sm" onclick="openAssign(${x.id}, '${safeTL}', '${safeMut}')">Tugaskan TL</button>` : ''}${currentUser.role === 'admin' ? `<button class="bg-red-50 text-red-600 px-3 py-1 rounded text-xs hover:bg-red-100 block w-full" onclick="delPkg(${x.id})">Hapus Paket</button>` : ''}</td></tr>`;
                 }).join('');
+                // Phase 6j: quick action -- buka modul BOQ dgn filter package pre-set
+                window._openBoqForPackage = function(packageId) {
+                    try { localStorage.setItem('boq-filter-package-preset', String(packageId)); } catch (e) {}
+                    showPage('boq');
+                };
                 if (typeof lucide !== 'undefined') lucide.createIcons();
             } catch(e) {}
         }
@@ -9494,12 +9810,13 @@
     </script>
     <!-- UMAR Shared Hero (Phase 5a): time greeting + realtime clock + Islamic daily quote. -->
     <script src="js/umar-hero.js?v=20260904-6f"></script>
+    <script src="js/umar-session.js?v=20260904-6g"></script>
     <!-- Marketing Analytics: heatmap + chart (dimuat setelah inline JS supaya authFetch sudah terdefinisi). -->
     <script src="js/marketing.js?v=20260817d"></script>
     <script src="js/sales-home.js?v=20260827e"></script>
     <script src="js/ops-home.js?v=20260827e"></script>
     <script src="js/finance-home.js?v=20260827e"></script>
     <script src="js/mgmt-home.js?v=20260827e"></script>
-    <script src="js/boq.js?v=20260903-6d"></script>
+    <script src="js/boq.js?v=20260907-6j"></script>
 </body>
 </html>
