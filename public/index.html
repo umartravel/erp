@@ -9932,25 +9932,50 @@
                 // Phase 6j: kumpulkan tahun distinct dari paket lampau (sudah berangkat)
                 // supaya chip filter tampilkan tombol per tahun (Semua/Upcoming/2026/2025/2024).
                 const _pastYears = [...new Set(p
-                    .filter(x => x.departure_date && x.departure_date < _today)
+                    .filter(x => x.departure_date && x.return_date && x.return_date < _today)
                     .map(x => x.departure_date.slice(0, 4))
                 )].sort().reverse();
+                // Phase 8b: hitung ada paket "sedang berangkat" utk enable chip khusus.
+                const _hasBerangkat = p.some(x =>
+                    x.departure_date && x.departure_date <= _today &&
+                    (!x.return_date || x.return_date >= _today)
+                );
                 const _chipsContainer = document.getElementById('chips-packages');
                 if (_chipsContainer) {
                     _chipsContainer.innerHTML =
                         '<button type="button" class="umar-filter-chip" data-value="all">Semua</button>' +
                         '<button type="button" class="umar-filter-chip" data-value="upcoming">Upcoming</button>' +
-                        _pastYears.map(y => `<button type="button" class="umar-filter-chip" data-value="selesai-${y}">${y}</button>`).join('');
+                        (_hasBerangkat ? '<button type="button" class="umar-filter-chip" data-value="berangkat">Sudah Berangkat</button>' : '') +
+                        _pastYears.map(y => `<button type="button" class="umar-filter-chip" data-value="selesai-${y}">Selesai ${y}</button>`).join('');
                     delete _chipsContainer.dataset.umarChipsReady;  // paksa re-init supaya chip baru ke-bind
                     if (typeof umarWireChipsInPage === 'function') setTimeout(() => umarWireChipsInPage('page-packages'), 50);
                 }
                 document.getElementById('table-packages').innerHTML = p.map(x => {
                     const safeTL = (x.tour_leader || '').replace(/'/g, "\\'");
                     const safeMut = (x.mutawwif || '').replace(/'/g, "\\'");
-                    // Filter value: 'upcoming' utk paket akan datang, 'selesai-<year>' utk lampau
-                    const _pkgFilter = (x.departure_date && x.departure_date >= _today)
-                        ? 'upcoming'
-                        : ('selesai-' + (x.departure_date || '0000').slice(0, 4));
+                    // Phase 8b: Filter value tersinkronisasi dgn chip:
+                    //   'upcoming'      = belum berangkat
+                    //   'berangkat'     = sudah berangkat, belum pulang
+                    //   'selesai-YYYY'  = sudah pulang, dikelompokkan tahun keberangkatan
+                    let _pkgFilter = 'upcoming';
+                    if (x.departure_date) {
+                        if (x.return_date && x.return_date < _today) {
+                            _pkgFilter = 'selesai-' + x.departure_date.slice(0, 4);
+                        } else if (x.departure_date <= _today) {
+                            _pkgFilter = 'berangkat';
+                        }
+                    }
+                    // Phase 8b: compute status (Upcoming / Sudah Berangkat / Sudah Pulang)
+                    // dari departure_date + return_date. Menampilkan badge visual per row.
+                    let _pkgStatus = { label: 'Upcoming', bg: '#DBEAFE', color: '#1E40AF', icon: 'calendar' };
+                    if (x.departure_date) {
+                        if (x.return_date && x.return_date < _today) {
+                            _pkgStatus = { label: 'Sudah Pulang', bg: '#F3F4F6', color: '#6B7280', icon: 'check-check' };
+                        } else if (x.departure_date <= _today) {
+                            _pkgStatus = { label: 'Sudah Berangkat', bg: '#FEF3C7', color: '#92400E', icon: 'plane' };
+                        }
+                    }
+                    const _statusBadge = `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded" style="background:${_pkgStatus.bg};color:${_pkgStatus.color};"><i data-lucide="${_pkgStatus.icon}" class="w-2.5 h-2.5"></i>${_pkgStatus.label}</span>`;
                     // BOQ badge: tampilkan status BOQ untuk paket ini
                     const _bq = x.boq_summary || {total: 0, approved: 0, draft: 0, pending: 0};
                     let _bqBadge;
@@ -9969,7 +9994,7 @@
                         _bqBadge = `<span class="text-[10px] text-gray-400 italic">${_bq.rejected || 0} Rejected</span>`;
                     }
                     const _bqCol = `<div>${_bqBadge}</div><button onclick="_openBoqForPackage(${x.id})" class="text-[10px] text-indigo-600 hover:underline mt-1"><i data-lucide="external-link" class="w-2.5 h-2.5 inline"></i> Kelola BOQ</button>`;
-                    return `<tr class="hover:bg-gray-50/50" data-filter="${_pkgFilter}"><td class="p-3 border-b"><p class="font-bold text-gray-800">${x.name}</p><p class="text-xs text-gray-500">${x.departure_date}${x.return_date ? ' &ndash; ' + x.return_date : ''} (${x.duration} Hari)</p></td><td class="p-3 border-b"><span class="font-bold ${x.quota - x.filled <= 5 ? 'text-red-600' : 'text-emerald-600'}">${x.quota - x.filled}</span><span class="text-xs text-gray-500"> / ${x.quota}</span></td><td class="p-3 border-b text-xs"><div class="mb-1"><span class="font-semibold text-gray-600">TL:</span> ${x.tour_leader||'<i class="text-red-400">Belum diassign</i>'}</div><div><span class="font-semibold text-gray-600">Mutawwif:</span> ${x.mutawwif||'<i class="text-red-400">Belum diassign</i>'}</div></td><td class="p-3 border-b text-emerald-600 font-medium">${formatRp(x.price_quad || x.price)}</td><td class="p-3 border-b">${_bqCol}</td><td class="p-3 border-b">${packageDetailHtml(x)}</td><td class="p-3 border-b text-center">${currentUser.role === 'admin' ? `<button class="bg-blue-50 text-blue-700 px-3 py-1 rounded text-xs hover:bg-blue-100 mb-1 block w-full shadow-sm" onclick="openEditPackageModal(${x.id})">Edit Paket</button>` : ''}${['admin', 'ops'].includes(currentUser.role) ? `<button class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded text-xs hover:bg-indigo-100 mb-1 block w-full shadow-sm" onclick="openAssign(${x.id}, '${safeTL}', '${safeMut}')">Tugaskan TL</button>` : ''}${['admin', 'management', 'finance', 'ops'].includes(currentUser.role) ? `<button class="bg-emerald-50 text-emerald-700 px-3 py-1 rounded text-xs hover:bg-emerald-100 mb-1 block w-full shadow-sm" onclick="downloadPackageJamaahExcel(${x.id})" title="Download Excel jamaah paket ini"><i data-lucide="download" class="inline w-3 h-3"></i> Excel Jamaah</button>` : ''}${currentUser.role === 'admin' ? `<button class="bg-red-50 text-red-600 px-3 py-1 rounded text-xs hover:bg-red-100 block w-full" onclick="delPkg(${x.id})">Hapus Paket</button>` : ''}</td></tr>`;
+                    return `<tr class="hover:bg-gray-50/50" data-filter="${_pkgFilter}"><td class="p-3 border-b"><div class="flex items-start gap-2"><p class="font-bold text-gray-800">${x.name}</p>${_statusBadge}</div><p class="text-xs text-gray-500 mt-1">${x.departure_date}${x.return_date ? ' &ndash; ' + x.return_date : ''} (${x.duration} Hari)</p></td><td class="p-3 border-b"><span class="font-bold ${x.quota - x.filled <= 5 ? 'text-red-600' : 'text-emerald-600'}">${x.quota - x.filled}</span><span class="text-xs text-gray-500"> / ${x.quota}</span></td><td class="p-3 border-b text-xs"><div class="mb-1"><span class="font-semibold text-gray-600">TL:</span> ${x.tour_leader||'<i class="text-red-400">Belum diassign</i>'}</div><div><span class="font-semibold text-gray-600">Mutawwif:</span> ${x.mutawwif||'<i class="text-red-400">Belum diassign</i>'}</div></td><td class="p-3 border-b text-emerald-600 font-medium">${formatRp(x.price_quad || x.price)}</td><td class="p-3 border-b">${_bqCol}</td><td class="p-3 border-b">${packageDetailHtml(x)}</td><td class="p-3 border-b text-center">${currentUser.role === 'admin' ? `<button class="bg-blue-50 text-blue-700 px-3 py-1 rounded text-xs hover:bg-blue-100 mb-1 block w-full shadow-sm" onclick="openEditPackageModal(${x.id})">Edit Paket</button>` : ''}${['admin', 'ops'].includes(currentUser.role) ? `<button class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded text-xs hover:bg-indigo-100 mb-1 block w-full shadow-sm" onclick="openAssign(${x.id}, '${safeTL}', '${safeMut}')">Tugaskan TL</button>` : ''}${['admin', 'management', 'finance', 'ops'].includes(currentUser.role) ? `<button class="bg-emerald-50 text-emerald-700 px-3 py-1 rounded text-xs hover:bg-emerald-100 mb-1 block w-full shadow-sm" onclick="downloadPackageJamaahExcel(${x.id})" title="Download Excel jamaah paket ini"><i data-lucide="download" class="inline w-3 h-3"></i> Excel Jamaah</button>` : ''}${currentUser.role === 'admin' ? `<button class="bg-red-50 text-red-600 px-3 py-1 rounded text-xs hover:bg-red-100 block w-full" onclick="delPkg(${x.id})">Hapus Paket</button>` : ''}</td></tr>`;
                 }).join('');
                 // Phase 6j: quick action -- buka modul BOQ dgn filter package pre-set
                 window._openBoqForPackage = function(packageId) {
