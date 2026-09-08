@@ -9689,9 +9689,10 @@
                     </td>
                     <td class="p-3 border-b text-center whitespace-nowrap">
                         <button class="p-1.5 text-gray-500 hover:bg-emerald-100 hover:text-emerald-600 rounded-md" title="Detail Karyawan" onclick="openUserDetail(${x.id})"><i data-lucide="eye" class="w-4 h-4"></i></button>
-                        ${currentUser.role === 'admin' ? `<button class="p-1.5 text-gray-500 hover:bg-blue-100 hover:text-blue-600 rounded-md" title="Edit Karyawan" onclick="openEditUserModal(${x.id})"><i data-lucide="edit" class="w-4 h-4"></i></button>` : ''}
-                        ${currentUser.role === 'admin' ? `<button class="p-1.5 text-gray-500 hover:bg-amber-100 hover:text-amber-600 rounded-md" title="Reset Password" onclick="openResetPasswordModal(${x.id})"><i data-lucide="key-round" class="w-4 h-4"></i></button>` : ''}
-                        ${currentUser.role === 'admin' ? `<button class="bg-red-50 text-red-600 px-3 py-1 rounded text-xs hover:bg-red-100" onclick="delUser(${x.id})">Hapus</button>` : ''}
+                        ${/* Phase 8e: mgmt boleh edit/reset/hapus kecuali target admin */ ''}
+                        ${(currentUser.role === 'admin' || (currentUser.role === 'management' && x.role !== 'admin')) ? `<button class="p-1.5 text-gray-500 hover:bg-blue-100 hover:text-blue-600 rounded-md" title="Edit Karyawan" onclick="openEditUserModal(${x.id})"><i data-lucide="edit" class="w-4 h-4"></i></button>` : ''}
+                        ${(currentUser.role === 'admin' || (currentUser.role === 'management' && x.role !== 'admin')) ? `<button class="p-1.5 text-gray-500 hover:bg-amber-100 hover:text-amber-600 rounded-md" title="Reset Password" onclick="openResetPasswordModal(${x.id})"><i data-lucide="key-round" class="w-4 h-4"></i></button>` : ''}
+                        ${(currentUser.role === 'admin' || (currentUser.role === 'management' && x.role !== 'admin')) ? `<button class="bg-red-50 text-red-600 px-3 py-1 rounded text-xs hover:bg-red-100" onclick="delUser(${x.id})">Hapus</button>` : ''}
                     </td>
                 </tr>`;}).join('');
                 if (typeof lucide !== 'undefined') lucide.createIcons();

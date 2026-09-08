@@ -156,11 +156,18 @@ async def users_create(body: dict = Depends(json_body), user=Depends(authenticat
 
 @router.put("/api/users/{uid}")
 async def users_update(uid: int, body: dict = Depends(json_body), user=Depends(authenticate_token)):
-    require_role(user, "admin")
+    # Phase 8e: Management sekarang boleh edit karyawan (kecuali edit akun admin).
+    require_role(user, "admin", "management")
     g = body.get
-    target = db.query_one("SELECT username FROM users WHERE id = ?", (uid,))
+    target = db.query_one("SELECT username, role FROM users WHERE id = ?", (uid,))
     if not target:
         raise HTTPException(status_code=404, detail="User tidak ditemukan")
+    # Phase 8e: guard privilege escalation -- mgmt tidak boleh sentuh akun admin.
+    if target["role"] == "admin" and user["role"] != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Hanya admin yang boleh edit/hapus akun admin.",
+        )
     try:
         db.execute(
             "UPDATE users SET username = ?, name = ?, role = ?, base_salary = ?, phone = ?, "
@@ -183,12 +190,21 @@ async def users_update(uid: int, body: dict = Depends(json_body), user=Depends(a
 
 @router.delete("/api/users/{uid}")
 async def users_delete(uid: int, user=Depends(authenticate_token)):
-    require_role(user, "admin")
+    # Phase 8e: Management sekarang boleh hapus karyawan (kecuali akun admin).
+    require_role(user, "admin", "management")
     if uid == user["id"]:
         raise HTTPException(
             status_code=400, detail="Akses Ditolak: Anda tidak dapat menghapus akun Anda sendiri."
         )
     target = db.query_one("SELECT username, role FROM users WHERE id = ?", (uid,))
+    if not target:
+        raise HTTPException(status_code=404, detail="User tidak ditemukan")
+    # Phase 8e: guard privilege escalation -- mgmt tidak boleh hapus akun admin.
+    if target["role"] == "admin" and user["role"] != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Hanya admin yang boleh edit/hapus akun admin.",
+        )
     # Phase 7b-3: Guard resign -- kalau user CS ini masih pegang agen, tolak
     # sampai admin handoff dulu. Cegah agen orphan (handler_cs_id = dangling FK)
     # per keputusan di project_edit_jamaah_agent_transfer_plan.md.
