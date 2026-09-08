@@ -100,6 +100,28 @@ async def jamaah_update(jid: int, body: dict = Depends(json_body), user=Depends(
     if not row:
         raise HTTPException(status_code=404, detail="Jamaah tidak ditemukan")
 
+    # Phase 7a-1: tambahan field biodata/dokumen -- optional. Kalau body tidak
+    # kirim key-nya, preserve nilai lama dari row (partial update-safe).
+    # Modal Edit Jamaah tabbed (Phase 7a-2) akan kirim semua field sekaligus,
+    # tapi caller lama (edit dari script/legacy) tidak break.
+    def _pref(key, default_val):
+        return body[key] if key in body else default_val
+    doc_number = _pref("passport_number", row["passport_number"])
+    doc_issued = _pref("passport_issued", row["passport_issued"])
+    doc_expiry = _pref("passport_expiry", row["passport_expiry"])
+    doc_location = _pref("passport_location", row["passport_location"])
+    doc_issuer_city = _pref("passport_issuer_city", row["passport_issuer_city"])
+    doc_room_num = _pref("room_number", row["room_number"])
+    doc_bus_group = _pref("bus_group", row["bus_group"])
+    doc_equipment = _pref("equipment_package", row["equipment_package"])
+    # submitted_documents = JSON string di DB. Kalau body kirim list, jsonify;
+    # kalau tidak, keep raw string dari row.
+    if "submitted_documents" in body:
+        val = body["submitted_documents"]
+        doc_submitted = json.dumps(val or []) if isinstance(val, list) else val
+    else:
+        doc_submitted = row["submitted_documents"]
+
     final_package = g("package_type")
     final_price = g("total_price")
 
@@ -114,13 +136,18 @@ async def jamaah_update(jid: int, body: dict = Depends(json_body), user=Depends(
             "UPDATE jamaah SET nik = ?, name = ?, phone = ?, health_history = ?, mahram = ?, "
             "orderer_name = ?, gender = ?, birth_place = ?, birth_date = ?, citizenship = ?, identity_type = ?, "
             "family_phone = ?, email = ?, father_name = ?, education = ?, job = ?, marital_status = ?, "
-            "relation = ?, address = ?, province = ?, city = ?, subdistrict = ?, village = ? WHERE id = ?",
+            "relation = ?, address = ?, province = ?, city = ?, subdistrict = ?, village = ?, "
+            "passport_number = ?, passport_issued = ?, passport_expiry = ?, passport_location = ?, "
+            "passport_issuer_city = ?, submitted_documents = ?, equipment_package = ?, "
+            "room_number = ?, bus_group = ? WHERE id = ?",
             (
                 g("nik"), g("name"), g("phone"), g("health_history"), g("mahram"),
                 g("orderer_name"), g("gender"), g("birth_place"), g("birth_date"), g("citizenship"),
                 g("identity_type"), g("family_phone"), g("email"), g("father_name"),
                 g("education"), g("job"), g("marital_status"), g("relation"), g("address"),
-                g("province"), g("city"), g("subdistrict"), g("village"), jid,
+                g("province"), g("city"), g("subdistrict"), g("village"),
+                doc_number, doc_issued, doc_expiry, doc_location, doc_issuer_city,
+                doc_submitted, doc_equipment, doc_room_num, doc_bus_group, jid,
             ),
         )
         log_action(
@@ -211,7 +238,10 @@ async def jamaah_update(jid: int, body: dict = Depends(json_body), user=Depends(
         f"package_type = ?, total_price = ?, orderer_name = ?, gender = ?, birth_place = ?, birth_date = ?, "
         f"citizenship = ?, identity_type = ?, family_phone = ?, email = ?, father_name = ?, education = ?, "
         f"job = ?, marital_status = ?, relation = ?, address = ?, province = ?, city = ?, subdistrict = ?, "
-        f"village = ?, room_type = ?, boq_id = ?, boq_snapshot_price = ?, boq_snapshot_at = {boq_snapshot_at_sql} "
+        f"village = ?, room_type = ?, passport_number = ?, passport_issued = ?, passport_expiry = ?, "
+        f"passport_location = ?, passport_issuer_city = ?, submitted_documents = ?, equipment_package = ?, "
+        f"room_number = ?, bus_group = ?, "
+        f"boq_id = ?, boq_snapshot_price = ?, boq_snapshot_at = {boq_snapshot_at_sql} "
         f"WHERE id = ?",
         (
             g("nik"), g("name"), g("phone"), g("status"), g("health_history"), g("mahram"),
@@ -219,6 +249,8 @@ async def jamaah_update(jid: int, body: dict = Depends(json_body), user=Depends(
             g("citizenship"), g("identity_type"), g("family_phone"), g("email"), g("father_name"),
             g("education"), g("job"), g("marital_status"), g("relation"), g("address"),
             g("province"), g("city"), g("subdistrict"), g("village"), g("room_type"),
+            doc_number, doc_issued, doc_expiry, doc_location, doc_issuer_city,
+            doc_submitted, doc_equipment, doc_room_num, doc_bus_group,
             boq_id_to_save, boq_snapshot_price_new,
             jid,
         ),
