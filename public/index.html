@@ -2443,7 +2443,7 @@
                     </div>
                     <div class="umar-card-body">
                         <table class="w-full text-sm text-left" data-filter-target="role">
-                            <thead class="text-xs text-gray-500 uppercase bg-gray-50"><tr><th class="px-4 py-3">Nama Lengkap</th><th class="px-4 py-3">Username</th><th class="px-4 py-3">Role Divisi</th><th class="px-4 py-3">No. HP</th><th class="px-4 py-3">Gaji Pokok / Bln</th><th class="px-4 py-3 text-center">Aksi</th></tr></thead>
+                            <thead class="text-xs text-gray-500 uppercase bg-gray-50"><tr><th class="px-4 py-3">Nama Lengkap</th><th class="px-4 py-3">Username</th><th class="px-4 py-3">Role Divisi</th><th class="px-4 py-3">No. HP</th><th class="px-4 py-3">Gaji Pokok / Bln</th><th class="px-4 py-3 text-center">Agen Handle</th><th class="px-4 py-3 text-center">Aksi</th></tr></thead>
                             <tbody id="table-users" class="divide-y"></tbody>
                         </table>
                     </div>
@@ -3702,6 +3702,45 @@
                     <button type="button" onclick="closeModal('modal-transfer-agent')" class="px-4 py-2 border rounded-lg text-sm font-medium">Batal</button>
                     <button type="submit" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium shadow-sm">
                         <i data-lucide="check" class="inline w-4 h-4 mr-1"></i>Pindahkan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL BULK HANDOFF AGEN (Phase 7b-5) -- admin only. Pindahkan SEMUA agen
+         milik 1 user CS ke CS tujuan sebelum resign / hapus akun. -->
+    <div id="modal-handoff-agents" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md">
+            <div class="p-4 border-b flex justify-between items-center bg-amber-50/50 rounded-t-xl">
+                <h3 class="font-bold text-gray-800 flex items-center gap-2">
+                    <i data-lucide="users" class="w-5 h-5 text-amber-600"></i>Pindahkan Semua Agen (Handoff)
+                </h3>
+                <button onclick="closeModal('modal-handoff-agents')" class="text-gray-500 hover:text-red-500">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <form id="form-handoff-agents" class="p-5 space-y-4">
+                <input type="hidden" id="ha-source-id">
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <div class="text-[10px] uppercase tracking-wider text-amber-800 mb-1">CS Sumber</div>
+                    <div id="ha-source-name" class="font-semibold text-gray-800">-</div>
+                    <div class="text-xs text-gray-700 mt-1">Memegang <span id="ha-count" class="font-bold text-amber-700">0</span> agen -- semuanya akan dipindah ke CS tujuan.</div>
+                </div>
+                <div>
+                    <label class="text-xs font-medium text-gray-700">Pindahkan ke CS Tujuan (role sales)</label>
+                    <select id="ha-target-cs" class="w-full mt-1 border p-2 rounded text-sm" required>
+                        <option value="">-- Pilih CS tujuan --</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs font-medium text-gray-700">Catatan admin (opsional)</label>
+                    <textarea id="ha-note" rows="2" class="w-full mt-1 border p-2 rounded text-sm" placeholder="Cth: CS X resign per hari ini, agen diserahkan ke CS Y."></textarea>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('modal-handoff-agents')" class="px-4 py-2 border rounded-lg text-sm font-medium">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium shadow-sm">
+                        <i data-lucide="check" class="inline w-4 h-4 mr-1"></i>Pindahkan Semua
                     </button>
                 </div>
             </form>
@@ -9420,11 +9459,33 @@
         // CRUD MASTER KARYAWAN & PAKET (ADMIN)
         // ===============================
         let usersCache = [];
+        let usersAgentCountMap = new Map();  // Phase 7b-5: user.id -> jumlah agen yg dia handle
         async function fetchUsers() {
             try {
                 const res = await authFetch('/users'); const u = await res.json();
                 usersCache = u;
-                document.getElementById('table-users').innerHTML = u.map(x => `<tr class="hover:bg-gray-50/50" data-filter="${x.role}">
+                // Phase 7b-5: hitung agen per user (handler_cs_id). Client-side aggregation
+                // supaya tidak perlu endpoint baru -- /api/agents?scope=all sudah admin-access
+                // di halaman ini.
+                const agentCountMap = new Map();
+                try {
+                    const ares = await authFetch('/agents?scope=all');
+                    const agents = await ares.json();
+                    agents.forEach(a => {
+                        if (a.handler_cs_id) {
+                            agentCountMap.set(a.handler_cs_id, (agentCountMap.get(a.handler_cs_id) || 0) + 1);
+                        }
+                    });
+                } catch (e) {}
+                usersAgentCountMap = agentCountMap;
+
+                document.getElementById('table-users').innerHTML = u.map(x => {
+                    const agentCount = agentCountMap.get(x.id) || 0;
+                    const showHandoffBtn = currentUser.role === 'admin' && x.role === 'sales' && agentCount > 0;
+                    const countBadge = agentCount > 0
+                        ? `<span class="inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-800">${agentCount} agen</span>`
+                        : `<span class="text-xs text-gray-400">-</span>`;
+                    return `<tr class="hover:bg-gray-50/50" data-filter="${x.role}">
                     <td class="p-3 border-b">
                         <div class="flex items-center gap-2">
                             <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center font-bold text-emerald-700 text-xs bg-cover bg-center shrink-0" style="${x.photo_url ? `background-image:url('${fileUrl(x.photo_url)}')` : ''}">${x.photo_url ? '' : (x.name || '?').charAt(0).toUpperCase()}</div>
@@ -9435,13 +9496,17 @@
                     <td class="p-3 border-b uppercase text-xs font-bold">${x.role}</td>
                     <td class="p-3 border-b text-xs">${x.phone || '-'}</td>
                     <td class="p-3 border-b font-medium text-blue-600">${formatRp(x.base_salary)}</td>
+                    <td class="p-3 border-b text-center">
+                        ${countBadge}
+                        ${showHandoffBtn ? ` <button class="p-1 text-gray-500 hover:bg-amber-100 hover:text-amber-700 rounded-md ml-1" title="Pindahkan semua agen (bulk handoff)" onclick="openHandoffAgentsModal(${x.id})"><i data-lucide="arrow-right-left" class="w-4 h-4"></i></button>` : ''}
+                    </td>
                     <td class="p-3 border-b text-center whitespace-nowrap">
                         <button class="p-1.5 text-gray-500 hover:bg-emerald-100 hover:text-emerald-600 rounded-md" title="Detail Karyawan" onclick="openUserDetail(${x.id})"><i data-lucide="eye" class="w-4 h-4"></i></button>
                         ${currentUser.role === 'admin' ? `<button class="p-1.5 text-gray-500 hover:bg-blue-100 hover:text-blue-600 rounded-md" title="Edit Karyawan" onclick="openEditUserModal(${x.id})"><i data-lucide="edit" class="w-4 h-4"></i></button>` : ''}
                         ${currentUser.role === 'admin' ? `<button class="p-1.5 text-gray-500 hover:bg-amber-100 hover:text-amber-600 rounded-md" title="Reset Password" onclick="openResetPasswordModal(${x.id})"><i data-lucide="key-round" class="w-4 h-4"></i></button>` : ''}
                         ${currentUser.role === 'admin' ? `<button class="bg-red-50 text-red-600 px-3 py-1 rounded text-xs hover:bg-red-100" onclick="delUser(${x.id})">Hapus</button>` : ''}
                     </td>
-                </tr>`).join('');
+                </tr>`;}).join('');
                 if (typeof lucide !== 'undefined') lucide.createIcons();
             } catch(e) {}
         }
@@ -9888,11 +9953,73 @@
             } catch(err) { showToast(err.message, 'error') }
         });
         
-        async function delUser(id) { 
-            if(confirm('Tindakan ini tidak bisa dibatalkan.\nHapus data karyawan ini?')) { 
-                try { const res = await authFetch(`/users/${id}`,{method:'DELETE'}); const data = await res.json(); showToast(data.message); fetchUsers(); } catch(err) { showToast(err.message, 'error'); } 
-            } 
+        async function delUser(id) {
+            if (!confirm('Tindakan ini tidak bisa dibatalkan.\nHapus data karyawan ini?')) return;
+            try {
+                const res = await authFetch(`/users/${id}`, {method: 'DELETE'});
+                const data = await res.json();
+                // Phase 7b-5: kalau backend 409 (guard resign: user masih pegang agen),
+                // langsung tawarkan buka modal handoff bulk supaya alur admin mulus.
+                if (res.status === 409) {
+                    const msg = data.error || 'User masih pegang agen.';
+                    if (confirm(`${msg}\n\nBuka modal Pindahkan Agen sekarang?`)) {
+                        openHandoffAgentsModal(id);
+                    }
+                    return;
+                }
+                if (!res.ok) throw new Error(data.error || 'Gagal hapus.');
+                showToast(data.message);
+                fetchUsers();
+            } catch (err) { showToast(err.message, 'error'); }
         }
+
+        // Phase 7b-5: Bulk handoff -- admin pindahkan semua agen milik user sumber ke CS
+        // tujuan sebelum hard-delete. Modal dipanggil dari kolom Agen Handle atau setelah
+        // delUser() terjebak guard 409.
+        async function openHandoffAgentsModal(uid) {
+            const source = usersCache.find(u => u.id === uid);
+            if (!source) { showToast('User tidak ditemukan.', 'error'); return; }
+            const agentCount = usersAgentCountMap.get(uid) || 0;
+            document.getElementById('ha-source-id').value = uid;
+            document.getElementById('ha-source-name').textContent = source.name || source.username;
+            document.getElementById('ha-count').textContent = agentCount;
+            document.getElementById('ha-note').value = '';
+
+            const sel = document.getElementById('ha-target-cs');
+            sel.innerHTML = '<option value="">-- Memuat CS... --</option>';
+            const salesUsers = usersCache
+                .filter(u => u.role === 'sales' && u.id !== uid)
+                .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            sel.innerHTML = '<option value="">-- Pilih CS tujuan --</option>' +
+                salesUsers.map(u => `<option value="${u.id}">${u.name} (@${u.username})</option>`).join('');
+
+            openModal('modal-handoff-agents');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        document.getElementById('form-handoff-agents')?.addEventListener('submit', async e => {
+            e.preventDefault();
+            const uid = parseInt(document.getElementById('ha-source-id').value, 10);
+            const targetCs = parseInt(document.getElementById('ha-target-cs').value, 10);
+            const note = document.getElementById('ha-note').value.trim();
+            if (!uid || !targetCs) { showToast('Pilih CS tujuan dulu.', 'warning'); return; }
+            try {
+                const res = await authFetch(`/users/${uid}/handoff-agents`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({to_cs_id: targetCs, agent_ids: null}),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Gagal handoff.');
+                showToast(data.message || 'Handoff berhasil.', 'success');
+                closeModal('modal-handoff-agents');
+                // Note field ("catatan") saat ini tidak dikirim backend -- ditampung UI
+                // untuk audit trail internal admin sebelum eksekusi (biar admin sadar apa
+                // alasannya). Kalau nanti perlu attach ke log_action, extend endpoint dulu.
+                if (note) console.log('[handoff note admin]:', note);
+                fetchUsers();
+            } catch (err) { showToast(err.message, 'error'); }
+        });
         async function delPkg(id) {
             if(confirm('Tindakan ini tidak bisa dibatalkan.\nHapus data paket ini?')) {
                 try { const res = await authFetch(`/packages/${id}`,{method:'DELETE'}); const data = await res.json(); showToast(data.message); fetchPackagesList(); fetchPackages(); } catch(err) { showToast(err.message, 'error'); }
