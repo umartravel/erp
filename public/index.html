@@ -3056,39 +3056,152 @@
     </div>
 
     <!-- MODAL EDIT JAMAAH (ADMIN ONLY) -->
-    <div id="modal-edit-jamaah" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
-            <h3 class="font-bold text-lg mb-4 border-b pb-2 flex items-center gap-2"><i data-lucide="edit" class="w-5 h-5 text-blue-600"></i>Edit Data Jamaah</h3>
-            <form id="form-edit-jamaah" class="space-y-4">
+    <!-- Phase 7a-2: Edit Jamaah modal jadi tabbed (Data Utama, Biodata,
+         Dokumen, Kesehatan). Field baru semua accepted oleh PUT /api/jamaah/{jid}
+         setelah Phase 7a-1 -- 1 submit sekali kirim semua. -->
+    <div id="modal-edit-jamaah" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[92vh] flex flex-col">
+            <div class="p-5 border-b flex items-center justify-between">
+                <h3 class="font-bold text-lg flex items-center gap-2">
+                    <i data-lucide="edit" class="w-5 h-5 text-blue-600"></i>Edit Data Jamaah
+                </h3>
+                <button type="button" onclick="closeModal('modal-edit-jamaah')" class="text-gray-500 hover:text-red-500">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <form id="form-edit-jamaah" class="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-4">
                 <input type="hidden" id="edit-j-id">
                 <p class="text-xs text-orange-600 bg-orange-50 p-2 rounded hidden" id="edit-j-warn">⚠️ Harga & Paket telah dikunci oleh sistem karena jamaah sudah melakukan pembayaran DP. Hubungi Finance untuk Reversal.</p>
-                <div class="grid grid-cols-2 gap-3">
-                    <div><label class="text-xs">NIK</label><input type="text" id="edit-j-nik" class="w-full border p-2 rounded"></div>
-                    <div><label class="text-xs">Nama</label><input type="text" id="edit-j-name" class="w-full border p-2 rounded"></div>
-                    <div><label class="text-xs">No. WA</label><input type="text" id="edit-j-phone" class="w-full border p-2 rounded"></div>
-                    <div><label class="text-xs">Status Lead/Booking</label><select id="edit-j-status" class="w-full border p-2 rounded"><option value="Lead - Follow Up">Lead - Follow Up</option><option value="Waitlisted">Waitlisted</option></select></div>
-                    <div><label class="text-xs">Ubah Paket (Jika blm DP)</label><select id="edit-j-pkg" class="w-full border p-2 rounded"></select></div>
-                    <div><label class="text-xs">Ubah Tipe Kamar</label><select id="edit-j-room-type" class="w-full border p-2 rounded bg-gray-50"><option value="QUAD">QUAD (Ber-4)</option><option value="TRIPLE">TRIPLE (Ber-3)</option><option value="DOUBLE">DOUBLE (Ber-2)</option><option value="LAINNYA..">LAINNYA..</option></select></div>
-                    <div><label class="text-xs">Total Harga Baru</label><input type="text" id="edit-j-price" class="w-full border p-2 rounded" oninput="formatCurrencyInput(this); toggleEditPriceNote();"></div>
-                </div>
-                <!-- Phase 4c: Skenario BOQ (kalau paket terpilih punya BOQ Approved) -->
-                <div id="edit-j-boq-wrap" class="hidden bg-slate-50 border border-slate-200 rounded p-3">
-                    <label class="text-xs font-semibold text-slate-700 flex items-center gap-1">
-                        <i data-lucide="calculator" class="w-3.5 h-3.5"></i>Skenario BOQ
-                        <span class="text-[10px] text-gray-500 font-normal normal-case">-- ubah = re-snapshot harga dari BOQ terpilih</span>
-                    </label>
-                    <select id="edit-j-boq" class="w-full border p-2 rounded mt-1 text-sm"></select>
-                    <p id="edit-j-boq-info" class="text-[10px] text-slate-600 mt-1"></p>
-                </div>
-                <div id="edit-j-price-note-wrap" class="hidden">
-                    <label class="text-xs font-semibold text-blue-700">Keterangan Perubahan Harga (WAJIB)</label>
-                    <textarea id="edit-j-price-note" rows="2" class="w-full border p-2 rounded text-sm" placeholder="Cth: Nego harga khusus grup keluarga, diskon Rp 500rb dari harga normal."></textarea>
-                </div>
-                <div class="flex justify-end gap-2 pt-4">
-                    <button type="button" onclick="closeModal('modal-edit-jamaah')" class="px-4 py-2 border rounded-lg text-sm font-medium">Batal</button>
-                    <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium shadow-sm">Update Data</button>
+
+                <!-- Phase 7a-2: Tab strip pakai pola .umar-tabs dari Phase 6e -->
+                <div class="umar-tabs" data-tab-key="edit-jamaah">
+                    <div class="umar-tab-strip">
+                        <button type="button" class="umar-tab" data-tab="utama"><i data-lucide="user" class="w-3.5 h-3.5"></i>Data Utama</button>
+                        <button type="button" class="umar-tab" data-tab="biodata"><i data-lucide="id-card" class="w-3.5 h-3.5"></i>Biodata Lengkap</button>
+                        <button type="button" class="umar-tab" data-tab="dokumen"><i data-lucide="file-text" class="w-3.5 h-3.5"></i>Dokumen</button>
+                        <button type="button" class="umar-tab" data-tab="kesehatan"><i data-lucide="heart-pulse" class="w-3.5 h-3.5"></i>Kesehatan & Mahram</button>
+                    </div>
+
+                    <!-- Tab 1: Data Utama (7 field existing + BOQ) -->
+                    <div class="umar-tab-panel" data-tab="utama">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div><label class="text-xs">NIK</label><input type="text" id="edit-j-nik" class="w-full border p-2 rounded"></div>
+                            <div><label class="text-xs">Nama</label><input type="text" id="edit-j-name" class="w-full border p-2 rounded"></div>
+                            <div><label class="text-xs">No. WA</label><input type="text" id="edit-j-phone" class="w-full border p-2 rounded"></div>
+                            <div><label class="text-xs">Status Lead/Booking</label><select id="edit-j-status" class="w-full border p-2 rounded"><option value="Lead - Follow Up">Lead - Follow Up</option><option value="Waitlisted">Waitlisted</option></select></div>
+                            <div><label class="text-xs">Ubah Paket (Jika blm DP)</label><select id="edit-j-pkg" class="w-full border p-2 rounded"></select></div>
+                            <div><label class="text-xs">Ubah Tipe Kamar</label><select id="edit-j-room-type" class="w-full border p-2 rounded bg-gray-50"><option value="QUAD">QUAD (Ber-4)</option><option value="TRIPLE">TRIPLE (Ber-3)</option><option value="DOUBLE">DOUBLE (Ber-2)</option><option value="LAINNYA..">LAINNYA..</option></select></div>
+                            <div><label class="text-xs">Total Harga Baru</label><input type="text" id="edit-j-price" class="w-full border p-2 rounded" oninput="formatCurrencyInput(this); toggleEditPriceNote();"></div>
+                        </div>
+                        <!-- Phase 4c: Skenario BOQ (kalau paket terpilih punya BOQ Approved) -->
+                        <div id="edit-j-boq-wrap" class="hidden bg-slate-50 border border-slate-200 rounded p-3 mt-3">
+                            <label class="text-xs font-semibold text-slate-700 flex items-center gap-1">
+                                <i data-lucide="calculator" class="w-3.5 h-3.5"></i>Skenario BOQ
+                                <span class="text-[10px] text-gray-500 font-normal normal-case">-- ubah = re-snapshot harga dari BOQ terpilih</span>
+                            </label>
+                            <select id="edit-j-boq" class="w-full border p-2 rounded mt-1 text-sm"></select>
+                            <p id="edit-j-boq-info" class="text-[10px] text-slate-600 mt-1"></p>
+                        </div>
+                        <div id="edit-j-price-note-wrap" class="hidden mt-3">
+                            <label class="text-xs font-semibold text-blue-700">Keterangan Perubahan Harga (WAJIB)</label>
+                            <textarea id="edit-j-price-note" rows="2" class="w-full border p-2 rounded text-sm" placeholder="Cth: Nego harga khusus grup keluarga, diskon Rp 500rb dari harga normal."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Tab 2: Biodata Lengkap -->
+                    <div class="umar-tab-panel" data-tab="biodata" hidden>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div><label class="text-xs">Jenis Kelamin</label>
+                                <select id="edit-j-gender" class="w-full border p-2 rounded">
+                                    <option value="">-- Pilih --</option>
+                                    <option value="Laki-laki">Laki-laki</option>
+                                    <option value="Perempuan">Perempuan</option>
+                                </select>
+                            </div>
+                            <div><label class="text-xs">Tempat Lahir</label><input type="text" id="edit-j-birth-place" class="w-full border p-2 rounded"></div>
+                            <div><label class="text-xs">Tanggal Lahir</label><input type="date" id="edit-j-birth-date" class="w-full border p-2 rounded"></div>
+                            <div><label class="text-xs">Kewarganegaraan</label><input type="text" id="edit-j-citizenship" class="w-full border p-2 rounded" placeholder="WNI"></div>
+                            <div><label class="text-xs">Jenis Identitas</label>
+                                <select id="edit-j-identity-type" class="w-full border p-2 rounded">
+                                    <option value="">-- Pilih --</option>
+                                    <option value="KTP">KTP</option>
+                                    <option value="Paspor">Paspor</option>
+                                    <option value="Lainnya">Lainnya</option>
+                                </select>
+                            </div>
+                            <div><label class="text-xs">Nama Pemesan (Orderer)</label><input type="text" id="edit-j-orderer-name" class="w-full border p-2 rounded"></div>
+                            <div><label class="text-xs">No. WA Keluarga</label><input type="text" id="edit-j-family-phone" class="w-full border p-2 rounded"></div>
+                            <div><label class="text-xs">Email</label><input type="email" id="edit-j-email" class="w-full border p-2 rounded"></div>
+                            <div><label class="text-xs">Nama Ayah</label><input type="text" id="edit-j-father-name" class="w-full border p-2 rounded"></div>
+                            <div><label class="text-xs">Status Perkawinan</label>
+                                <select id="edit-j-marital-status" class="w-full border p-2 rounded">
+                                    <option value="">-- Pilih --</option>
+                                    <option value="Belum Menikah">Belum Menikah</option>
+                                    <option value="Menikah">Menikah</option>
+                                    <option value="Cerai">Cerai</option>
+                                    <option value="Duda/Janda">Duda/Janda</option>
+                                </select>
+                            </div>
+                            <div><label class="text-xs">Hubungan dgn Pemesan</label><input type="text" id="edit-j-relation" class="w-full border p-2 rounded" placeholder="Cth: Anak, Istri"></div>
+                            <div><label class="text-xs">Pendidikan Terakhir</label><input type="text" id="edit-j-education" class="w-full border p-2 rounded"></div>
+                            <div><label class="text-xs">Pekerjaan</label><input type="text" id="edit-j-job" class="w-full border p-2 rounded"></div>
+                        </div>
+                        <div class="mt-3">
+                            <label class="text-xs">Alamat</label>
+                            <textarea id="edit-j-address" rows="2" class="w-full border p-2 rounded"></textarea>
+                        </div>
+                        <div class="grid grid-cols-4 gap-3 mt-3">
+                            <div><label class="text-xs">Provinsi</label><input type="text" id="edit-j-province" class="w-full border p-2 rounded"></div>
+                            <div><label class="text-xs">Kota/Kabupaten</label><input type="text" id="edit-j-city" class="w-full border p-2 rounded"></div>
+                            <div><label class="text-xs">Kecamatan</label><input type="text" id="edit-j-subdistrict" class="w-full border p-2 rounded"></div>
+                            <div><label class="text-xs">Kelurahan/Desa</label><input type="text" id="edit-j-village" class="w-full border p-2 rounded"></div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 3: Dokumen -->
+                    <div class="umar-tab-panel" data-tab="dokumen" hidden>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div><label class="text-xs">Nomor Paspor</label><input type="text" id="edit-j-passport-number" class="w-full border p-2 rounded" placeholder="Cth: A12345678"></div>
+                            <div><label class="text-xs">Tanggal Terbit Paspor</label><input type="date" id="edit-j-passport-issued" class="w-full border p-2 rounded"></div>
+                            <div><label class="text-xs">Tanggal Kadaluwarsa</label><input type="date" id="edit-j-passport-expiry" class="w-full border p-2 rounded"></div>
+                            <div><label class="text-xs">Kanim Penerbit</label><input type="text" id="edit-j-passport-issuer-city" class="w-full border p-2 rounded" placeholder="Cth: Kanim Jakarta Selatan"></div>
+                            <div class="col-span-2"><label class="text-xs">Lokasi Paspor Saat Ini</label><input type="text" id="edit-j-passport-location" class="w-full border p-2 rounded" placeholder="Cth: Di jamaah / Di kantor / Di travel"></div>
+                            <div class="col-span-2"><label class="text-xs">Paket Perlengkapan</label><input type="text" id="edit-j-equipment-package" class="w-full border p-2 rounded" placeholder="Cth: Standard, Premium, VIP"></div>
+                        </div>
+                        <div class="mt-4">
+                            <label class="text-xs font-semibold">Dokumen yg Sudah Diserahkan</label>
+                            <div class="grid grid-cols-3 gap-2 mt-2 text-xs" id="edit-j-submitted-docs-wrap">
+                                <label class="flex items-center gap-2"><input type="checkbox" value="ktp" class="edit-j-submitted-doc"> KTP</label>
+                                <label class="flex items-center gap-2"><input type="checkbox" value="kk" class="edit-j-submitted-doc"> Kartu Keluarga</label>
+                                <label class="flex items-center gap-2"><input type="checkbox" value="passport" class="edit-j-submitted-doc"> Paspor</label>
+                                <label class="flex items-center gap-2"><input type="checkbox" value="vaccine" class="edit-j-submitted-doc"> Sertifikat Vaksin</label>
+                                <label class="flex items-center gap-2"><input type="checkbox" value="foto" class="edit-j-submitted-doc"> Pas Foto</label>
+                                <label class="flex items-center gap-2"><input type="checkbox" value="akta_nikah" class="edit-j-submitted-doc"> Akta Nikah (jika suami-istri)</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 4: Kesehatan & Mahram -->
+                    <div class="umar-tab-panel" data-tab="kesehatan" hidden>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div><label class="text-xs">Nomor Kamar</label><input type="text" id="edit-j-room-number" class="w-full border p-2 rounded" placeholder="Cth: 301A"></div>
+                            <div><label class="text-xs">Bus / Rombongan</label><input type="text" id="edit-j-bus-group" class="w-full border p-2 rounded" placeholder="Cth: Bus 2"></div>
+                        </div>
+                        <div class="mt-3">
+                            <label class="text-xs">Riwayat Kesehatan / Alergi</label>
+                            <textarea id="edit-j-health-history" rows="3" class="w-full border p-2 rounded" placeholder="Cth: Diabetes, alergi seafood, hipertensi terkontrol."></textarea>
+                        </div>
+                        <div class="mt-3">
+                            <label class="text-xs">Mahram (untuk jamaah wanita)</label>
+                            <input type="text" id="edit-j-mahram" class="w-full border p-2 rounded" placeholder="Nama mahram + hubungan (Suami/Ayah/Kakak)">
+                        </div>
+                    </div>
                 </div>
             </form>
+            <div class="p-4 border-t flex justify-end gap-2 bg-gray-50 rounded-b-xl">
+                <button type="button" onclick="closeModal('modal-edit-jamaah')" class="px-4 py-2 border rounded-lg text-sm font-medium bg-white">Batal</button>
+                <button type="submit" form="form-edit-jamaah" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium shadow-sm">Update Data</button>
+            </div>
         </div>
     </div>
 
@@ -7245,7 +7358,48 @@
             });
             // Populate BOQ dropdown untuk paket saat ini, preselect jamaah.boq_id.
             await refreshEditBoqDropdown(j.boq_id);
+
+            // Phase 7a-3: populate tab Biodata / Dokumen / Kesehatan dari data jamaah.
+            const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+            setVal('edit-j-gender', j.gender);
+            setVal('edit-j-birth-place', j.birth_place);
+            setVal('edit-j-birth-date', j.birth_date);
+            setVal('edit-j-citizenship', j.citizenship);
+            setVal('edit-j-identity-type', j.identity_type);
+            setVal('edit-j-orderer-name', j.orderer_name);
+            setVal('edit-j-family-phone', j.family_phone);
+            setVal('edit-j-email', j.email);
+            setVal('edit-j-father-name', j.father_name);
+            setVal('edit-j-marital-status', j.marital_status);
+            setVal('edit-j-relation', j.relation);
+            setVal('edit-j-education', j.education);
+            setVal('edit-j-job', j.job);
+            setVal('edit-j-address', j.address);
+            setVal('edit-j-province', j.province);
+            setVal('edit-j-city', j.city);
+            setVal('edit-j-subdistrict', j.subdistrict);
+            setVal('edit-j-village', j.village);
+            setVal('edit-j-passport-number', j.passport_number);
+            setVal('edit-j-passport-issued', j.passport_issued);
+            setVal('edit-j-passport-expiry', j.passport_expiry);
+            setVal('edit-j-passport-location', j.passport_location);
+            setVal('edit-j-passport-issuer-city', j.passport_issuer_city);
+            setVal('edit-j-equipment-package', j.equipment_package);
+            setVal('edit-j-room-number', j.room_number);
+            setVal('edit-j-bus-group', j.bus_group);
+            setVal('edit-j-health-history', j.health_history);
+            setVal('edit-j-mahram', j.mahram);
+            // submitted_documents (JSON list) -> centang checkbox yg cocok
+            let submitted = [];
+            try { submitted = j.submitted_documents ? JSON.parse(j.submitted_documents) : []; } catch(e) { submitted = []; }
+            document.querySelectorAll('.edit-j-submitted-doc').forEach(cb => {
+                cb.checked = submitted.includes(cb.value);
+            });
+
             openModal('modal-edit-jamaah');
+            // Phase 7a-2: init tab strip supaya klik tab kerja + lucide render icons.
+            if (typeof umarInitTabs === 'function') umarInitTabs(document.querySelector('#modal-edit-jamaah .umar-tabs'), 'utama');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
         // Phase 4c: refresh BOQ dropdown di modal edit jamaah.
@@ -7357,30 +7511,53 @@
                 payload.boq_id = null;
             }
 
-            // Preserve other fields
-            payload.orderer_name = j.orderer_name;
-            payload.gender = j.gender;
-            payload.birth_place = j.birth_place;
-            payload.birth_date = j.birth_date;
-            payload.citizenship = j.citizenship;
-            payload.identity_type = j.identity_type;
-            payload.family_phone = j.family_phone;
-            payload.email = j.email;
-            payload.father_name = j.father_name;
-            payload.education = j.education;
-            payload.job = j.job;
-            payload.marital_status = j.marital_status;
-            payload.relation = j.relation;
-            payload.address = j.address;
-            payload.province = j.province;
-            payload.city = j.city;
-            payload.subdistrict = j.subdistrict;
-            payload.village = j.village;
-            
-            try { 
-                const res = await authFetch(`/jamaah/${id}`, { method: 'PUT', body: JSON.stringify(payload) }); 
+            // Phase 7a-2/3: baca dari form input (tab Biodata/Dokumen/Kesehatan)
+            // supaya user edit benar-benar tersimpan -- fallback ke j.* kalau field
+            // kosong (jamaah legacy tanpa data biodata di form).
+            const readVal = (id, fallback) => {
+                const el = document.getElementById(id);
+                if (!el) return fallback;
+                const v = (el.value || '').trim();
+                return v !== '' ? v : (fallback || null);
+            };
+            payload.orderer_name = readVal('edit-j-orderer-name', j.orderer_name);
+            payload.gender = readVal('edit-j-gender', j.gender);
+            payload.birth_place = readVal('edit-j-birth-place', j.birth_place);
+            payload.birth_date = readVal('edit-j-birth-date', j.birth_date);
+            payload.citizenship = readVal('edit-j-citizenship', j.citizenship);
+            payload.identity_type = readVal('edit-j-identity-type', j.identity_type);
+            payload.family_phone = readVal('edit-j-family-phone', j.family_phone);
+            payload.email = readVal('edit-j-email', j.email);
+            payload.father_name = readVal('edit-j-father-name', j.father_name);
+            payload.education = readVal('edit-j-education', j.education);
+            payload.job = readVal('edit-j-job', j.job);
+            payload.marital_status = readVal('edit-j-marital-status', j.marital_status);
+            payload.relation = readVal('edit-j-relation', j.relation);
+            payload.address = readVal('edit-j-address', j.address);
+            payload.province = readVal('edit-j-province', j.province);
+            payload.city = readVal('edit-j-city', j.city);
+            payload.subdistrict = readVal('edit-j-subdistrict', j.subdistrict);
+            payload.village = readVal('edit-j-village', j.village);
+            // Phase 7a-2/3: field baru (Dokumen + Kesehatan) yg baru bisa di-edit
+            // dari UI ini setelah Phase 7a-1 (backend accept).
+            payload.passport_number = readVal('edit-j-passport-number', j.passport_number);
+            payload.passport_issued = readVal('edit-j-passport-issued', j.passport_issued);
+            payload.passport_expiry = readVal('edit-j-passport-expiry', j.passport_expiry);
+            payload.passport_location = readVal('edit-j-passport-location', j.passport_location);
+            payload.passport_issuer_city = readVal('edit-j-passport-issuer-city', j.passport_issuer_city);
+            payload.equipment_package = readVal('edit-j-equipment-package', j.equipment_package);
+            payload.room_number = readVal('edit-j-room-number', j.room_number);
+            payload.bus_group = readVal('edit-j-bus-group', j.bus_group);
+            payload.health_history = readVal('edit-j-health-history', j.health_history);
+            payload.mahram = readVal('edit-j-mahram', j.mahram);
+            // submitted_documents: array dari checkbox yg tercentang (bukan JSON string --
+            // backend jsonify).
+            payload.submitted_documents = [...document.querySelectorAll('.edit-j-submitted-doc:checked')].map(cb => cb.value);
+
+            try {
+                const res = await authFetch(`/jamaah/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
                 const data = await res.json();
-                showToast(data.message); closeModal('modal-edit-jamaah'); fetchData(); 
+                showToast(data.message); closeModal('modal-edit-jamaah'); fetchData();
             } catch(err) { showToast(err.message, 'error'); console.error('Edit error:', err); }
         });
         async function delJamaah(id) { 
