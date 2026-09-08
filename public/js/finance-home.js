@@ -433,6 +433,30 @@
         }
     };
 
+    // Phase 8d: Committed vs Realized panel (dual view analitik keuangan).
+    async function loadCommittedSummary() {
+        try {
+            const res = await fhFetch('/finance/committed-summary');
+            if (!res.ok) return;
+            const d = await res.json();
+            const realOut = (d.realized || {}).expense || 0;
+            const committed = (d.committed_expense || {}).total || 0;
+            const combined = d.combined_expense_total || 0;
+            const bkd = (d.committed_expense || {}).breakdown || {};
+            const el = (id) => document.getElementById(id);
+            if (el('fh-realized-expense')) el('fh-realized-expense').textContent = fhFmtShort(realOut);
+            if (el('fh-committed-expense')) el('fh-committed-expense').textContent = fhFmtShort(committed);
+            if (el('fh-combined-expense')) el('fh-combined-expense').textContent = fhFmtShort(combined);
+            const bkdEl = el('fh-committed-breakdown');
+            if (bkdEl) {
+                bkdEl.innerHTML =
+                    `Expense: ${fhFmtShort(bkd.expense_report || 0)}<br>` +
+                    `Komisi: ${fhFmtShort(bkd.commission_claim || 0)}<br>` +
+                    `Refund: ${fhFmtShort(bkd.refund_request || 0)}`;
+            }
+        } catch (e) { /* silent -- panel default 0 */ }
+    }
+
     window.initFinanceHome = async function() {
         if (fhLoading) return;
         fhLoading = true;
@@ -452,6 +476,8 @@
             renderExpensePending(data.expense_pending || []);
             renderCair(data.refund_pending || [], data.komisi_pending || []);
             loadForecast();
+            // Phase 8d: populate Committed vs Realized panel
+            loadCommittedSummary();
             if (typeof lucide !== 'undefined') lucide.createIcons();
         } catch (err) {
             console.error('[finance-home]', err);

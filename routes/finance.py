@@ -325,3 +325,66 @@ async def finance_forecast(user=Depends(authenticate_token)):
             "final_balance": running,
         },
     }
+
+
+# Phase 8d: Analitik keuangan Dual View -- Committed vs Realized.
+# Realized = uang sudah bergerak (dari `transactions`, sama seperti sekarang).
+# Committed = sudah disetujui management tapi finance belum cairkan
+# (expense_reports.status='Approved' + commission_claims.status='Disetujui'
+#  + refund_requests.status='Disetujui'). Bedanya: analitik "berapa yg akan
+# segera keluar" jadi bisa dilihat mgmt, bukan cuma "yg sudah keluar".
+@router.get("/api/finance/committed-summary")
+async def finance_committed_summary(user=Depends(authenticate_token)):
+    require_role(user, *_ROLES)
+
+    # Realized (existing behavior): jumlah tx per type.
+    realized_in = db.query_one(
+        "SELECT COALESCE(SUM(amount), 0) t FROM transactions WHERE type = 'income'"
+    )["t"] or 0
+    realized_out_total = db.query_one(
+        "SELECT COALESCE(SUM(amount), 0) t FROM transactions WHERE type = 'expense'"
+    )["t"] or 0
+
+    # Committed expense (sudah disetujui, belum cair):
+    # 1. Expense reports Approved (belum Paid). Total = sum(qty * unit_net * (1+tax/100))
+    exp_approved_rows = db.query_all(
+        "SELECT er.id, "
+        "COALESCE(SUM(el.qty * el.unit_price_net * (1.0 + el.tax_percent/100.0)), 0) as gross "
+        "FROM expense_reports er LEFT JOIN expense_lines el ON el.report_id = er.id "
+        "WHERE er.status = 'Approved' GROUP BY er.id",
+        (),
+    )
+    committed_expense_reports = int(sum(r["gross"] or 0 for r in exp_approved_rows))
+
+    # 2. Commission claims Disetujui (belum Dicairkan).
+    committed_commission = db.query_one(
+        "SELECT COALESCE(SUM(amount), 0) t FROM commission_claims WHERE status = 'Disetujui'"
+    )["t"] or 0
+
+    # 3. Refund requests Disetujui (belum Dicairkan).
+    committed_refund = db.query_one(
+        "SELECT COALESCE(SUM(amount), 0) t FROM refund_requests WHERE status = 'Disetujui'"
+    )["t"] or 0
+
+    committed_expense_total = (
+        committed_expense_reports + committed_commission + committed_refund
+    )
+
+    return {
+        "realized": {
+            "income": realized_in,
+            "expense": realized_out_total,
+            "net": realized_in - realized_out_total,
+        },
+        "committed_expense": {
+            "total": committed_expense_total,
+            "breakdown": {
+                "expense_report": committed_expense_reports,
+                "commission_claim": committed_commission,
+                "refund_request": committed_refund,
+            },
+        },
+        # Total realistis "posisi budget" = realized + committed.
+        "combined_expense_total": realized_out_total + committed_expense_total,
+        "note": "Committed = sudah disetujui management, belum dicairkan finance",
+    }

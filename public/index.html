@@ -1644,6 +1644,36 @@
                     </div>
                 </div>
 
+                <!-- Phase 8d: Dual View analitik keuangan -- Committed vs Realized.
+                     "Committed" = sudah disetujui management, belum dicairkan finance.
+                     Rendering di-populate di fh-committed-populate() dari
+                     /api/finance/committed-summary. -->
+                <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+                    <div class="px-4 py-3 border-b bg-purple-50/50 flex items-center justify-between">
+                        <h3 class="font-semibold text-purple-800 flex items-center gap-2">
+                            <i data-lucide="scale" class="w-4 h-4"></i>Committed vs Realized Expense
+                        </h3>
+                        <span class="text-[10px] text-gray-500" title="Committed = sudah disetujui management, belum dicairkan finance. Realized = sudah dicairkan (masuk buku kas).">Info</span>
+                    </div>
+                    <div class="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-gray-50 rounded-lg p-3">
+                            <div class="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Realized (Sudah Cair)</div>
+                            <div id="fh-realized-expense" class="text-xl font-bold text-red-700">Rp 0</div>
+                            <div class="text-[10px] text-gray-500 mt-1">Dari transactions buku kas</div>
+                        </div>
+                        <div class="bg-amber-50 rounded-lg p-3 border border-amber-200">
+                            <div class="text-[10px] uppercase tracking-wider text-amber-700 mb-1">Committed (Akan Cair)</div>
+                            <div id="fh-committed-expense" class="text-xl font-bold text-amber-700">Rp 0</div>
+                            <div id="fh-committed-breakdown" class="text-[10px] text-amber-800 mt-1"></div>
+                        </div>
+                        <div class="bg-purple-50 rounded-lg p-3 border border-purple-200">
+                            <div class="text-[10px] uppercase tracking-wider text-purple-700 mb-1">Total Posisi Budget</div>
+                            <div id="fh-combined-expense" class="text-xl font-bold text-purple-700">Rp 0</div>
+                            <div class="text-[10px] text-purple-800 mt-1">Realized + Committed</div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- PANEL: Piutang jamaah + Vendor due -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
