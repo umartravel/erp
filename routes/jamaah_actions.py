@@ -16,6 +16,7 @@ Router lain untuk jamaah (per split iterasi 7):
 from fastapi import APIRouter
 
 import db
+from deps.notifications import notify_role  # Phase 8c-3
 from deps import (
     Depends,
     HTTPException,
@@ -181,6 +182,13 @@ async def jamaah_refund_request_create(
     )
     log_action(user, "REQUEST_REFUND", f"Mengajukan refund Rp {amount} untuk {jamaah['name']}: {reason}")
     notify("data_updated", "refund_request")
+    # Phase 8c-3: Notif ke management -- ada refund pending.
+    notify_role(
+        "management", "refund_pending",
+        f"Refund Rp {amount:,} pending review",
+        body=f"Jamaah {jamaah['name']} -- alasan: {reason[:100]}",
+        link="#page-refund",
+    )
     return {"message": "Pengajuan refund berhasil dikirim, menunggu persetujuan manajemen."}
 
 

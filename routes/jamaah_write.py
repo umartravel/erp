@@ -397,6 +397,17 @@ async def jamaah_payment(jid: int, body: dict = Depends(json_body), user=Depends
             (jamaah["agent_id"], jid, fee, "Sistem (Otomatis saat Lunas)"),
         )
         notify("data_updated", "commission_claim")
+        # Phase 8c-3: Notif ke management -- klaim komisi pending review.
+        try:
+            from deps.notifications import notify_role
+            notify_role(
+                "management", "commission_pending",
+                f"Klaim komisi Rp {fee:,} pending review",
+                body=f"Agen untuk jamaah {jamaah['name']} (paket {jamaah['package_type']})",
+                link="#page-agents",
+            )
+        except Exception:  # noqa: BLE001
+            pass
 
     sisa = jamaah["total_price"] - new_paid
     status_bayar = "LUNAS SEPENUHNYA" if new_payment == "Lunas" else f"BELUM LUNAS (Sisa: Rp {fmt_id(sisa)})"

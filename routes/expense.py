@@ -32,6 +32,7 @@ from deps import (
     require_role,
 )
 from expense_pdf import build_expense_pdf
+from deps.notifications import notify_role, notify_user  # Phase 8c-3
 
 router = APIRouter(tags=["expense"])
 
@@ -304,6 +305,14 @@ async def expense_reports_submit(rid: int, user=Depends(authenticate_token)):
     db.execute("UPDATE expense_reports SET status = 'Submitted' WHERE id = ?", (rid,))
     log_action(user, "SUBMIT_EXPENSE_REPORT", f"Mengajukan Expense Report {r['ref']} untuk approval")
     notify("data_updated", "expense_report")
+    # Phase 8c-3: Notif ke approver -- yg dipilih sbg reviewer.
+    if r["approver_id"]:
+        notify_user(
+            r["approver_id"], "expense_pending",
+            f"Expense Report {r['ref']} menunggu review",
+            body=f"Diajukan oleh {user['name']}. Buka Expense Report untuk approve/tolak.",
+            link=f"#page-expense?rid={rid}",
+        )
     return {"message": "Expense Report berhasil diajukan, menunggu persetujuan."}
 
 
@@ -335,6 +344,30 @@ async def expense_reports_review(rid: int, body: dict = Depends(json_body), user
         f"{new_status} Expense Report {r['ref']} ({r['user_name']})",
     )
     notify("data_updated", "expense_report")
+    # Phase 8c-3: Notif ke owner -- diapprove atau ditolak.
+    if r["user_id"]:
+        if action == "approve":
+            notify_user(
+                r["user_id"], "expense_approved",
+                f"Expense Report {r['ref']} disetujui",
+                body="Menunggu Finance untuk dibayar.",
+                link=f"#page-expense?rid={rid}",
+            )
+        else:
+            notify_user(
+                r["user_id"], "expense_rejected",
+                f"Expense Report {r['ref']} ditolak",
+                body=f"Alasan: {note}",
+                link=f"#page-expense?rid={rid}",
+            )
+    # Setelah approve, finance perlu tahu ada yg siap dibayar.
+    if action == "approve":
+        notify_role(
+            "finance", "expense_ready_pay",
+            f"Expense Report {r['ref']} siap dibayar",
+            body=f"Diapprove {user['name']}. Buka Expense untuk pencairan.",
+            link=f"#page-expense?rid={rid}",
+        )
     return {"message": f"Expense Report berhasil di-{'setujui' if action == 'approve' else 'tolak'}."}
 
 

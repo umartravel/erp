@@ -167,6 +167,7 @@ from routes.jamaah_write import router as jamaah_write_router  # noqa: E402
 from routes.static_pages import router as static_pages_router  # noqa: E402
 from routes.boq import router as boq_router  # noqa: E402
 from routes.exports import router as exports_router  # noqa: E402 -- Phase 8a
+from routes.notifications import router as notifications_router  # noqa: E402 -- Phase 8c
 app.include_router(reconcile_router)
 app.include_router(finance_router)
 app.include_router(mgmt_home_router)
@@ -197,6 +198,7 @@ app.include_router(jamaah_write_router)
 app.include_router(static_pages_router)
 app.include_router(boq_router)
 app.include_router(exports_router)  # Phase 8a: /api/exports/*.xlsx
+app.include_router(notifications_router)  # Phase 8c: /api/notifications/*
 
 
 # Static files (public/) dipasang TERAKHIR agar route /api, /panduan, /uploads menang.
