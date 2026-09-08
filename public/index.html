@@ -1934,11 +1934,21 @@
                         <div class="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Target Company Bulan Ini</div>
                         <div id="mh-kpi-target" class="text-xs text-gray-700">-</div>
                     </div>
-                    <div class="flex items-center gap-2 shrink-0">
+                    <div class="flex items-center gap-2 shrink-0 flex-wrap">
                         <input type="month" id="mh-report-month" class="border rounded-lg px-2 py-1.5 text-xs">
                         <a id="mh-report-btn" href="#" onclick="mhDownloadPdf();return false;" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1">
-                            <i data-lucide="download" class="w-3 h-3"></i> PDF Laporan
+                            <i data-lucide="file-text" class="w-3 h-3"></i> PDF Laporan
                         </a>
+                        <!-- Phase 8a-4: Excel exports bulanan -->
+                        <button onclick="mhExportExcel('jamaah-monthly')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1" title="Closingan jamaah bulan terpilih">
+                            <i data-lucide="download" class="w-3 h-3"></i> Excel Jamaah
+                        </button>
+                        <button onclick="mhExportExcel('packages-monthly')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1" title="Paket berangkat + pulang bulan terpilih">
+                            <i data-lucide="download" class="w-3 h-3"></i> Excel Paket
+                        </button>
+                        <button onclick="mhExportExcel('finance-monthly')" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1" title="Pemasukan + pengeluaran bulan terpilih">
+                            <i data-lucide="download" class="w-3 h-3"></i> Excel Keuangan
+                        </button>
                     </div>
                 </div>
 
@@ -9959,7 +9969,7 @@
                         _bqBadge = `<span class="text-[10px] text-gray-400 italic">${_bq.rejected || 0} Rejected</span>`;
                     }
                     const _bqCol = `<div>${_bqBadge}</div><button onclick="_openBoqForPackage(${x.id})" class="text-[10px] text-indigo-600 hover:underline mt-1"><i data-lucide="external-link" class="w-2.5 h-2.5 inline"></i> Kelola BOQ</button>`;
-                    return `<tr class="hover:bg-gray-50/50" data-filter="${_pkgFilter}"><td class="p-3 border-b"><p class="font-bold text-gray-800">${x.name}</p><p class="text-xs text-gray-500">${x.departure_date}${x.return_date ? ' &ndash; ' + x.return_date : ''} (${x.duration} Hari)</p></td><td class="p-3 border-b"><span class="font-bold ${x.quota - x.filled <= 5 ? 'text-red-600' : 'text-emerald-600'}">${x.quota - x.filled}</span><span class="text-xs text-gray-500"> / ${x.quota}</span></td><td class="p-3 border-b text-xs"><div class="mb-1"><span class="font-semibold text-gray-600">TL:</span> ${x.tour_leader||'<i class="text-red-400">Belum diassign</i>'}</div><div><span class="font-semibold text-gray-600">Mutawwif:</span> ${x.mutawwif||'<i class="text-red-400">Belum diassign</i>'}</div></td><td class="p-3 border-b text-emerald-600 font-medium">${formatRp(x.price_quad || x.price)}</td><td class="p-3 border-b">${_bqCol}</td><td class="p-3 border-b">${packageDetailHtml(x)}</td><td class="p-3 border-b text-center">${currentUser.role === 'admin' ? `<button class="bg-blue-50 text-blue-700 px-3 py-1 rounded text-xs hover:bg-blue-100 mb-1 block w-full shadow-sm" onclick="openEditPackageModal(${x.id})">Edit Paket</button>` : ''}${['admin', 'ops'].includes(currentUser.role) ? `<button class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded text-xs hover:bg-indigo-100 mb-1 block w-full shadow-sm" onclick="openAssign(${x.id}, '${safeTL}', '${safeMut}')">Tugaskan TL</button>` : ''}${currentUser.role === 'admin' ? `<button class="bg-red-50 text-red-600 px-3 py-1 rounded text-xs hover:bg-red-100 block w-full" onclick="delPkg(${x.id})">Hapus Paket</button>` : ''}</td></tr>`;
+                    return `<tr class="hover:bg-gray-50/50" data-filter="${_pkgFilter}"><td class="p-3 border-b"><p class="font-bold text-gray-800">${x.name}</p><p class="text-xs text-gray-500">${x.departure_date}${x.return_date ? ' &ndash; ' + x.return_date : ''} (${x.duration} Hari)</p></td><td class="p-3 border-b"><span class="font-bold ${x.quota - x.filled <= 5 ? 'text-red-600' : 'text-emerald-600'}">${x.quota - x.filled}</span><span class="text-xs text-gray-500"> / ${x.quota}</span></td><td class="p-3 border-b text-xs"><div class="mb-1"><span class="font-semibold text-gray-600">TL:</span> ${x.tour_leader||'<i class="text-red-400">Belum diassign</i>'}</div><div><span class="font-semibold text-gray-600">Mutawwif:</span> ${x.mutawwif||'<i class="text-red-400">Belum diassign</i>'}</div></td><td class="p-3 border-b text-emerald-600 font-medium">${formatRp(x.price_quad || x.price)}</td><td class="p-3 border-b">${_bqCol}</td><td class="p-3 border-b">${packageDetailHtml(x)}</td><td class="p-3 border-b text-center">${currentUser.role === 'admin' ? `<button class="bg-blue-50 text-blue-700 px-3 py-1 rounded text-xs hover:bg-blue-100 mb-1 block w-full shadow-sm" onclick="openEditPackageModal(${x.id})">Edit Paket</button>` : ''}${['admin', 'ops'].includes(currentUser.role) ? `<button class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded text-xs hover:bg-indigo-100 mb-1 block w-full shadow-sm" onclick="openAssign(${x.id}, '${safeTL}', '${safeMut}')">Tugaskan TL</button>` : ''}${['admin', 'management', 'finance', 'ops'].includes(currentUser.role) ? `<button class="bg-emerald-50 text-emerald-700 px-3 py-1 rounded text-xs hover:bg-emerald-100 mb-1 block w-full shadow-sm" onclick="downloadPackageJamaahExcel(${x.id})" title="Download Excel jamaah paket ini"><i data-lucide="download" class="inline w-3 h-3"></i> Excel Jamaah</button>` : ''}${currentUser.role === 'admin' ? `<button class="bg-red-50 text-red-600 px-3 py-1 rounded text-xs hover:bg-red-100 block w-full" onclick="delPkg(${x.id})">Hapus Paket</button>` : ''}</td></tr>`;
                 }).join('');
                 // Phase 6j: quick action -- buka modul BOQ dgn filter package pre-set
                 window._openBoqForPackage = function(packageId) {
@@ -10201,6 +10211,29 @@
             if(confirm('Tindakan ini tidak bisa dibatalkan.\nHapus data paket ini?')) {
                 try { const res = await authFetch(`/packages/${id}`,{method:'DELETE'}); const data = await res.json(); showToast(data.message); fetchPackagesList(); fetchPackages(); } catch(err) { showToast(err.message, 'error'); }
             }
+        }
+
+        // Phase 8a-4: download Excel jamaah per paket
+        async function downloadPackageJamaahExcel(packageId) {
+            try {
+                const res = await authFetch(`/exports/package-jamaah.xlsx?package_id=${packageId}`);
+                if (!res.ok) {
+                    let m = 'Gagal generate Excel';
+                    try { m = (await res.json()).error || m; } catch(e){}
+                    throw new Error(m);
+                }
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                const pkg = (packagesCache || []).find(x => x.id === packageId);
+                const safeName = (pkg?.name || `paket-${packageId}`).replace(/[^a-zA-Z0-9-]+/g, '_').slice(0, 40);
+                a.href = url;
+                a.download = `jamaah-${safeName}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 5000);
+            } catch (err) { showToast(err.message, 'error'); }
         }
 
     </script>

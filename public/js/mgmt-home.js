@@ -232,6 +232,34 @@
         } catch (err) { alert('Error: ' + err.message); }
     };
 
+    // Phase 8a-4: Excel export bulanan (3 laporan) -- reuse #mh-report-month picker.
+    window.mhExportExcel = async function(kind) {
+        const mEl = document.getElementById('mh-report-month');
+        const month = mEl?.value || new Date().toISOString().slice(0, 7);
+        try {
+            const res = await mhFetch(`/exports/${kind}.xlsx?month=${month}`);
+            if (!res.ok) {
+                let m = 'Gagal generate Excel';
+                try { m = (await res.json()).error || m; } catch(e){}
+                throw new Error(m);
+            }
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const fnMap = {
+                'jamaah-monthly': `closingan-jamaah-${month}.xlsx`,
+                'packages-monthly': `paket-${month}.xlsx`,
+                'finance-monthly': `keuangan-${month}.xlsx`,
+            };
+            a.download = fnMap[kind] || `laporan-${month}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+        } catch (err) { alert('Error: ' + err.message); }
+    };
+
     window.mhRejectItem = async function(kind, id) {
         const note = prompt(`Tolak ${kind} #${id}. Alasan penolakan (wajib):`);
         if (!note || !note.trim()) return;
