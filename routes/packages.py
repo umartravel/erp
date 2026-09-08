@@ -35,11 +35,34 @@ async def packages_list(user=Depends(authenticate_token)):
         "AND status NOT IN ('Cancelled')) as filled FROM packages p ORDER BY p.departure_date ASC",
         (),
     )
+    # Phase 6j: agregasi BOQ per paket -- indicator status BOQ di UI Master Paket
+    # supaya user lihat sekilas paket mana yang sudah ada BOQ Approved (siap
+    # register), yang masih Draft (butuh submit), atau yang belum ada BOQ.
+    boq_by_pkg = {}
+    for r in db.query_all(
+        "SELECT package_id, status, COUNT(*) AS n FROM package_boq "
+        "WHERE package_id IS NOT NULL GROUP BY package_id, status",
+        (),
+    ):
+        agg = boq_by_pkg.setdefault(r["package_id"], {"total": 0, "approved": 0, "draft": 0, "pending": 0, "rejected": 0})
+        n = r["n"]
+        agg["total"] += n
+        st = (r["status"] or "").lower()
+        if st == "approved":
+            agg["approved"] += n
+        elif st == "draft":
+            agg["draft"] += n
+        elif "pending" in st:
+            agg["pending"] += n
+        elif st == "rejected":
+            agg["rejected"] += n
+
     for p in packages:
         p["extras"] = db.query_all(
             "SELECT id, category, label as value FROM package_extras WHERE package_id = ? ORDER BY id ASC",
             (p["id"],),
         )
+        p["boq_summary"] = boq_by_pkg.get(p["id"], {"total": 0, "approved": 0, "draft": 0, "pending": 0, "rejected": 0})
     return packages
 
 

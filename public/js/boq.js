@@ -88,6 +88,19 @@ async function initBoqPage() {
     // Kelola Template = mgmt/admin only.
     const tmplBtn = document.getElementById('boq-tmpl-manage-btn');
     if (tmplBtn) tmplBtn.classList.toggle('hidden', !_isMgmt());
+    // Phase 6j: kalau dibuka via link "Kelola BOQ" dari Master Paket, ambil
+    // package_id preset dari localStorage lalu apply ke filter.
+    try {
+        const preset = localStorage.getItem('boq-filter-package-preset');
+        if (preset) {
+            localStorage.removeItem('boq-filter-package-preset');
+            const filterEl = document.getElementById('boq-filter-package');
+            if (filterEl) {
+                filterEl.value = preset;
+                if (typeof __boqFilterPackage !== 'undefined') __boqFilterPackage = preset;
+            }
+        }
+    } catch (e) {}
     await fetchBoqList();
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
