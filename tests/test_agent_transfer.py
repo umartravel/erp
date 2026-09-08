@@ -171,3 +171,219 @@ def test_transfer_agent_missing_handler_cs_id(client, admin_token):
         headers=bearer(admin_token),
     )
     assert r.status_code == 400
+
+
+# ==========================================================================
+# Phase 7b-2: Bulk handoff (POST /api/users/{uid}/handoff-agents)
+# ==========================================================================
+
+
+def _setup_source_cs_with_agents(client, admin_token, source_username, agent_count, id_prefix):
+    """Bikin CS sumber + N agen milik dia. Return (source_uid, agent_ids)."""
+    source_uid = _make_sales_user(client, admin_token, source_username, source_username.upper())
+    agent_ids = []
+    for i in range(agent_count):
+        aid = _make_agent(client, admin_token, f"TEST BulkAgent {id_prefix}{i}", f"7100{id_prefix}{i:02d}")
+        db.execute("UPDATE agents SET handler_cs_id = ? WHERE id = ?", (source_uid, aid))
+        agent_ids.append(aid)
+    return source_uid, agent_ids
+
+
+def test_handoff_all_agents_default(client, admin_token):
+    """POST tanpa agent_ids -> semua agen sumber pindah ke tujuan."""
+    src_uid, src_agents = _setup_source_cs_with_agents(client, admin_token, "cs_handoff_src1", 3, "01")
+    tgt_uid = _make_sales_user(client, admin_token, "cs_handoff_tgt1", "CS Handoff TGT1")
+
+    r = client.post(
+        f"/api/users/{src_uid}/handoff-agents",
+        json={"to_cs_id": tgt_uid},
+        headers=bearer(admin_token),
+    )
+    assert r.status_code == 200, r.text
+    payload = r.json()
+    assert payload["moved_count"] == 3
+    assert set(payload["moved_agent_ids"]) == set(src_agents)
+    assert payload["from_cs_id"] == src_uid
+    assert payload["to_cs_id"] == tgt_uid
+
+    # DB: 3 agen sekarang handled tgt.
+    rows = db.query_all(
+        "SELECT id FROM agents WHERE handler_cs_id = ? ORDER BY id", (tgt_uid,)
+    )
+    moved_now = [r["id"] for r in rows]
+    for aid in src_agents:
+        assert aid in moved_now
+
+    # Log ringkasan.
+    log = db.query_one(
+        "SELECT details FROM audit_logs WHERE action = 'HANDOFF_AGENTS' ORDER BY id DESC LIMIT 1"
+    )
+    assert log is not None
+    assert "3 agen" in log["details"]
+
+
+def test_handoff_subset_agents(client, admin_token):
+    """agent_ids: [subset] -> hanya subset yg pindah, sisanya tetap di sumber."""
+    src_uid, src_agents = _setup_source_cs_with_agents(client, admin_token, "cs_handoff_src2", 4, "02")
+    tgt_uid = _make_sales_user(client, admin_token, "cs_handoff_tgt2", "CS Handoff TGT2")
+
+    subset = src_agents[:2]
+    r = client.post(
+        f"/api/users/{src_uid}/handoff-agents",
+        json={"to_cs_id": tgt_uid, "agent_ids": subset},
+        headers=bearer(admin_token),
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["moved_count"] == 2
+
+    # Sisanya masih di sumber.
+    remaining = db.query_all(
+        "SELECT id FROM agents WHERE handler_cs_id = ? ORDER BY id", (src_uid,)
+    )
+    remaining_ids = [r["id"] for r in remaining]
+    for aid in src_agents[2:]:
+        assert aid in remaining_ids
+
+
+def test_handoff_rbac(client, admin_token, sales_token, management_token, finance_token, ops_token):
+    """Non-admin -> 403."""
+    src_uid, _ = _setup_source_cs_with_agents(client, admin_token, "cs_handoff_rbac_src", 1, "03")
+    tgt_uid = _make_sales_user(client, admin_token, "cs_handoff_rbac_tgt", "CS Handoff RBAC TGT")
+
+    for name, tok in [
+        ("sales", sales_token),
+        ("management", management_token),
+        ("finance", finance_token),
+        ("ops", ops_token),
+    ]:
+        r = client.post(
+            f"/api/users/{src_uid}/handoff-agents",
+            json={"to_cs_id": tgt_uid},
+            headers=bearer(tok),
+        )
+        assert r.status_code == 403, f"{name} seharusnya 403, dapat {r.status_code}"
+
+
+def test_handoff_same_user_forbidden(client, admin_token):
+    """Sumber = tujuan -> 400."""
+    src_uid, _ = _setup_source_cs_with_agents(client, admin_token, "cs_handoff_same", 1, "04")
+    r = client.post(
+        f"/api/users/{src_uid}/handoff-agents",
+        json={"to_cs_id": src_uid},
+        headers=bearer(admin_token),
+    )
+    assert r.status_code == 400
+    assert "sama" in r.json()["error"].lower()
+
+
+def test_handoff_target_wrong_role(client, admin_token):
+    """Target user bukan sales -> 400."""
+    src_uid, _ = _setup_source_cs_with_agents(client, admin_token, "cs_handoff_wrole", 1, "05")
+    admin_row = db.query_one("SELECT id FROM users WHERE username = 'admin'")
+    r = client.post(
+        f"/api/users/{src_uid}/handoff-agents",
+        json={"to_cs_id": admin_row["id"]},
+        headers=bearer(admin_token),
+    )
+    assert r.status_code == 400
+    assert "sales" in r.json()["error"].lower() or "cs" in r.json()["error"].lower()
+
+
+def test_handoff_source_no_agents(client, admin_token):
+    """Sumber tidak punya agen -> 400."""
+    src_uid = _make_sales_user(client, admin_token, "cs_handoff_empty", "CS Empty")
+    tgt_uid = _make_sales_user(client, admin_token, "cs_handoff_empty_tgt", "CS Empty TGT")
+    r = client.post(
+        f"/api/users/{src_uid}/handoff-agents",
+        json={"to_cs_id": tgt_uid},
+        headers=bearer(admin_token),
+    )
+    assert r.status_code == 400
+    assert "tidak ada agen" in r.json()["error"].lower()
+
+
+def test_handoff_missing_source_user(client, admin_token):
+    """Source user tidak ada -> 404."""
+    tgt_uid = _make_sales_user(client, admin_token, "cs_handoff_no_src_tgt", "CS No Src TGT")
+    r = client.post(
+        "/api/users/999999/handoff-agents",
+        json={"to_cs_id": tgt_uid},
+        headers=bearer(admin_token),
+    )
+    assert r.status_code == 404
+    assert "sumber" in r.json()["error"].lower()
+
+
+def test_handoff_empty_agent_ids_list(client, admin_token):
+    """agent_ids=[] (kosong) -> 400 karena list non-empty required."""
+    src_uid, _ = _setup_source_cs_with_agents(client, admin_token, "cs_handoff_empty_list", 1, "06")
+    tgt_uid = _make_sales_user(client, admin_token, "cs_handoff_empty_list_tgt", "CS Empty List TGT")
+    r = client.post(
+        f"/api/users/{src_uid}/handoff-agents",
+        json={"to_cs_id": tgt_uid, "agent_ids": []},
+        headers=bearer(admin_token),
+    )
+    assert r.status_code == 400
+
+
+# ==========================================================================
+# Phase 7b-3: Guard DELETE /api/users/{uid} kalau user masih pegang agen
+# ==========================================================================
+
+
+def test_delete_user_blocked_when_holds_agents(client, admin_token):
+    """User CS punya agen -> DELETE 409."""
+    uid = _make_sales_user(client, admin_token, "cs_delete_blocked", "CS Delete Blocked")
+    aid = _make_agent(client, admin_token, "TEST DeleteBlockedAgent", "72000001")
+    db.execute("UPDATE agents SET handler_cs_id = ? WHERE id = ?", (uid, aid))
+
+    r = client.delete(f"/api/users/{uid}", headers=bearer(admin_token))
+    assert r.status_code == 409
+    error = r.json()["error"]
+    assert "1 agen" in error
+    assert "Pindahkan" in error or "handoff" in error.lower()
+
+    # User masih ada -- tidak jadi dihapus.
+    still = db.query_one("SELECT id FROM users WHERE id = ?", (uid,))
+    assert still is not None
+
+
+def test_delete_user_succeeds_after_handoff(client, admin_token):
+    """Setelah handoff semua agen, DELETE user lolos."""
+    src_uid, src_agents = _setup_source_cs_with_agents(client, admin_token, "cs_delete_ok_src", 2, "07")
+    tgt_uid = _make_sales_user(client, admin_token, "cs_delete_ok_tgt", "CS Delete OK TGT")
+
+    # 1. Coba delete dulu -> 409 karena masih pegang agen.
+    r = client.delete(f"/api/users/{src_uid}", headers=bearer(admin_token))
+    assert r.status_code == 409
+
+    # 2. Handoff semua agen.
+    r = client.post(
+        f"/api/users/{src_uid}/handoff-agents",
+        json={"to_cs_id": tgt_uid},
+        headers=bearer(admin_token),
+    )
+    assert r.status_code == 200
+    assert r.json()["moved_count"] == 2
+
+    # 3. Sekarang delete boleh.
+    r = client.delete(f"/api/users/{src_uid}", headers=bearer(admin_token))
+    assert r.status_code == 200, r.text
+
+    # User beneran hilang.
+    gone = db.query_one("SELECT id FROM users WHERE id = ?", (src_uid,))
+    assert gone is None
+
+    # Agen tetap ada + handler ke tgt.
+    for aid in src_agents:
+        row = db.query_one("SELECT handler_cs_id FROM agents WHERE id = ?", (aid,))
+        assert row["handler_cs_id"] == tgt_uid
+
+
+def test_delete_user_without_agents_still_works(client, admin_token):
+    """User tanpa agen -> DELETE tetap bisa (backward compat)."""
+    uid = _make_sales_user(client, admin_token, "cs_delete_noagent", "CS Delete NoAgent")
+    r = client.delete(f"/api/users/{uid}", headers=bearer(admin_token))
+    assert r.status_code == 200
+    gone = db.query_one("SELECT id FROM users WHERE id = ?", (uid,))
+    assert gone is None

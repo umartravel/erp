@@ -189,6 +189,21 @@ async def users_delete(uid: int, user=Depends(authenticate_token)):
             status_code=400, detail="Akses Ditolak: Anda tidak dapat menghapus akun Anda sendiri."
         )
     target = db.query_one("SELECT username, role FROM users WHERE id = ?", (uid,))
+    # Phase 7b-3: Guard resign -- kalau user CS ini masih pegang agen, tolak
+    # sampai admin handoff dulu. Cegah agen orphan (handler_cs_id = dangling FK)
+    # per keputusan di project_edit_jamaah_agent_transfer_plan.md.
+    agent_count_row = db.query_one(
+        "SELECT COUNT(*) as c FROM agents WHERE handler_cs_id = ?", (uid,)
+    )
+    agent_count = agent_count_row["c"] if agent_count_row else 0
+    if agent_count > 0:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"User ini masih pegang {agent_count} agen. Pindahkan dulu ke CS lain "
+                f"lewat Keagenan (Transfer Agen) atau bulk handoff sebelum hapus."
+            ),
+        )
     db.execute("DELETE FROM users WHERE id = ?", (uid,))
     if target:
         log_action(user, "DELETE_USER", f"Menghapus akun karyawan: {target['username']} (role: {target['role']})")

@@ -167,6 +167,77 @@ async def agents_transfer_handler(
     }
 
 
+# Phase 7b-2: Bulk handoff -- pindahkan SEMUA (atau subset) agen milik user
+# tertentu ke CS lain. Dipakai admin sebelum hard-delete user (CS resign).
+# Ditempatkan di agents.py meski URI-nya /api/users/{uid}/... karena
+# semua logic manipulasi tabel agents dan sinergi dgn TRANSFER_AGENT.
+@router.post("/api/users/{uid}/handoff-agents")
+async def user_handoff_agents(
+    uid: int, body: dict = Depends(json_body), user=Depends(authenticate_token)
+):
+    require_role(user, "admin")
+    to_cs_id = parse_int(body.get("to_cs_id"), "CS tujuan")
+    agent_ids = body.get("agent_ids")  # list[int] atau None = semua
+
+    source = db.query_one("SELECT id, name, role FROM users WHERE id = ?", (uid,))
+    if not source:
+        raise HTTPException(status_code=404, detail="User sumber tidak ditemukan")
+    target = db.query_one("SELECT id, name, role FROM users WHERE id = ?", (to_cs_id,))
+    if not target:
+        raise HTTPException(status_code=404, detail="User CS tujuan tidak ditemukan")
+    if target["role"] != "sales":
+        raise HTTPException(
+            status_code=400,
+            detail=f"User tujuan ('{target['name']}') role-nya '{target['role']}', bukan CS/sales.",
+        )
+    if uid == to_cs_id:
+        raise HTTPException(
+            status_code=400, detail="User sumber & tujuan tidak boleh sama."
+        )
+
+    # Kumpulkan agen yg akan dipindah. agent_ids optional -- kalau None, semua
+    # agen user sumber. Kalau list, subset yg valid (milik user sumber & ada).
+    if agent_ids is None:
+        agents_to_move = db.query_all(
+            "SELECT id, name FROM agents WHERE handler_cs_id = ?", (uid,)
+        )
+    else:
+        if not isinstance(agent_ids, list) or not agent_ids:
+            raise HTTPException(status_code=400, detail="agent_ids harus list non-empty (atau null utk semua).")
+        placeholders = ",".join("?" * len(agent_ids))
+        agents_to_move = db.query_all(
+            f"SELECT id, name FROM agents WHERE id IN ({placeholders}) AND handler_cs_id = ?",
+            tuple(agent_ids) + (uid,),
+        )
+
+    if not agents_to_move:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Tidak ada agen milik '{source['name']}' yg cocok utk dipindah.",
+        )
+
+    # Bulk update -- 1 statement (SQLite auto-transaction lewat db.execute).
+    moved_ids = [a["id"] for a in agents_to_move]
+    placeholders = ",".join("?" * len(moved_ids))
+    db.execute(
+        f"UPDATE agents SET handler_cs_id = ? WHERE id IN ({placeholders})",
+        (to_cs_id,) + tuple(moved_ids),
+    )
+
+    log_action(
+        user, "HANDOFF_AGENTS",
+        f"Handoff {len(moved_ids)} agen dari '{source['name']}' ke '{target['name']}'",
+    )
+    notify("data_updated", "agent")
+    return {
+        "message": f"{len(moved_ids)} agen berhasil dipindah dari '{source['name']}' ke '{target['name']}'.",
+        "moved_count": len(moved_ids),
+        "moved_agent_ids": moved_ids,
+        "from_cs_id": uid,
+        "to_cs_id": to_cs_id,
+    }
+
+
 # Pengecualian fee komisi per (agen, paket) -- opsional. Kalau tidak ada baris yang
 # cocok untuk kombinasi agen+paket tertentu, dipakai fee default milik paket itu sendiri
 # (packages.default_commission_fee).
