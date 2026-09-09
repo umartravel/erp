@@ -19,6 +19,7 @@ from deps import (
     notify,
     require_role,
 )
+from deps.notifications import notify_user  # Phase 9b
 
 router = APIRouter(tags=["sales"])
 
@@ -288,6 +289,58 @@ async def sales_home(user=Depends(authenticate_token)):
         "attention": _compute_attention(followup_due, payment_stale, stale_contact, new_leads),
         "period": ym,
     }
+
+
+# ===========================================================================
+# Phase 9b: SLA Follow-up Lead -- notif ke sales owner ketika ada jamaah
+# 'Dihubungi' > 3 hari tanpa update, dipanggil dari Home Sales boot.
+# Dedupe per-hari via kind unique.
+# ===========================================================================
+@router.post("/api/sales/sla-followup/check")
+async def check_sla_followup(user=Depends(authenticate_token)):
+    """Cek jamaah stale (last_contact NULL/>3d) di scope MY. Kirim notif ke user
+    sendiri kalau > 0. Dedupe per-hari -- aman dipanggil setiap Home Sales open."""
+    require_role(user, "sales", "admin", "management")
+    # Hanya sales yg dapat notif ke diri sendiri; admin/mgmt cukup preview count.
+    if user.get("role") != "sales":
+        # Untuk role bukan-sales: return count aggregate saja tanpa notif.
+        row = db.query_one(
+            "SELECT COUNT(*) c FROM jamaah j "
+            "WHERE j.sales_id IS NOT NULL "
+            "AND j.status IN ('Terdaftar', 'DP Masuk', 'Lead - Follow Up') "
+            "AND (j.last_contact IS NULL OR datetime(j.last_contact) < datetime('now', '-3 days'))"
+        )
+        return {"stale_count": (row or {}).get("c") or 0, "notified": False}
+
+    row = db.query_one(
+        "SELECT COUNT(*) c FROM jamaah j WHERE j.sales_id = ? "
+        "AND j.status IN ('Terdaftar', 'DP Masuk', 'Lead - Follow Up') "
+        "AND (j.last_contact IS NULL OR datetime(j.last_contact) < datetime('now', '-3 days'))",
+        (user["id"],),
+    )
+    count = (row or {}).get("c") or 0
+    if count <= 0:
+        return {"stale_count": 0, "notified": False}
+
+    today = datetime.datetime.now().strftime("%Y%m%d")
+    kind = f"sla_followup_alert_uid{user['id']}_{today}"
+    # Dedupe: jangan kirim notif kedua kali di hari yg sama.
+    dup = db.query_one(
+        "SELECT 1 x FROM user_notifications "
+        "WHERE user_id = ? AND kind = ? AND date(created_at) = date('now') LIMIT 1",
+        (user["id"], kind),
+    )
+    if dup:
+        return {"stale_count": count, "notified": False, "reason": "already_notified_today"}
+
+    notify_user(
+        user["id"], kind,
+        f"SLA Follow-up: {count} jamaah perlu dikontak",
+        f"Ada {count} lead/jamaah aktif yang belum di-follow up > 3 hari. "
+        f"Buka Home Sales -> panel 'Jamaah Perlu Dihubungi'.",
+        "#page-sales-home",
+    )
+    return {"stale_count": count, "notified": True}
 
 
 # ===========================================================================

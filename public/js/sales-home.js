@@ -38,6 +38,8 @@ async function initSalesHome() {
     }
     const data = await res.json();
     renderSalesHome(data);
+    // Phase 9b: SLA follow-up notif -- fire-and-forget, dedupe backend per-hari.
+    (window.authFetch || fetch)('/api/sales/sla-followup/check', {method: 'POST'}).catch(() => {});
     if (typeof lucide !== 'undefined') lucide.createIcons();
   } catch (e) {
     console.error('[sales-home] error', e);
