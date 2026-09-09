@@ -344,6 +344,139 @@ async def check_sla_followup(user=Depends(authenticate_token)):
 
 
 # ===========================================================================
+# Phase 12a: Lead Scoring / Prioritas Follow-up.
+# Score jamaah aktif 0-100 dari 4 faktor: baseline, recency last_contact,
+# payment progress, urgency (H-N keberangkatan). Return sorted DESC.
+# ===========================================================================
+def _score_lead(row) -> tuple[int, dict, str]:
+    """Return (score 0-100, factors dict, top_reason string).
+
+    Faktor:
+    - baseline:  50 (starting point)
+    - recency:   -20 (>7d) .. +20 (<=1d dari last_contact)
+    - payment:    -5 (0%) .. +25 (50-99% lunas)
+    - urgency:    0 (>60d) .. +30 (H-7 dari keberangkatan)
+    """
+    now = datetime.datetime.now().date()
+    factors = {"baseline": 50, "recency": 0, "payment": 0, "urgency": 0}
+    reasons = []
+
+    # 1. Recency: last_contact
+    if row.get("last_contact"):
+        try:
+            lc = datetime.datetime.strptime(
+                row["last_contact"][:10], "%Y-%m-%d").date()
+            days_no = (now - lc).days
+            if days_no <= 1:
+                factors["recency"] = 20
+                reasons.append("baru dikontak")
+            elif days_no <= 3:
+                factors["recency"] = 10
+            elif days_no <= 7:
+                factors["recency"] = 0
+            else:
+                factors["recency"] = -15
+                reasons.append(f"stale {days_no}d")
+        except (ValueError, TypeError):
+            factors["recency"] = 0
+    else:
+        factors["recency"] = -20
+        reasons.append("belum pernah dikontak")
+
+    # 2. Payment progress
+    total = row.get("total_price") or 0
+    paid = row.get("paid_amount") or 0
+    ratio = (paid / total) if total > 0 else 0
+    if ratio >= 1.0:
+        factors["payment"] = 5
+    elif ratio >= 0.5:
+        factors["payment"] = 25
+        reasons.append(f"lunas {int(ratio*100)}%")
+    elif ratio > 0:
+        factors["payment"] = 15
+        reasons.append("DP masuk")
+    else:
+        factors["payment"] = -5
+
+    # 3. Urgency: departure_date
+    if row.get("departure_date"):
+        try:
+            dd = datetime.datetime.strptime(row["departure_date"][:10], "%Y-%m-%d").date()
+            days_until = (dd - now).days
+            if 0 <= days_until <= 7:
+                factors["urgency"] = 30
+                reasons.append(f"H-{days_until} berangkat")
+            elif days_until <= 30:
+                factors["urgency"] = 20
+                reasons.append(f"H-{days_until}")
+            elif days_until <= 60:
+                factors["urgency"] = 10
+            elif days_until > 60:
+                factors["urgency"] = 0
+        except (ValueError, TypeError):
+            factors["urgency"] = 0
+
+    raw = sum(factors.values())
+    score = max(0, min(100, raw))
+    top_reason = " · ".join(reasons[:2]) if reasons else "-"
+    return score, factors, top_reason
+
+
+@router.get("/api/sales/lead-scores")
+async def sales_lead_scores(scope: str = "my", limit: int = 20,
+                            user=Depends(authenticate_token)):
+    """List jamaah aktif dgn score prioritas, sorted DESC.
+
+    Query params:
+    - scope: 'my' (default) -> MY-scoped utk sales; admin/mgmt selalu bisa 'all'
+    - limit: default 20
+
+    Kandidat = status NOT IN Cancelled/Lunas (Lunas sudah closing, prioritas
+    lain). Bisa disesuaikan nanti.
+    """
+    role = user.get("role")
+    if role not in ("sales", "admin", "management"):
+        raise HTTPException(status_code=403,
+                            detail="Endpoint ini hanya utk sales/admin/mgmt.")
+
+    if role == "sales" and scope != "all":
+        where_scope = "j.sales_id = ?"
+        params = (user["id"],)
+    else:
+        where_scope = "j.sales_id IS NOT NULL"
+        params = ()
+
+    rows = db.query_all(
+        f"SELECT j.id, j.name, j.phone, j.package_type, j.status, "
+        f"       j.total_price, j.paid_amount, j.last_contact, "
+        f"       p.departure_date "
+        f"FROM jamaah j LEFT JOIN packages p ON p.name = j.package_type "
+        f"WHERE {where_scope} "
+        f"  AND j.status NOT IN ('Cancelled', 'Lunas') "
+        f"ORDER BY j.last_contact IS NULL DESC, j.last_contact ASC "
+        f"LIMIT 200",  # pool utk scoring; potong lagi ke limit setelah sort
+        params,
+    ) or []
+
+    scored = []
+    for r in rows:
+        d = dict(r)
+        score, factors, top_reason = _score_lead(d)
+        d["score"] = score
+        d["factors"] = factors
+        d["top_reason"] = top_reason
+        scored.append(d)
+
+    scored.sort(key=lambda x: x["score"], reverse=True)
+    return {
+        "scope": "self" if role == "sales" else "all",
+        "generated_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "leads": scored[: max(1, min(limit, 100))],
+        "total_candidates": len(scored),
+    }
+
+
+# ===========================================================================
 # TARGET SALES (admin/management set, sales lihat sendiri)
 # ===========================================================================
 @router.get("/api/sales/targets/me")

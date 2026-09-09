@@ -40,6 +40,8 @@ async function initSalesHome() {
     renderSalesHome(data);
     // Phase 9b: SLA follow-up notif -- fire-and-forget, dedupe backend per-hari.
     (window.authFetch || fetch)('/api/sales/sla-followup/check', {method: 'POST'}).catch(() => {});
+    // Phase 12a: Prioritas Follow-up (lead scoring)
+    loadLeadScores();
     if (typeof lucide !== 'undefined') lucide.createIcons();
   } catch (e) {
     console.error('[sales-home] error', e);
@@ -372,6 +374,65 @@ function renderLeaderboard(list, myId) {
         <span class="text-xs font-bold" style="color:${isMe ? SH_COLORS.charcoal : SH_COLORS.darkGold};">${r.closing} closing</span>
       </li>`;
   }).join('');
+}
+
+// Phase 12a: Prioritas Follow-up (Lead scoring)
+async function loadLeadScores() {
+  const body = document.getElementById('sh-prio-body');
+  const countEl = document.getElementById('sh-prio-count');
+  if (!body) return;
+  try {
+    const res = await shFetch('/api/sales/lead-scores?limit=15');
+    if (!res.ok) throw new Error('gagal');
+    const d = await res.json();
+    if (countEl) countEl.textContent = `${d.leads.length} lead`;
+    if (!d.leads || d.leads.length === 0) {
+      body.innerHTML = `<div class="p-6 text-center text-xs text-gray-400 italic">
+        Belum ada jamaah aktif untuk di-prioritas.
+      </div>`;
+      return;
+    }
+    body.innerHTML = d.leads.map(lead => {
+      const scoreColor = lead.score >= 80 ? '#DC2626'
+                      : lead.score >= 60 ? '#B8860B'
+                      : lead.score >= 40 ? '#059669'
+                      : '#6B7280';
+      const scoreBg = lead.score >= 80 ? '#FEE2E2'
+                   : lead.score >= 60 ? '#FEF3C7'
+                   : lead.score >= 40 ? '#D1FAE5'
+                   : '#F3F4F6';
+      const sisa = (lead.total_price || 0) - (lead.paid_amount || 0);
+      const waHref = lead.phone
+        ? `https://wa.me/${String(lead.phone).replace(/\D/g, '').replace(/^0/, '62')}`
+        : null;
+      return `<div class="px-4 py-3 border-b hover:bg-amber-50/40" style="border-color:#F4F1EA;">
+        <div class="flex items-start gap-3">
+          <div class="shrink-0 flex flex-col items-center justify-center w-12 h-12 rounded-lg font-black text-lg"
+               style="background:${scoreBg};color:${scoreColor};">
+            ${lead.score}
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <b class="text-sm truncate" style="color:${SH_COLORS.charcoal};">${lead.name || '(tanpa nama)'}</b>
+              <span class="text-[10px] px-1.5 py-0.5 rounded font-bold" style="background:#EEF2FF;color:#3730A3;">${lead.status || '-'}</span>
+            </div>
+            <div class="text-[11px] mt-0.5" style="color:${SH_COLORS.gray500};">
+              ${lead.package_type || '-'} &middot; ${lead.top_reason || '-'}
+            </div>
+            ${sisa > 0 ? `<div class="text-[10px] mt-0.5" style="color:${SH_COLORS.darkGold};">Sisa ${shFmtRp(sisa)}</div>` : ''}
+          </div>
+          <div class="shrink-0 flex flex-col items-end gap-1">
+            <button onclick="openActivityModal(${lead.id}, ${JSON.stringify(lead.name || '').replace(/"/g, '&quot;')})"
+                    class="text-[10px] px-2 py-1 rounded font-bold" style="background:${SH_COLORS.gold};color:${SH_COLORS.charcoal};">Catat</button>
+            ${waHref ? `<a href="${waHref}" target="_blank" class="text-[10px] px-2 py-1 rounded font-medium" style="background:#DCFCE7;color:#166534;"><i data-lucide="message-circle" class="w-3 h-3 inline"></i> WA</a>` : ''}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  } catch (e) {
+    body.innerHTML = '<div class="p-4 text-center text-xs text-red-500">Gagal memuat prioritas.</div>';
+  }
 }
 
 window.initSalesHome = initSalesHome;
