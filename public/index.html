@@ -1698,6 +1698,20 @@
                     </div>
                 </div>
 
+                <!-- Phase 13a-2: Antrian Pembayaran menunggu ACC finance -->
+                <div class="bg-white rounded-xl shadow-sm border overflow-hidden" style="border-color:#10B981;">
+                    <div class="px-4 py-3 border-b flex items-center justify-between" style="background:#ECFDF5;border-color:#A7F3D0;">
+                        <h3 class="font-bold text-sm flex items-center gap-2" style="color:#065F46;">
+                            <i data-lucide="banknote" class="w-4 h-4"></i>
+                            Antrian ACC Pembayaran Jamaah
+                        </h3>
+                        <span id="fh-payment-queue-count" class="text-[10px] font-bold px-2 py-0.5 rounded-full" style="background:#10B981;color:white;">0</span>
+                    </div>
+                    <div id="fh-payment-queue-body" class="max-h-96 overflow-y-auto custom-scrollbar">
+                        <div class="p-4 text-center text-xs text-gray-400 italic">Memuat...</div>
+                    </div>
+                </div>
+
                 <!-- Phase 8d: Dual View analitik keuangan -- Committed vs Realized.
                      "Committed" = sudah disetujui management, belum dicairkan finance.
                      Rendering di-populate di fh-committed-populate() dari
@@ -4385,6 +4399,87 @@
                 <div class="flex flex-wrap gap-2" id="jd-shortcuts"></div>
                 <button onclick="closeModal('modal-jamaah-detail')" class="px-4 py-2 border rounded-lg text-sm font-medium">Tutup</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Phase 13a-2: Ajukan Pembayaran Jamaah (sales/admin submit) -->
+    <div id="modal-payment-submit" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+            <div class="flex justify-between items-start border-b pb-3 mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+                        <i data-lucide="banknote" class="w-5 h-5 text-emerald-700"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg text-gray-800">Ajukan Pembayaran</h3>
+                        <p class="text-xs text-gray-500" id="ps-jamaah-info">-</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('modal-payment-submit')" class="text-gray-400 hover:text-gray-700"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <form id="form-payment-submit" class="space-y-3">
+                <input type="hidden" id="ps-jamaah-id">
+                <div>
+                    <label class="text-xs font-bold text-gray-600 block mb-1">Jenis Pembayaran</label>
+                    <select id="ps-kind" class="w-full border rounded-lg px-3 py-2 text-sm" required>
+                        <option value="DP">DP (Uang Muka)</option>
+                        <option value="Cicilan" selected>Cicilan</option>
+                        <option value="Pelunasan">Pelunasan</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-gray-600 block mb-1">Nominal (Rp)</label>
+                    <input type="number" id="ps-amount" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="0" min="1" required>
+                    <p class="text-[10px] text-gray-500 mt-1">Sisa tagihan: <span id="ps-remaining" class="font-bold">-</span></p>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-gray-600 block mb-1">Metode</label>
+                    <select id="ps-method" class="w-full border rounded-lg px-3 py-2 text-sm">
+                        <option value="Transfer">Transfer</option>
+                        <option value="Cash">Cash</option>
+                        <option value="VA">Virtual Account</option>
+                        <option value="Lainnya">Lainnya</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-gray-600 block mb-1">Rekening Tujuan / Sumber</label>
+                    <input type="text" id="ps-bank" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="mis. BCA 1234-5678 atau Kas Kantor">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-gray-600 block mb-1">Keterangan (opsional)</label>
+                    <textarea id="ps-notes" rows="2" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Catatan bukti transfer, tanggal transfer, dll"></textarea>
+                </div>
+                <div class="flex justify-end gap-2 pt-2 border-t">
+                    <button type="button" onclick="closeModal('modal-payment-submit')" class="px-4 py-2 border rounded-lg text-sm font-medium">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold">Ajukan ke Finance</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Phase 13a-2: Modal Reject Payment Submission (finance) -->
+    <div id="modal-payment-reject" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+            <div class="flex items-center gap-3 border-b pb-3 mb-4">
+                <div class="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center">
+                    <i data-lucide="x-circle" class="w-5 h-5 text-red-700"></i>
+                </div>
+                <div class="flex-1">
+                    <h3 class="font-bold text-lg text-gray-800">Tolak Pembayaran</h3>
+                    <p class="text-xs text-gray-500" id="pr-info">-</p>
+                </div>
+            </div>
+            <form id="form-payment-reject" class="space-y-3">
+                <input type="hidden" id="pr-sid">
+                <div>
+                    <label class="text-xs font-bold text-gray-600 block mb-1">Alasan Tolak</label>
+                    <textarea id="pr-reason" rows="3" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="mis. Belum ada uang masuk di rekening pada tanggal terkait" required></textarea>
+                </div>
+                <div class="flex justify-end gap-2 pt-2 border-t">
+                    <button type="button" onclick="closeModal('modal-payment-reject')" class="px-4 py-2 border rounded-lg text-sm font-medium">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold">Tolak Pembayaran</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -7466,6 +7561,13 @@
             if (['admin', 'sales'].includes(currentUser.role) && j.paid_amount > 0) {
                 shortcuts.push(`<button onclick="${jumpTo(`openRefundRequestModal(${j.id}, '${(j.name || '').replace(/'/g, "\\'")}')`)}" class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg text-xs font-bold flex items-center gap-1"><i data-lucide="undo-2" class="w-3.5 h-3.5"></i>Ajukan Refund</button>`);
             }
+            // Phase 13a-2: sales/admin bisa ajukan pembayaran
+            if (['admin', 'sales'].includes(currentUser.role) && j.status !== 'Cancelled') {
+                const sisa = (j.total_price || 0) - (j.paid_amount || 0);
+                if (sisa > 0) {
+                    shortcuts.push(`<button onclick="${jumpTo(`openPaymentSubmitModal(${j.id}, '${(j.name || '').replace(/'/g, "\\'")}', ${j.total_price || 0}, ${j.paid_amount || 0})`)}" class="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold flex items-center gap-1"><i data-lucide="banknote" class="w-3.5 h-3.5"></i>Ajukan Pembayaran</button>`);
+                }
+            }
             document.getElementById('jd-shortcuts').innerHTML = shortcuts.join('');
 
             openModal('modal-jamaah-detail');
@@ -7795,6 +7897,144 @@
         }
         
         // --- INTERNAL COMMENTS LOGIC ---
+        // Phase 13a-2: Sales/Admin ajukan pembayaran jamaah -> antri finance ACC.
+        window.openPaymentSubmitModal = function(jid, jamaahName, totalPrice, paidAmount) {
+            const sisa = (totalPrice || 0) - (paidAmount || 0);
+            document.getElementById('ps-jamaah-id').value = jid;
+            document.getElementById('ps-jamaah-info').textContent =
+                `Jamaah: ${jamaahName} · Sisa: ${formatRp(sisa)}`;
+            document.getElementById('ps-remaining').textContent = formatRp(sisa);
+            document.getElementById('ps-kind').value = paidAmount > 0 ? 'Cicilan' : 'DP';
+            document.getElementById('ps-amount').value = '';
+            document.getElementById('ps-amount').max = sisa;
+            document.getElementById('ps-method').value = 'Transfer';
+            document.getElementById('ps-bank').value = '';
+            document.getElementById('ps-notes').value = '';
+            openModal('modal-payment-submit');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        };
+        document.getElementById('form-payment-submit')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const jid = parseInt(document.getElementById('ps-jamaah-id').value, 10);
+            const payload = {
+                amount: parseInt(document.getElementById('ps-amount').value, 10),
+                payment_kind: document.getElementById('ps-kind').value,
+                payment_method: document.getElementById('ps-method').value,
+                bank_account: document.getElementById('ps-bank').value.trim() || null,
+                notes: document.getElementById('ps-notes').value.trim() || null,
+            };
+            if (!payload.amount || payload.amount <= 0) {
+                showToast('Nominal wajib > 0.', 'error'); return;
+            }
+            try {
+                const res = await authFetch(`/jamaah/${jid}/payment-submissions`, {
+                    method: 'POST', body: JSON.stringify(payload),
+                });
+                const d = await res.json();
+                closeModal('modal-payment-submit');
+                showToast(d.message || 'Pembayaran diajukan.', 'success');
+            } catch (err) {
+                showToast(err.message || 'Gagal ajukan pembayaran.', 'error');
+            }
+        });
+
+        // Verify submission (finance ACC).
+        window.verifyPaymentSubmission = async function(sid) {
+            if (!confirm('ACC pembayaran ini? Uang benar sudah masuk rekening?')) return;
+            try {
+                const res = await authFetch(`/payment-submissions/${sid}/review`, {
+                    method: 'PUT', body: JSON.stringify({action: 'verify'}),
+                });
+                const d = await res.json();
+                showToast(d.message || 'Pembayaran di-ACC.', 'success');
+                if (typeof loadPaymentQueue === 'function') loadPaymentQueue();
+            } catch (err) {
+                showToast(err.message || 'Gagal ACC.', 'error');
+            }
+        };
+        // Open reject modal (finance).
+        window.openPaymentRejectModal = function(sid, jamaahName, amount) {
+            document.getElementById('pr-sid').value = sid;
+            document.getElementById('pr-info').textContent =
+                `${jamaahName} · Rp ${(amount || 0).toLocaleString('id-ID')}`;
+            document.getElementById('pr-reason').value = '';
+            openModal('modal-payment-reject');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        };
+        document.getElementById('form-payment-reject')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const sid = parseInt(document.getElementById('pr-sid').value, 10);
+            const reason = document.getElementById('pr-reason').value.trim();
+            if (!reason) { showToast('Alasan wajib diisi.', 'error'); return; }
+            try {
+                const res = await authFetch(`/payment-submissions/${sid}/review`, {
+                    method: 'PUT', body: JSON.stringify({action: 'reject', reason}),
+                });
+                const d = await res.json();
+                closeModal('modal-payment-reject');
+                showToast(d.message || 'Pembayaran ditolak.', 'success');
+                if (typeof loadPaymentQueue === 'function') loadPaymentQueue();
+            } catch (err) {
+                showToast(err.message || 'Gagal tolak.', 'error');
+            }
+        });
+
+        // Load pending queue (finance).
+        window.loadPaymentQueue = async function() {
+            const body = document.getElementById('fh-payment-queue-body');
+            const count = document.getElementById('fh-payment-queue-count');
+            if (!body) return;
+            try {
+                const res = await authFetch('/payment-submissions?status=Pending');
+                const items = await res.json();
+                if (count) count.textContent = String(items.length);
+                if (!items.length) {
+                    body.innerHTML = '<div class="p-4 text-center text-xs text-gray-400 italic">Tidak ada pembayaran menunggu ACC.</div>';
+                    return;
+                }
+                body.innerHTML = items.map(x => {
+                    const when = x.submitted_at
+                        ? new Date(x.submitted_at.replace(' ', 'T') + 'Z').toLocaleString('id-ID',
+                              {dateStyle: 'medium', timeStyle: 'short'})
+                        : '-';
+                    return `<div class="px-4 py-3 border-b" style="border-color:#F4F1EA;">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="flex-1 min-w-0">
+                                <p class="text-xs font-bold" style="color:#1D1D1B;">${x.jamaah_name || '(?)'}</p>
+                                <p class="text-[10px]" style="color:#6B7280;">${x.package_type || '-'}</p>
+                                <p class="text-[10px] mt-1">
+                                    <span class="px-1.5 py-0.5 rounded font-bold" style="background:#DCFCE7;color:#166534;">${x.payment_kind}</span>
+                                    <span class="ml-1" style="color:#6B7280;">via ${x.payment_method || '-'}</span>
+                                    ${x.bank_account ? `<span class="ml-1" style="color:#6B7280;">· ${x.bank_account}</span>` : ''}
+                                </p>
+                                ${x.notes ? `<p class="text-[10px] italic mt-1" style="color:#6B7280;">"${x.notes}"</p>` : ''}
+                                <p class="text-[10px] mt-1" style="color:#6B7280;">Oleh <b>${x.submitted_by}</b> · ${when}</p>
+                            </div>
+                            <div class="text-right shrink-0">
+                                <p class="text-sm font-black" style="color:#059669;">${formatRp(x.amount)}</p>
+                                <div class="flex gap-1 mt-2 justify-end">
+                                    <button onclick="verifyPaymentSubmission(${x.id})" class="text-[10px] px-2 py-1 rounded font-bold" style="background:#10B981;color:white;">ACC</button>
+                                    <button onclick="openPaymentRejectModal(${x.id}, '${(x.jamaah_name || '').replace(/'/g, "\\'")}', ${x.amount})" class="text-[10px] px-2 py-1 rounded font-bold" style="background:#DC2626;color:white;">Tolak</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('');
+            } catch (e) {
+                body.innerHTML = '<div class="p-4 text-center text-xs text-red-500">Gagal memuat antrian.</div>';
+            }
+        };
+
+        // Socket refresh untuk queue finance.
+        if (typeof socket !== 'undefined' && socket && socket.on) {
+            socket.on('data_updated', (type) => {
+                if (type === 'payment_submission' && typeof window.loadPaymentQueue === 'function') {
+                    const el = document.getElementById('page-finance-home');
+                    if (el && !el.classList.contains('hidden')) window.loadPaymentQueue();
+                }
+            });
+        }
+
         // Phase 10a: Audit Trail viewer -- baca /api/audit/{type}/{id}
         window.openAuditTrail = async function(type, id, name) {
             const body = document.getElementById('at-body');

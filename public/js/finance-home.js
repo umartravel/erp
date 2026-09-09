@@ -480,6 +480,8 @@
             loadCommittedSummary();
             // Phase 9c: fire-and-forget cashflow alert (dedupe per-hari)
             (window.authFetch || fetch)('/api/finance/cashflow-alert/check', {method: 'POST'}).catch(() => {});
+            // Phase 13a-2: antrian ACC pembayaran jamaah (finance queue)
+            if (typeof window.loadPaymentQueue === 'function') window.loadPaymentQueue();
             if (typeof lucide !== 'undefined') lucide.createIcons();
         } catch (err) {
             console.error('[finance-home]', err);
