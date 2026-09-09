@@ -134,3 +134,86 @@ async def mgmt_monthly_pdf(month: str = None, user=Depends(authenticate_token)):
         pdf_bytes, media_type="application/pdf",
         headers={"Content-Disposition": f'inline; filename="Laporan-Eksekutif-{ym}.pdf"'},
     )
+
+
+# ===========================================================================
+# Phase 11a: Revenue by BOQ Scenario -- rekap per skenario BOQ, per paket.
+# ===========================================================================
+@router.get("/api/mgmt/revenue-by-boq")
+async def revenue_by_boq(month: str | None = None, user=Depends(authenticate_token)):
+    """Rekap revenue + jamaah per skenario BOQ.
+
+    Query param:
+    - month=YYYY-MM (opsional) -> filter jamaah by order_date bulan tsb.
+                                  Default: agregat semua waktu.
+
+    Response:
+    - period: string
+    - total_revenue: int (aggregate semua scenario)
+    - total_jamaah_with_boq: int
+    - scenarios: list per BOQ dgn share_pct
+    - by_package: rekap per paket -> jumlah scenario + revenue total
+    """
+    require_role(user, *_MGMT_ROLES)
+
+    where_month = ""
+    params_month = ()
+    period_label = "all"
+    if month:
+        if len(month) != 7 or month[4] != "-":
+            raise HTTPException(status_code=400, detail="month wajib format YYYY-MM")
+        where_month = " AND strftime('%Y-%m', COALESCE(j.order_date, j.created_at)) = ?"
+        params_month = (month,)
+        period_label = month
+
+    # Rekap per skenario BOQ (LEFT JOIN jamaah supaya scenario kosong tetap muncul).
+    scenarios = db.query_all(
+        f"SELECT b.id AS boq_id, b.name AS boq_name, b.status AS boq_status, "
+        f"       b.package_id, p.name AS package_name, "
+        f"       COUNT(j.id) AS jamaah_count, "
+        f"       COALESCE(SUM(j.boq_snapshot_price), 0) AS total_revenue, "
+        f"       COALESCE(AVG(NULLIF(j.boq_snapshot_price, 0)), 0) AS avg_price "
+        f"FROM package_boq b "
+        f"LEFT JOIN packages p ON p.id = b.package_id "
+        f"LEFT JOIN jamaah j ON j.boq_id = b.id "
+        f"    AND j.status NOT IN ('Cancelled', 'Lead - Follow Up')"
+        f"    {where_month} "
+        f"WHERE b.status = 'Approved' "
+        f"GROUP BY b.id, b.name, b.status, b.package_id, p.name "
+        f"ORDER BY total_revenue DESC, b.id DESC",
+        params_month,
+    ) or []
+
+    total_revenue = sum((s["total_revenue"] or 0) for s in scenarios)
+    total_jamaah = sum((s["jamaah_count"] or 0) for s in scenarios)
+
+    for s in scenarios:
+        s["share_pct"] = round((s["total_revenue"] or 0) * 100 / total_revenue) \
+            if total_revenue > 0 else 0
+        s["avg_price"] = int(s["avg_price"] or 0)
+
+    # Rekap per paket: jumlah scenario aktif + total revenue.
+    by_package_map = {}
+    for s in scenarios:
+        pid = s["package_id"]
+        if pid not in by_package_map:
+            by_package_map[pid] = {
+                "package_id": pid,
+                "package_name": s["package_name"],
+                "scenario_count": 0,
+                "jamaah_count": 0,
+                "total_revenue": 0,
+            }
+        by_package_map[pid]["scenario_count"] += 1
+        by_package_map[pid]["jamaah_count"] += (s["jamaah_count"] or 0)
+        by_package_map[pid]["total_revenue"] += (s["total_revenue"] or 0)
+    by_package = sorted(by_package_map.values(),
+                        key=lambda x: x["total_revenue"], reverse=True)
+
+    return {
+        "period": period_label,
+        "total_revenue": total_revenue,
+        "total_jamaah_with_boq": total_jamaah,
+        "scenarios": scenarios,
+        "by_package": by_package,
+    }

@@ -275,6 +275,65 @@
         if (p && !p.value) p.value = new Date().toISOString().slice(0, 7);
     }
 
+    // Phase 11a: Revenue per Skenario BOQ
+    async function loadBoqRevenue() {
+        const body = document.getElementById('mh-boq-body');
+        const totalEl = document.getElementById('mh-boq-total');
+        if (!body) return;
+        try {
+            const res = await mhFetch('/mgmt/revenue-by-boq');
+            if (!res.ok) throw new Error('gagal');
+            const d = await res.json();
+            if (totalEl) totalEl.textContent = mhFmtShort(d.total_revenue || 0);
+            if (!d.scenarios || d.scenarios.length === 0) {
+                body.innerHTML = `<div class="p-4 text-center text-xs text-gray-400 italic">
+                    Belum ada BOQ Approved atau jamaah yg pilih skenario BOQ.
+                </div>`;
+                return;
+            }
+            // Render tabel scenario + total
+            const rows = d.scenarios.map(s => `
+                <tr class="border-b hover:bg-amber-50/40">
+                    <td class="px-3 py-2 text-xs">
+                        <div class="font-bold text-gray-800">${mhEscape(s.boq_name || '(tanpa nama)')}</div>
+                        <div class="text-[10px] text-gray-500">${mhEscape(s.package_name || '-')}</div>
+                    </td>
+                    <td class="px-3 py-2 text-xs text-right font-bold">${s.jamaah_count}</td>
+                    <td class="px-3 py-2 text-xs text-right font-bold text-amber-900">${mhFmtShort(s.total_revenue)}</td>
+                    <td class="px-3 py-2 text-xs text-right text-gray-600">${mhFmtShort(s.avg_price)}</td>
+                    <td class="px-3 py-2 text-xs w-28">
+                        <div class="flex items-center gap-2">
+                            <div class="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                <div class="h-1.5 bg-amber-500 rounded-full" style="width:${s.share_pct}%"></div>
+                            </div>
+                            <span class="text-[10px] font-bold text-gray-700 w-8 text-right">${s.share_pct}%</span>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+            body.innerHTML = `
+                <div class="text-[10px] text-gray-500 mb-2">
+                    ${d.total_jamaah_with_boq} jamaah pilih skenario BOQ (periode: ${d.period === 'all' ? 'semua waktu' : d.period}).
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs">
+                        <thead>
+                            <tr class="bg-gray-50 border-b text-[10px] uppercase text-gray-500 font-bold">
+                                <th class="px-3 py-2 text-left">Skenario BOQ / Paket</th>
+                                <th class="px-3 py-2 text-right">Jamaah</th>
+                                <th class="px-3 py-2 text-right">Revenue</th>
+                                <th class="px-3 py-2 text-right">Rata2</th>
+                                <th class="px-3 py-2 text-right">Share</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>`;
+        } catch (e) {
+            body.innerHTML = '<div class="p-4 text-center text-xs text-red-500">Gagal memuat revenue by BOQ.</div>';
+        }
+    }
+
     window.initMgmtHome = async function() {
         if (mhLoading) return;
         mhLoading = true;
@@ -293,6 +352,7 @@
             renderTopAgents(data.top_agents || []);
             renderPackages(data.upcoming_packages || []);
             renderApprovals(data.approvals || []);
+            loadBoqRevenue();  // Phase 11a: revenue per skenario BOQ
             if (typeof lucide !== 'undefined') lucide.createIcons();
         } catch (err) {
             console.error('[mgmt-home]', err);
