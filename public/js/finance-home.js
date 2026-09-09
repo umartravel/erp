@@ -478,6 +478,8 @@
             loadForecast();
             // Phase 8d: populate Committed vs Realized panel
             loadCommittedSummary();
+            // Phase 9c: fire-and-forget cashflow alert (dedupe per-hari)
+            (window.authFetch || fetch)('/api/finance/cashflow-alert/check', {method: 'POST'}).catch(() => {});
             if (typeof lucide !== 'undefined') lucide.createIcons();
         } catch (err) {
             console.error('[finance-home]', err);

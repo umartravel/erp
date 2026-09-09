@@ -12,6 +12,7 @@ from fastapi import APIRouter
 
 import db
 from deps import Depends, authenticate_token, require_role
+from deps.notifications import notify_role  # Phase 9c
 
 router = APIRouter(tags=["finance"])
 
@@ -325,6 +326,138 @@ async def finance_forecast(user=Depends(authenticate_token)):
             "final_balance": running,
         },
     }
+
+
+# ===========================================================================
+# Phase 9c: Cashflow negatif alert -- cek forecast, kalau min_balance <= 0
+# atau net_30d < 0 -> notif role finance + management. Dedupe per-hari.
+# ===========================================================================
+@router.post("/api/finance/cashflow-alert/check")
+async def cashflow_alert_check(user=Depends(authenticate_token)):
+    """Cek proyeksi cashflow H-30. Kirim notif ke role finance + management
+    kalau ada risiko (min_balance <= 0, atau net_30d < 0).
+
+    Dipanggil client dari Home Finance saat mount. Aman dipanggil berkali2 --
+    dedupe kind unique per-hari.
+
+    Response:
+    - alerted: bool -- ada notif yg baru dikirim atau tidak
+    - reason: str (kalau tidak alerted)
+    - kind: str kind dedupe yang dipakai (untuk troubleshoot)
+    - summary: {net_30d, min_balance, min_balance_date}
+    """
+    require_role(user, *_ROLES)
+
+    # Reuse forecast logic minimal -- panggil ulang query utk snapshot ringkas.
+    # (Duplikasi query kecil demi kesederhanaan; kalau perlu, refactor jadi
+    # helper `_compute_forecast_summary()` di iterasi berikut.)
+    from datetime import datetime as _dt, timedelta as _td
+    HORIZON = 60
+    cash_current = (db.query_one(
+        "SELECT COALESCE(SUM(CASE WHEN type='income' THEN amount ELSE -amount END), 0) c "
+        "FROM transactions") or {}).get("c") or 0
+
+    events = []
+    for v in db.query_all(
+        "SELECT (COALESCE(v.total_amount,0) - CASE WHEN v.status='Deposit' THEN COALESCE(v.deposit_amount,0) ELSE 0 END) sisa, v.due_date "
+        "FROM vendor_bookings v WHERE v.status IN ('Booked','Deposit') "
+        "AND v.due_date IS NOT NULL AND v.due_date != '' "
+        "AND date(v.due_date) BETWEEN date('now') AND date('now', ?)",
+        (f"+{HORIZON} days",),
+    ) or []:
+        if (v["sisa"] or 0) > 0:
+            events.append({"date": v["due_date"], "amount": v["sisa"], "kind": "cash_out"})
+
+    plus3 = (_dt.now() + _td(days=3)).strftime("%Y-%m-%d")
+    for r in db.query_all(
+        "SELECT amount FROM refund_requests WHERE status='Disetujui'"
+    ) or []:
+        events.append({"date": plus3, "amount": r["amount"] or 0, "kind": "cash_out"})
+    for c in db.query_all(
+        "SELECT amount FROM commission_claims WHERE status='Disetujui'"
+    ) or []:
+        events.append({"date": plus3, "amount": c["amount"] or 0, "kind": "cash_out"})
+
+    payroll_estimate = (db.query_one(
+        "SELECT COALESCE(SUM(base_salary), 0) c FROM users WHERE role != 'admin'"
+    ) or {}).get("c") or 0
+    if payroll_estimate > 0:
+        today_d = _dt.now().date()
+        end = today_d + _td(days=HORIZON)
+        m = today_d.replace(day=1)
+        while m <= end:
+            next_m_start = (m.replace(day=28) + _td(days=4)).replace(day=1)
+            last = next_m_start - _td(days=1)
+            if today_d <= last <= end:
+                events.append({"date": last.strftime("%Y-%m-%d"),
+                               "amount": payroll_estimate, "kind": "cash_out"})
+            m = next_m_start
+
+    for j in db.query_all(
+        "SELECT (COALESCE(j.total_price,0) - COALESCE(j.paid_amount,0)) sisa, "
+        "date(p.departure_date, '-7 days') exp_paid "
+        "FROM jamaah j LEFT JOIN packages p ON j.package_type = p.name "
+        "WHERE j.payment_status IN ('DP','Unpaid') AND j.status NOT IN ('Cancelled','Lead - Follow Up') "
+        "AND p.departure_date IS NOT NULL "
+        "AND date(p.departure_date,'-7 days') BETWEEN date('now') AND date('now', ?) "
+        "AND (COALESCE(j.total_price,0) - COALESCE(j.paid_amount,0)) > 0",
+        (f"+{HORIZON} days",),
+    ) or []:
+        events.append({"date": j["exp_paid"], "amount": j["sisa"], "kind": "cash_in"})
+
+    events.sort(key=lambda e: e["date"])
+    running = cash_current
+    min_balance = cash_current
+    min_balance_date = _dt.now().strftime("%Y-%m-%d")
+    total_in_30d = 0
+    total_out_30d = 0
+    day_30 = (_dt.now() + _td(days=30)).strftime("%Y-%m-%d")
+    for e in events:
+        if e["kind"] == "cash_in":
+            running += e["amount"] or 0
+            if e["date"] <= day_30:
+                total_in_30d += e["amount"] or 0
+        else:
+            running -= e["amount"] or 0
+            if e["date"] <= day_30:
+                total_out_30d += e["amount"] or 0
+        if running < min_balance:
+            min_balance = running
+            min_balance_date = e["date"]
+
+    net_30d = total_in_30d - total_out_30d
+    summary = {"net_30d": net_30d, "min_balance": min_balance,
+               "min_balance_date": min_balance_date}
+
+    risky = (min_balance <= 0) or (net_30d < 0)
+    if not risky:
+        return {"alerted": False, "reason": "cashflow_ok", "summary": summary}
+
+    today_key = _dt.now().strftime("%Y%m%d")
+    kind = f"cashflow_negatif_{today_key}"
+    dup = db.query_one(
+        "SELECT 1 x FROM user_notifications WHERE kind = ? "
+        "AND date(created_at) = date('now') LIMIT 1", (kind,),
+    )
+    if dup:
+        return {"alerted": False, "reason": "already_notified_today",
+                "kind": kind, "summary": summary}
+
+    # Pilih label warning vs critical
+    if min_balance <= 0:
+        title = "Cashflow KRITIS: saldo bisa habis"
+        body = (f"Proyeksi saldo minimum Rp {min_balance:,} pada "
+                f"{min_balance_date}. Net H-30 Rp {net_30d:,}. "
+                f"Segera cek pembayaran vendor & piutang.").replace(",", ".")
+    else:
+        title = "Cashflow negatif H-30"
+        body = (f"Net proyeksi H-30 Rp {net_30d:,} (out melebihi in). "
+                f"Saldo minimum Rp {min_balance:,} pada {min_balance_date}.").replace(",", ".")
+
+    notify_role("finance", kind, title, body, "#page-finance-home")
+    notify_role("management", kind, title, body, "#page-finance-home")
+
+    return {"alerted": True, "kind": kind, "summary": summary}
 
 
 # Phase 8d: Analitik keuangan Dual View -- Committed vs Realized.
