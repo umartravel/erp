@@ -4360,6 +4360,28 @@
         </div>
     </div>
 
+    <!-- Phase 10a: Audit Trail modal (Riwayat Perubahan) -->
+    <div id="modal-audit-trail" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col p-6">
+            <div class="flex justify-between items-start border-b pb-3 mb-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                        <i data-lucide="history" class="w-5 h-5 text-amber-700"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg text-gray-800">Riwayat Perubahan</h3>
+                        <p class="text-xs text-gray-500" id="at-entity-info">-</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('modal-audit-trail')" class="text-gray-400 hover:text-gray-700"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div id="at-body" class="flex-1 overflow-y-auto custom-scrollbar"></div>
+            <div class="pt-3 border-t mt-3 flex justify-end">
+                <button onclick="closeModal('modal-audit-trail')" class="px-4 py-2 border rounded-lg text-sm font-medium">Tutup</button>
+            </div>
+        </div>
+    </div>
+
     <!-- CUSTOM DIALOG MODAL (REPLACEMENT FOR ALERT/CONFIRM/PROMPT) -->
     <div id="modal-dialog" class="fixed inset-0 modal-bg z-[100] hidden flex items-center justify-center">
         <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 transform transition-all scale-95 opacity-0 duration-200" id="dialog-content">
@@ -7411,6 +7433,8 @@
                 shortcuts.push(`<button onclick="${jumpTo(`openActivityModal(${j.id}, '${(j.name || '').replace(/'/g, "\\'")}')`)}" class="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold flex items-center gap-1"><i data-lucide="phone-call" class="w-3.5 h-3.5"></i>Riwayat Aktivitas</button>`);
             }
             shortcuts.push(`<button onclick="${jumpTo(`openComments(${j.id})`)}" class="px-3 py-1.5 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 rounded-lg text-xs font-bold flex items-center gap-1"><i data-lucide="message-square" class="w-3.5 h-3.5"></i>Komentar</button>`);
+            // Phase 10a: Riwayat Perubahan (Audit Trail)
+            shortcuts.push(`<button onclick="${jumpTo(`openAuditTrail('jamaah', ${j.id}, '${(j.name || '').replace(/'/g, "\\'")}')`)}" class="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg text-xs font-bold flex items-center gap-1"><i data-lucide="history" class="w-3.5 h-3.5"></i>Riwayat Perubahan</button>`);
             if (['admin', 'sales'].includes(currentUser.role) && j.paid_amount > 0) {
                 shortcuts.push(`<button onclick="${jumpTo(`openRefundRequestModal(${j.id}, '${(j.name || '').replace(/'/g, "\\'")}')`)}" class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg text-xs font-bold flex items-center gap-1"><i data-lucide="undo-2" class="w-3.5 h-3.5"></i>Ajukan Refund</button>`);
             }
@@ -7743,6 +7767,80 @@
         }
         
         // --- INTERNAL COMMENTS LOGIC ---
+        // Phase 10a: Audit Trail viewer -- baca /api/audit/{type}/{id}
+        window.openAuditTrail = async function(type, id, name) {
+            const body = document.getElementById('at-body');
+            const info = document.getElementById('at-entity-info');
+            info.textContent = `${type === 'jamaah' ? 'Jamaah' : type === 'package' ? 'Paket' : 'BOQ'}: ${name || '#' + id}`;
+            body.innerHTML = '<div class="p-6 text-center text-xs text-gray-400 italic">Memuat riwayat...</div>';
+            openModal('modal-audit-trail');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            try {
+                const res = await authFetch(`/audit/${type}/${id}`);
+                const data = await res.json();
+                if (!data.logs || data.logs.length === 0) {
+                    body.innerHTML = `<div class="p-8 text-center">
+                        <i data-lucide="inbox" class="w-10 h-10 mx-auto mb-2 text-gray-300"></i>
+                        <p class="text-sm text-gray-500">Belum ada riwayat perubahan.</p>
+                        <p class="text-[11px] text-gray-400 mt-1">Perubahan berikutnya akan tercatat di sini.</p>
+                    </div>`;
+                    if (typeof lucide !== 'undefined') lucide.createIcons();
+                    return;
+                }
+                const actionBadge = (act) => {
+                    const map = {
+                        CREATE_JAMAAH: {c: '#059669', l: 'Dibuat'},
+                        UPDATE_JAMAAH: {c: '#B8860B', l: 'Diperbarui'},
+                        DELETE_JAMAAH: {c: '#DC2626', l: 'Dihapus'},
+                        PAYMENT: {c: '#059669', l: 'Pembayaran'},
+                        APPROVE_REFUND: {c: '#7C3AED', l: 'Refund disetujui'},
+                        REJECT_REFUND: {c: '#DC2626', l: 'Refund ditolak'},
+                        TRANSFER_AGENT: {c: '#0369A1', l: 'Transfer Agen'},
+                        BOARDING_CHECKIN: {c: '#059669', l: 'Check-in'},
+                        BOARDING_CHECKIN_UNDO: {c: '#B45309', l: 'Batal Check-in'},
+                        JAMAAH_FEEDBACK: {c: '#0369A1', l: 'Feedback'},
+                        CREATE_PACKAGE: {c: '#059669', l: 'Paket dibuat'},
+                        UPDATE_PACKAGE: {c: '#B8860B', l: 'Paket diperbarui'},
+                        DELETE_PACKAGE: {c: '#DC2626', l: 'Paket dihapus'},
+                        VENDOR_CREATE: {c: '#0369A1', l: 'Vendor ditambah'},
+                        VENDOR_UPDATE: {c: '#B8860B', l: 'Vendor diperbarui'},
+                        CHECKLIST_UPDATE: {c: '#059669', l: 'Checklist'},
+                        INCIDENT_CREATE: {c: '#DC2626', l: 'Insiden dibuat'},
+                        INCIDENT_UPDATE: {c: '#B8860B', l: 'Insiden diperbarui'},
+                        BOQ_CREATE: {c: '#059669', l: 'BOQ dibuat'},
+                        BOQ_UPDATE: {c: '#B8860B', l: 'BOQ diperbarui'},
+                        BOQ_DELETE: {c: '#DC2626', l: 'BOQ dihapus'},
+                        BOQ_CONVERT: {c: '#7C3AED', l: 'BOQ dikonversi'},
+                    };
+                    const m = map[act] || {c: '#6B7280', l: act};
+                    return `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:${m.c}20;color:${m.c};">${m.l}</span>`;
+                };
+                body.innerHTML = data.logs.map(l => {
+                    const when = l.created_at
+                        ? new Date(l.created_at.replace(' ', 'T') + 'Z').toLocaleString('id-ID',
+                              {dateStyle: 'medium', timeStyle: 'short'})
+                        : '-';
+                    return `<div class="px-4 py-3 border-b" style="border-color:#F4F1EA;">
+                        <div class="flex items-start gap-2">
+                            <div class="mt-0.5">${actionBadge(l.action)}</div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-xs" style="color:#1D1D1B;">${l.details || '(tanpa detail)'}</p>
+                                <div class="flex items-center gap-2 mt-1 text-[10px]" style="color:#6B7280;">
+                                    <span class="font-bold" style="color:#B8860B;">${l.user_name || '?'}</span>
+                                    <span>${l.role ? '(' + l.role + ')' : ''}</span>
+                                    <span>&middot;</span>
+                                    <span>${when}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('');
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            } catch (e) {
+                body.innerHTML = `<div class="p-6 text-center text-xs text-red-500">Gagal memuat riwayat: ${e.message}</div>`;
+            }
+        };
+
         async function openComments(id) {
             document.getElementById('comment-j-id').value = id;
             try {

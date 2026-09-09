@@ -169,6 +169,7 @@ from routes.boq import router as boq_router  # noqa: E402
 from routes.exports import router as exports_router  # noqa: E402 -- Phase 8a
 from routes.notifications import router as notifications_router  # noqa: E402 -- Phase 8c
 from routes.reminders import router as reminders_router  # noqa: E402 -- Phase 9a
+from routes.audit_trail import router as audit_trail_router  # noqa: E402 -- Phase 10a
 app.include_router(reconcile_router)
 app.include_router(finance_router)
 app.include_router(mgmt_home_router)
@@ -201,6 +202,7 @@ app.include_router(boq_router)
 app.include_router(exports_router)  # Phase 8a: /api/exports/*.xlsx
 app.include_router(notifications_router)  # Phase 8c: /api/notifications/*
 app.include_router(reminders_router)  # Phase 9a: /api/reminders/departures*
+app.include_router(audit_trail_router)  # Phase 10a: /api/audit/{entity}/{id}
 
 
 # Static files (public/) dipasang TERAKHIR agar route /api, /panduan, /uploads menang.
