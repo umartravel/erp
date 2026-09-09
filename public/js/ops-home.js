@@ -26,8 +26,65 @@ async function initOpsHome() {
     if (!res.ok) { console.error('[ops-home] fetch gagal', res.status); return; }
     const data = await res.json();
     renderOpsHome(data);
+    ohLoadReminders();  // Phase 9a: panel H-7 + H-30 + trigger notif on-load
     if (typeof lucide !== 'undefined') lucide.createIcons();
   } catch (e) { console.error('[ops-home] error', e); }
+}
+
+// Phase 9a: Reminder Keberangkatan
+async function ohLoadReminders() {
+  try {
+    const res = await ohFetch('/api/reminders/departures');
+    if (!res.ok) { console.error('[ops-home] reminders fetch gagal', res.status); return; }
+    const data = await res.json();
+    ohRenderRemindBucket('h7', data.h7 || []);
+    ohRenderRemindBucket('h30', data.h30 || []);
+    // Fire-and-forget notif check -- kirim notif ke role ops kalau ada paket bermasalah.
+    // Dedupe per-hari di backend, aman dipanggil setiap kali user buka Home Ops.
+    ohFetch('/api/reminders/departures/check', {method: 'POST'}).catch(() => {});
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  } catch (e) { console.error('[ops-home] reminders error', e); }
+}
+
+function ohRenderRemindBucket(kind, list) {
+  const body = document.getElementById(`oh-remind-${kind}-body`);
+  const count = document.getElementById(`oh-remind-${kind}-count`);
+  if (!body || !count) return;
+  count.textContent = String(list.length);
+  if (!list.length) {
+    body.innerHTML = `<div class="p-4 text-center text-xs text-gray-400 italic">Tidak ada paket dalam window ini.</div>`;
+    return;
+  }
+  const pctBar = (label, pct, threshold) => {
+    const p = pct || 0;
+    const color = p >= threshold ? '#059669' : (p >= threshold - 20 ? '#B45309' : '#DC2626');
+    return `
+      <div class="flex items-center gap-2 text-[10px]">
+        <span class="w-24 text-gray-600">${label}</span>
+        <div class="flex-1 h-1.5 rounded-full bg-gray-200 overflow-hidden">
+          <div class="h-1.5 rounded-full" style="width:${p}%;background:${color};"></div>
+        </div>
+        <span class="w-10 text-right font-bold" style="color:${color};">${p}%</span>
+      </div>`;
+  };
+  const primaryLabel = kind === 'h7' ? 'Lunas' : 'Visa Siap';
+  body.innerHTML = list.map(p => `
+    <div class="px-4 py-3 border-b" style="border-color:#F4F1EA;">
+      <div class="flex items-start justify-between gap-3 mb-2">
+        <div class="flex-1 min-w-0">
+          <p class="text-xs font-bold truncate" style="color:#1D1D1B;">${p.name}</p>
+          <p class="text-[10px]" style="color:#6B7280;">
+            Berangkat ${ohFmtDate(p.departure_date)} <span class="font-bold" style="color:#B8860B;">(H-${p.days_until})</span> · ${p.jamaah_count} jamaah
+          </p>
+        </div>
+      </div>
+      <div class="space-y-1">
+        ${pctBar(primaryLabel, kind === 'h7' ? p.paid_full_pct : p.visa_ready_pct, kind === 'h7' ? 90 : 70)}
+        ${pctBar('Checklist', p.checklist_pct, kind === 'h7' ? 100 : 60)}
+        ${pctBar('Vendor', p.vendor_confirmed_pct, 80)}
+      </div>
+    </div>
+  `).join('');
 }
 
 function ohWireSocketAutoRefresh() {
