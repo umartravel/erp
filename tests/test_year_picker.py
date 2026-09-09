@@ -57,6 +57,48 @@ def test_mgmt_home_with_year_param(client, admin_token):
     assert d["year"] == 2024
 
 
+def test_sales_home_month_param_default_current(client, admin_token):
+    """Phase 14a-2: default (year, month) = tahun+bulan berjalan; is_current_period true."""
+    r = client.get("/api/sales/home", headers=bearer(admin_token))
+    assert r.status_code == 200
+    d = r.json()
+    now = datetime.datetime.now()
+    assert d["month"] == now.month
+    assert d["current_month"] == now.month
+    assert d["is_current_period"] is True
+    assert d["period_ym"] == now.strftime("%Y-%m")
+
+
+def test_sales_home_historical_period(client, admin_token):
+    """Pilih bulan lampau -> is_current_period false, period_ym mengikuti pilihan."""
+    r = client.get("/api/sales/home?year=2024&month=6", headers=bearer(admin_token))
+    assert r.status_code == 200
+    d = r.json()
+    assert d["year"] == 2024
+    assert d["month"] == 6
+    assert d["period_ym"] == "2024-06"
+    assert d["is_current_period"] is False
+
+
+def test_mgmt_home_month_param_default_current(client, admin_token):
+    r = client.get("/api/mgmt/home", headers=bearer(admin_token))
+    assert r.status_code == 200
+    d = r.json()
+    now = datetime.datetime.now()
+    assert d["month_num"] == now.month
+    assert d["current_month"] == now.month
+    assert d["is_current_period"] is True
+    assert d["period_ym"] == now.strftime("%Y-%m")
+
+
+def test_mgmt_home_prev_ym_correct(client, admin_token):
+    """Pilih Aug 2024 -> prev_ym = Jul 2024. Rollover January -> Desember tahun sebelumnya."""
+    r_aug = client.get("/api/mgmt/home?year=2024&month=8", headers=bearer(admin_token))
+    assert r_aug.json()["prev_ym"] == "2024-07"
+    r_jan = client.get("/api/mgmt/home?year=2025&month=1", headers=bearer(admin_token))
+    assert r_jan.json()["prev_ym"] == "2024-12"
+
+
 def test_year_summary_filters_by_year(client, admin_token):
     """Seed 2 jamaah di tahun berbeda, verify count."""
     pkg = client.get("/api/packages", headers=bearer(admin_token)).json()[0]

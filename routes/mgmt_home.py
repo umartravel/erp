@@ -19,20 +19,34 @@ _MGMT_ROLES = ("admin", "management")
 
 
 @router.get("/api/mgmt/home")
-async def mgmt_home(year: int | None = None, user=Depends(authenticate_token)):
+async def mgmt_home(year: int | None = None, month: int | None = None, user=Depends(authenticate_token)):
     """Executive landing untuk role management. Fokus: omzet MoM/YoY, sales
     performance vs target, top agen, ops readiness, approval inbox mgmt-only.
 
-    Phase 14a: query param `year` (default = tahun berjalan) filter metrik agregat
-    tahunan (year_summary). Metrik bulan berjalan (this_month, MoM) tetap real-time.
+    Phase 14a: query param `year` filter agregat tahunan (year_summary).
+    Phase 14a-2: query param `month` juga filter metrik bulanan (this_month,
+    MoM, sales_perf, top_agents, company_target). Default (year, month) =
+    tahun+bulan berjalan. Bila (year, month) != berjalan, `is_current_period=
+    false` -- frontend hide panel live (approvals, attention) & tampilkan
+    banner historis. Snapshot forward-looking (cash saldo, piutang) tetap
+    real-time.
     """
     require_role(user, *_MGMT_ROLES)
 
     now = datetime.datetime.now()
-    ym_now = now.strftime("%Y-%m")
-    ym_prev = (now.replace(day=1) - datetime.timedelta(days=1)).strftime("%Y-%m")
     current_year = now.year
+    current_month = now.month
     year = year if year else current_year
+    month = month if month else current_month
+    if month < 1 or month > 12:
+        month = current_month
+    is_current_period = (year == current_year and month == current_month)
+    ym_now = f"{year:04d}-{month:02d}"
+    # Bulan sebelumnya dari bulan terpilih (bukan dari 'now') supaya MoM benar
+    # saat lihat historis: mis. Aug 2024 -> prev = Jul 2024.
+    dt_first = datetime.date(year, month, 1)
+    dt_prev = (dt_first - datetime.timedelta(days=1)).replace(day=1)
+    ym_prev = dt_prev.strftime("%Y-%m")
     year_str = str(year)
 
     def month_stat(ym):
@@ -167,7 +181,9 @@ async def mgmt_home(year: int | None = None, user=Depends(authenticate_token)):
         attention.append({"key": "komisi_review", "severity": "high",
                           "label": f"{n_kom} klaim komisi menunggu keputusan", "goto": "finance"})
     under = [s for s in sales_perf if s["closing_pct"] is not None and s["closing_pct"] < 50]
-    if under and (now.day > 15):
+    # Phase 14a-2: alert "sales under target" hanya relevan utk bulan berjalan
+    # setelah lewat pertengahan bulan (H-15). Historical mode skip.
+    if under and is_current_period and (now.day > 15):
         attention.append({"key": "sales_under", "severity": "medium",
                           "label": f"{len(under)} sales < 50% target closing bulan ini", "goto": "mgmt-home"})
 
@@ -190,6 +206,12 @@ async def mgmt_home(year: int | None = None, user=Depends(authenticate_token)):
         # Phase 14a: year picker context.
         "year": year,
         "current_year": current_year,
+        # Phase 14a-2: month picker context + flag mode historis.
+        "month_num": month,
+        "current_month": current_month,
+        "is_current_period": is_current_period,
+        "period_ym": ym_now,
+        "prev_ym": ym_prev,
         "year_summary": {
             "closing_total": year_stat["c"] or 0,
             "omzet_total": year_stat["omzet"] or 0,

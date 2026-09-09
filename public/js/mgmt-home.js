@@ -335,7 +335,10 @@
     }
 
     // Phase 14a: year picker state (default = year berjalan; set via /api/dashboard/years)
+    // Phase 14a-2: month picker state juga
     let mhSelectedYear = null;
+    let mhSelectedMonth = null;
+    const MH_MONTH_LONG = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
     async function mhLoadYears() {
         const picker = document.getElementById('mh-year-picker');
@@ -358,25 +361,97 @@
         }
     }
 
+    // Phase 14a-2: populate month picker
+    function mhLoadMonths() {
+        const picker = document.getElementById('mh-month-picker');
+        if (!picker) return;
+        const now = new Date();
+        const cur = now.getMonth() + 1;
+        mhSelectedMonth = mhSelectedMonth || cur;
+        picker.innerHTML = MH_MONTH_LONG.map((name, idx) => {
+            const m = idx + 1;
+            const label = name + (m === cur ? ' (berjalan)' : '');
+            return `<option value="${m}"${m === mhSelectedMonth ? ' selected' : ''}>${label}</option>`;
+        }).join('');
+        picker.onchange = () => {
+            mhSelectedMonth = parseInt(picker.value, 10) || cur;
+            window.initMgmtHome();
+        };
+    }
+
+    // Phase 14a-2: reset ke bulan+tahun berjalan
+    function mhWireResetButton() {
+        const btn = document.getElementById('mh-reset-period');
+        if (!btn) return;
+        btn.onclick = () => {
+            const now = new Date();
+            mhSelectedYear = now.getFullYear();
+            mhSelectedMonth = now.getMonth() + 1;
+            const yp = document.getElementById('mh-year-picker');
+            const mp = document.getElementById('mh-month-picker');
+            if (yp) yp.value = String(mhSelectedYear);
+            if (mp) mp.value = String(mhSelectedMonth);
+            window.initMgmtHome();
+        };
+    }
+
     function mhRenderYearSummary(data) {
         const closingEl = document.getElementById('mh-year-closing');
         const omzetEl = document.getElementById('mh-year-omzet');
+        const clsLabel = document.getElementById('mh-year-closing-label');
+        const omzLabel = document.getElementById('mh-year-omzet-label');
         const ys = data.year_summary || {closing_total: 0, omzet_total: 0};
         if (closingEl) closingEl.textContent = (ys.closing_total || 0).toLocaleString('id-ID') + ' jamaah';
         if (omzetEl) omzetEl.textContent = mhFmtShort(ys.omzet_total || 0);
+        const yr = data.year || data.current_year;
+        if (clsLabel) clsLabel.textContent = `Closing Tahun ${yr}`;
+        if (omzLabel) omzLabel.textContent = `Omzet Tahun ${yr}`;
+    }
+
+    // Phase 14a-2: hide/show panel live di historical mode
+    function mhApplyHistoricalMode(data) {
+        const isCurrent = data.is_current_period !== false;
+        const banner = document.getElementById('mh-historical-banner');
+        const periodEl = document.getElementById('mh-historical-period');
+        const resetBtn = document.getElementById('mh-reset-period');
+        const attention = document.getElementById('mh-attention');
+        const approvalBody = document.getElementById('mh-approvals-body') ||
+                              document.getElementById('mh-approvals-list');
+        const approvalCard = approvalBody && approvalBody.closest('.bg-white, .rounded-xl, .umar-card');
+        if (isCurrent) {
+            if (banner) banner.classList.add('hidden');
+            if (resetBtn) resetBtn.classList.add('hidden');
+            // attention di-toggle oleh renderAttention berdasarkan isi, jangan force show
+            if (approvalCard) approvalCard.classList.remove('hidden');
+            return;
+        }
+        if (banner) {
+            banner.classList.remove('hidden');
+            const yr = data.year || '';
+            const m = data.month_num || 1;
+            if (periodEl) periodEl.textContent = `${MH_MONTH_LONG[m - 1] || ''} ${yr}`;
+        }
+        if (resetBtn) resetBtn.classList.remove('hidden');
+        if (attention) attention.classList.add('hidden');
+        if (approvalCard) approvalCard.classList.add('hidden');
     }
 
     window.initMgmtHome = async function() {
         if (mhLoading) return;
         mhLoading = true;
         ensureMonthPicker();
-        // Phase 14a: populate year picker sekali di awal
+        // Phase 14a: populate year+month picker sekali di awal
         if (!window.__mhYearsLoaded) {
             window.__mhYearsLoaded = true;
             mhLoadYears();
+            mhLoadMonths();
+            mhWireResetButton();
         }
         try {
-            const qs = mhSelectedYear ? `?year=${mhSelectedYear}` : '';
+            const qParts = [];
+            if (mhSelectedYear) qParts.push('year=' + mhSelectedYear);
+            if (mhSelectedMonth) qParts.push('month=' + mhSelectedMonth);
+            const qs = qParts.length ? '?' + qParts.join('&') : '';
             const res = await mhFetch('/mgmt/home' + qs);
             if (!res.ok) throw new Error('Gagal memuat Home Management');
             const data = await res.json();
@@ -386,6 +461,8 @@
             }
             // Phase 14a: render year summary
             mhRenderYearSummary(data);
+            // Phase 14a-2: apply mode historis (hide live panels + banner)
+            mhApplyHistoricalMode(data);
             renderKPI(data.kpi || {});
             renderAttention(data.attention || []);
             renderSalesPerf(data.sales_performance || []);

@@ -820,26 +820,40 @@
                 <!-- Phase 5b: shared welcome hero (Assalamu'alaikum + jam realtime + quote harian) -->
                 <div id="sh-hero-mount"></div>
 
-                <!-- Phase 14a: Year picker + ringkasan tahun terpilih -->
+                <!-- Phase 14a: Year picker + Phase 14a-2: Month picker + ringkasan periode terpilih -->
                 <div class="rounded-xl border shadow-sm p-4 flex items-center justify-between gap-4 flex-wrap" style="background:#FFFDF7;border-color:#F4F1EA;">
-                    <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-3 flex-wrap">
                         <i data-lucide="calendar-range" class="w-5 h-5" style="color:#B8860B;"></i>
                         <div>
-                            <p class="text-[10px] font-bold uppercase tracking-wider" style="color:#B8860B;">Tampilan Tahun</p>
-                            <select id="sh-year-picker" class="text-sm font-bold border rounded-lg px-2 py-1 mt-0.5" style="color:#1D1D1B;background:white;">
-                                <option value="">Memuat...</option>
-                            </select>
+                            <p class="text-[10px] font-bold uppercase tracking-wider" style="color:#B8860B;">Tampilan Periode</p>
+                            <div class="flex items-center gap-1.5 mt-0.5">
+                                <select id="sh-month-picker" class="text-sm font-bold border rounded-lg px-2 py-1" style="color:#1D1D1B;background:white;">
+                                    <option value="">Bulan</option>
+                                </select>
+                                <select id="sh-year-picker" class="text-sm font-bold border rounded-lg px-2 py-1" style="color:#1D1D1B;background:white;">
+                                    <option value="">Tahun</option>
+                                </select>
+                                <button id="sh-reset-period" type="button" class="text-[10px] font-bold px-2 py-1 rounded-lg hidden" style="background:#F4F1EA;color:#B8860B;border:1px solid #B8860B;" title="Kembali ke periode berjalan">Ke Bulan Ini</button>
+                            </div>
                         </div>
                     </div>
                     <div class="flex items-center gap-6 text-right">
                         <div>
-                            <p class="text-[10px] uppercase tracking-wider" style="color:#B8860B;font-weight:700;">Closing Tahun Ini</p>
+                            <p class="text-[10px] uppercase tracking-wider" style="color:#B8860B;font-weight:700;" id="sh-year-closing-label">Closing Tahun Ini</p>
                             <p class="text-lg font-black mt-0.5" id="sh-year-closing" style="color:#1D1D1B;">0</p>
                         </div>
                         <div>
-                            <p class="text-[10px] uppercase tracking-wider" style="color:#B8860B;font-weight:700;">Omzet Tahun Ini</p>
+                            <p class="text-[10px] uppercase tracking-wider" style="color:#B8860B;font-weight:700;" id="sh-year-omzet-label">Omzet Tahun Ini</p>
                             <p class="text-lg font-black mt-0.5" id="sh-year-omzet" style="color:#B8860B;">Rp 0</p>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Phase 14a-2: Banner mode historis (hidden default; JS toggle saat pilih periode lampau) -->
+                <div id="sh-historical-banner" class="hidden rounded-xl border-l-4 p-3 flex items-center gap-3" style="background:#FEF3C7;border-color:#B45309;">
+                    <i data-lucide="history" class="w-5 h-5 shrink-0" style="color:#B45309;"></i>
+                    <div class="flex-1 text-xs" style="color:#78350F;">
+                        <span class="font-black">Mode Historis</span> -- menampilkan data <span id="sh-historical-period" class="font-bold">-</span>. Panel aksi realtime (follow-up, prioritas, payment reminder) disembunyikan.
                     </div>
                 </div>
 
@@ -2038,26 +2052,40 @@
                 <!-- Phase 5b: shared welcome hero -->
                 <div id="mh-hero-mount"></div>
 
-                <!-- Phase 14a: Year picker + ringkasan tahun terpilih -->
+                <!-- Phase 14a: Year picker + Phase 14a-2: Month picker + ringkasan periode terpilih -->
                 <div class="rounded-xl border shadow-sm p-4 flex items-center justify-between gap-4 flex-wrap bg-white">
-                    <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-3 flex-wrap">
                         <i data-lucide="calendar-range" class="w-5 h-5 text-purple-600"></i>
                         <div>
-                            <p class="text-[10px] font-bold uppercase tracking-wider text-purple-700">Tampilan Tahun</p>
-                            <select id="mh-year-picker" class="text-sm font-bold border rounded-lg px-2 py-1 mt-0.5">
-                                <option value="">Memuat...</option>
-                            </select>
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-purple-700">Tampilan Periode</p>
+                            <div class="flex items-center gap-1.5 mt-0.5">
+                                <select id="mh-month-picker" class="text-sm font-bold border rounded-lg px-2 py-1">
+                                    <option value="">Bulan</option>
+                                </select>
+                                <select id="mh-year-picker" class="text-sm font-bold border rounded-lg px-2 py-1">
+                                    <option value="">Tahun</option>
+                                </select>
+                                <button id="mh-reset-period" type="button" class="text-[10px] font-bold px-2 py-1 rounded-lg hidden bg-purple-50 text-purple-700 border border-purple-500" title="Kembali ke periode berjalan">Ke Bulan Ini</button>
+                            </div>
                         </div>
                     </div>
                     <div class="flex items-center gap-6 text-right">
                         <div>
-                            <p class="text-[10px] uppercase tracking-wider font-bold text-purple-700">Closing Tahun Ini</p>
+                            <p class="text-[10px] uppercase tracking-wider font-bold text-purple-700" id="mh-year-closing-label">Closing Tahun Ini</p>
                             <p class="text-lg font-black mt-0.5 text-gray-800" id="mh-year-closing">0</p>
                         </div>
                         <div>
-                            <p class="text-[10px] uppercase tracking-wider font-bold text-purple-700">Omzet Tahun Ini</p>
+                            <p class="text-[10px] uppercase tracking-wider font-bold text-purple-700" id="mh-year-omzet-label">Omzet Tahun Ini</p>
                             <p class="text-lg font-black mt-0.5 text-purple-700" id="mh-year-omzet">Rp 0</p>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Phase 14a-2: Banner mode historis mgmt (hidden default) -->
+                <div id="mh-historical-banner" class="hidden rounded-xl border-l-4 border-amber-600 bg-amber-50 p-3 flex items-center gap-3">
+                    <i data-lucide="history" class="w-5 h-5 shrink-0 text-amber-700"></i>
+                    <div class="flex-1 text-xs text-amber-900">
+                        <span class="font-black">Mode Historis</span> -- menampilkan data <span id="mh-historical-period" class="font-bold">-</span>. Panel aksi realtime (Prioritas Manajemen, Approval Inbox) disembunyikan.
                     </div>
                 </div>
 

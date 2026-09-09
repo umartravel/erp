@@ -127,14 +127,18 @@ def _compute_attention(followup_due, payment_stale, stale_contact, new_leads):
 
 
 @router.get("/api/sales/home")
-async def sales_home(year: int | None = None, user=Depends(authenticate_token)):
+async def sales_home(year: int | None = None, month: int | None = None, user=Depends(authenticate_token)):
     """Data dashboard sales -- MY-scoped: cuma jamaah/lead yang di-handle user login.
     Admin & management dapat scope 'admin' (agregasi semua sales) untuk preview
     tanpa perlu login sebagai sales tertentu.
 
-    Phase 14a: query param `year` (default = tahun berjalan) filter metrik agregat
-    tahunan (year_summary). Metrik bulan berjalan (this_month, piutang, pipeline)
-    tetap real-time supaya sales tahu posisi sekarang.
+    Phase 14a: query param `year` filter agregat tahunan (year_summary).
+    Phase 14a-2: query param `month` juga filter metrik bulanan (closing/omzet
+    bulan tsb + leaderboard). Default (year, month) = tahun+bulan berjalan. Bila
+    (year, month) != berjalan, `is_current_period=false` -- frontend hide panel
+    live (follow-up jatuh tempo, payment reminder, stale contact, prioritas) &
+    tampilkan banner historis. Snapshot forward-looking (pipeline, piutang) tetap
+    real-time.
     """
     role = user.get("role")
     if role not in ("sales", "admin", "management"):
@@ -152,8 +156,13 @@ async def sales_home(year: int | None = None, user=Depends(authenticate_token)):
 
     now = datetime.datetime.now()
     current_year = now.year
+    current_month = now.month
     year = year if year else current_year
+    month = month if month else current_month
+    if month < 1 or month > 12:
+        month = current_month
     year_str = str(year)
+    is_current_period = (year == current_year and month == current_month)
 
     # 1. My Pipeline: jamaah aktif (bukan Cancelled)
     pipeline = db.query_one(
@@ -161,9 +170,11 @@ async def sales_home(year: int | None = None, user=Depends(authenticate_token)):
         params,
     )["c"]
 
-    # 2. My Closing Bulan Ini: pakai order_date supaya akurat (created_at semua =
-    # tanggal migrasi historis). Falls back ke created_at kalau order_date NULL.
-    ym = now.strftime("%Y-%m")
+    # 2. My Closing Bulan Terpilih: pakai order_date supaya akurat (created_at
+    # semua = tanggal migrasi historis). Falls back ke created_at kalau order_date
+    # NULL. Phase 14a-2: ym mengikuti (year, month) picker, bukan lagi bulan
+    # berjalan -- supaya sales bisa lihat metrik bulan sebelumnya.
+    ym = f"{year:04d}-{month:02d}"
     this_month = db.query_one(
         f"SELECT COUNT(*) c, COALESCE(SUM(j.total_price),0) omzet FROM jamaah j "
         f"WHERE {sales_filter} AND j.status != 'Cancelled' "
@@ -291,6 +302,11 @@ async def sales_home(year: int | None = None, user=Depends(authenticate_token)):
         # Phase 14a: year picker context.
         "year": year,
         "current_year": current_year,
+        # Phase 14a-2: month picker context + flag mode historis.
+        "month": month,
+        "current_month": current_month,
+        "is_current_period": is_current_period,
+        "period_ym": ym,
         "year_summary": {
             "closing_total": year_stat["c"] or 0,
             "omzet_total": year_stat["omzet"] or 0,

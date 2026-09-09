@@ -30,16 +30,26 @@ function shDaysDiff(iso) {
 }
 
 // Phase 14a: current year selected (default = year berjalan)
+// Phase 14a-2: month juga
 let shSelectedYear = null;
+let shSelectedMonth = null;
+
+const SH_MONTH_NAMES = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
+const SH_MONTH_LONG = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
 async function initSalesHome() {
   try {
-    // Phase 14a: populate year picker sekali di awal
+    // Phase 14a: populate year+month picker sekali di awal
     if (!window.__shYearsLoaded) {
       window.__shYearsLoaded = true;
       shLoadYears();
+      shLoadMonths();
+      shWireResetButton();
     }
-    const qs = shSelectedYear ? `?year=${shSelectedYear}` : '';
+    const qParts = [];
+    if (shSelectedYear) qParts.push('year=' + shSelectedYear);
+    if (shSelectedMonth) qParts.push('month=' + shSelectedMonth);
+    const qs = qParts.length ? '?' + qParts.join('&') : '';
     const res = await shFetch('/api/sales/home' + qs);
     if (!res.ok) {
       console.error('[sales-home] fetch gagal', res.status);
@@ -86,6 +96,8 @@ function renderSalesHome(data) {
 
   // Phase 14a: render year summary
   shRenderYearSummary(data);
+  // Phase 14a-2: apply mode historis (hide live panels + banner)
+  shApplyHistoricalMode(data);
 
   const k = data.kpi || {};
   set('sh-kpi-pipeline', (k.pipeline || 0).toLocaleString('id-ID'));
@@ -472,9 +484,102 @@ async function shLoadYears() {
 function shRenderYearSummary(data) {
   const closingEl = document.getElementById('sh-year-closing');
   const omzetEl = document.getElementById('sh-year-omzet');
+  const clsLabel = document.getElementById('sh-year-closing-label');
+  const omzLabel = document.getElementById('sh-year-omzet-label');
   const ys = data.year_summary || {closing_total: 0, omzet_total: 0};
   if (closingEl) closingEl.textContent = (ys.closing_total || 0).toLocaleString('id-ID') + ' jamaah';
   if (omzetEl) omzetEl.textContent = shFmtRp(ys.omzet_total || 0);
+  // Phase 14a-2: label dinamis "Closing/Omzet Tahun 2024"
+  const yr = data.year || (data.current_year);
+  if (clsLabel) clsLabel.textContent = `Closing Tahun ${yr}`;
+  if (omzLabel) omzLabel.textContent = `Omzet Tahun ${yr}`;
+}
+
+// Phase 14a-2: populate month picker (Jan..Des) + wire onchange
+function shLoadMonths() {
+  const picker = document.getElementById('sh-month-picker');
+  if (!picker) return;
+  const now = new Date();
+  const cur = now.getMonth() + 1;
+  shSelectedMonth = shSelectedMonth || cur;
+  picker.innerHTML = SH_MONTH_LONG.map((name, idx) => {
+    const m = idx + 1;
+    const label = name + (m === cur ? ' (berjalan)' : '');
+    return `<option value="${m}"${m === shSelectedMonth ? ' selected' : ''}>${label}</option>`;
+  }).join('');
+  picker.onchange = () => {
+    shSelectedMonth = parseInt(picker.value, 10) || cur;
+    initSalesHome();
+  };
+}
+
+// Phase 14a-2: tombol Reset -> kembali ke bulan+tahun berjalan
+function shWireResetButton() {
+  const btn = document.getElementById('sh-reset-period');
+  if (!btn) return;
+  btn.onclick = () => {
+    const now = new Date();
+    shSelectedYear = now.getFullYear();
+    shSelectedMonth = now.getMonth() + 1;
+    const yp = document.getElementById('sh-year-picker');
+    const mp = document.getElementById('sh-month-picker');
+    if (yp) yp.value = String(shSelectedYear);
+    if (mp) mp.value = String(shSelectedMonth);
+    initSalesHome();
+  };
+}
+
+// Phase 14a-2: hide/show panel live berdasarkan is_current_period
+function shApplyHistoricalMode(data) {
+  const isCurrent = data.is_current_period !== false;  // default treat undefined as current
+  const banner = document.getElementById('sh-historical-banner');
+  const periodEl = document.getElementById('sh-historical-period');
+  const resetBtn = document.getElementById('sh-reset-period');
+  // Panel-panel live yang dihide di historical mode
+  const liveSelectors = [
+    '#sh-attention',
+    '#sh-target',
+  ];
+  const liveContainers = [
+    'sh-followup-body',    // Follow-up jatuh tempo (bungkus card cari .closest)
+    'sh-payment-body',     // Payment reminder DP stale
+    'sh-stale-body',       // Jamaah perlu dihubungi
+    'sh-prio-body',        // Prioritas Follow-up (Phase 12a lead scoring)
+  ];
+  if (isCurrent) {
+    if (banner) banner.classList.add('hidden');
+    if (resetBtn) resetBtn.classList.add('hidden');
+    liveSelectors.forEach(sel => {
+      const el = document.querySelector(sel);
+      if (!el) return;
+      el.removeAttribute('data-hidden-historical');
+    });
+    liveContainers.forEach(id => {
+      const el = document.getElementById(id);
+      const card = el && el.closest('.rounded-xl, .rounded-lg, .umar-card');
+      if (card) card.classList.remove('hidden');
+    });
+    return;
+  }
+  // Historical mode
+  if (banner) {
+    banner.classList.remove('hidden');
+    const yr = data.year || '';
+    const m = data.month || 1;
+    if (periodEl) periodEl.textContent = `${SH_MONTH_LONG[m - 1] || ''} ${yr}`;
+  }
+  if (resetBtn) resetBtn.classList.remove('hidden');
+  // Hide attention hero + target progress
+  liveSelectors.forEach(sel => {
+    const el = document.querySelector(sel);
+    if (el) el.classList.add('hidden');
+  });
+  // Hide panel-panel yg berbasis "hari ini"
+  liveContainers.forEach(id => {
+    const el = document.getElementById(id);
+    const card = el && el.closest('.rounded-xl, .rounded-lg, .umar-card');
+    if (card) card.classList.add('hidden');
+  });
 }
 
 window.initSalesHome = initSalesHome;
