@@ -338,6 +338,7 @@
     // Phase 14a-2: month picker state juga
     let mhSelectedYear = null;
     let mhSelectedMonth = null;
+    let mhSelectedPackage = null;  // Phase 14b
     const MH_MONTH_LONG = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
     async function mhLoadYears() {
@@ -379,7 +380,7 @@
         };
     }
 
-    // Phase 14a-2: reset ke bulan+tahun berjalan
+    // Phase 14a-2: reset ke bulan+tahun berjalan (+ clear paket Phase 14b)
     function mhWireResetButton() {
         const btn = document.getElementById('mh-reset-period');
         if (!btn) return;
@@ -387,12 +388,36 @@
             const now = new Date();
             mhSelectedYear = now.getFullYear();
             mhSelectedMonth = now.getMonth() + 1;
+            mhSelectedPackage = null;
             const yp = document.getElementById('mh-year-picker');
             const mp = document.getElementById('mh-month-picker');
+            const pp = document.getElementById('mh-package-picker');
             if (yp) yp.value = String(mhSelectedYear);
             if (mp) mp.value = String(mhSelectedMonth);
+            if (pp) pp.value = '';
             window.initMgmtHome();
         };
+    }
+
+    // Phase 14b: populate package dropdown
+    async function mhLoadPackages() {
+        const picker = document.getElementById('mh-package-picker');
+        if (!picker) return;
+        try {
+            const res = await mhFetch('/packages');
+            const list = await res.json();
+            const opts = ['<option value="">Semua Paket</option>'].concat(
+                (list || []).map(p => `<option value="${p.name}">${p.name}</option>`)
+            );
+            picker.innerHTML = opts.join('');
+            picker.value = mhSelectedPackage || '';
+            picker.onchange = () => {
+                mhSelectedPackage = picker.value || null;
+                window.initMgmtHome();
+            };
+        } catch (e) {
+            picker.innerHTML = '<option value="">Gagal muat</option>';
+        }
     }
 
     function mhRenderYearSummary(data) {
@@ -445,12 +470,14 @@
             window.__mhYearsLoaded = true;
             mhLoadYears();
             mhLoadMonths();
+            mhLoadPackages();
             mhWireResetButton();
         }
         try {
             const qParts = [];
             if (mhSelectedYear) qParts.push('year=' + mhSelectedYear);
             if (mhSelectedMonth) qParts.push('month=' + mhSelectedMonth);
+            if (mhSelectedPackage) qParts.push('package=' + encodeURIComponent(mhSelectedPackage));
             const qs = qParts.length ? '?' + qParts.join('&') : '';
             const res = await mhFetch('/mgmt/home' + qs);
             if (!res.ok) throw new Error('Gagal memuat Home Management');

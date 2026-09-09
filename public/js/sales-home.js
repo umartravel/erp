@@ -31,8 +31,10 @@ function shDaysDiff(iso) {
 
 // Phase 14a: current year selected (default = year berjalan)
 // Phase 14a-2: month juga
+// Phase 14b: package juga (null = semua)
 let shSelectedYear = null;
 let shSelectedMonth = null;
+let shSelectedPackage = null;
 
 const SH_MONTH_NAMES = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
 const SH_MONTH_LONG = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
@@ -44,11 +46,13 @@ async function initSalesHome() {
       window.__shYearsLoaded = true;
       shLoadYears();
       shLoadMonths();
+      shLoadPackages();
       shWireResetButton();
     }
     const qParts = [];
     if (shSelectedYear) qParts.push('year=' + shSelectedYear);
     if (shSelectedMonth) qParts.push('month=' + shSelectedMonth);
+    if (shSelectedPackage) qParts.push('package=' + encodeURIComponent(shSelectedPackage));
     const qs = qParts.length ? '?' + qParts.join('&') : '';
     const res = await shFetch('/api/sales/home' + qs);
     if (!res.ok) {
@@ -513,7 +517,7 @@ function shLoadMonths() {
   };
 }
 
-// Phase 14a-2: tombol Reset -> kembali ke bulan+tahun berjalan
+// Phase 14a-2: tombol Reset -> kembali ke bulan+tahun berjalan (+ clear paket Phase 14b)
 function shWireResetButton() {
   const btn = document.getElementById('sh-reset-period');
   if (!btn) return;
@@ -521,12 +525,38 @@ function shWireResetButton() {
     const now = new Date();
     shSelectedYear = now.getFullYear();
     shSelectedMonth = now.getMonth() + 1;
+    shSelectedPackage = null;
     const yp = document.getElementById('sh-year-picker');
     const mp = document.getElementById('sh-month-picker');
+    const pp = document.getElementById('sh-package-picker');
     if (yp) yp.value = String(shSelectedYear);
     if (mp) mp.value = String(shSelectedMonth);
+    if (pp) pp.value = '';
     initSalesHome();
   };
+}
+
+// Phase 14b: populate package dropdown dari /api/packages
+async function shLoadPackages() {
+  const picker = document.getElementById('sh-package-picker');
+  if (!picker) return;
+  try {
+    const res = await shFetch('/api/packages');
+    const list = await res.json();
+    const opts = ['<option value="">Semua Paket</option>'].concat(
+      (list || []).map(p =>
+        `<option value="${p.name}">${p.name}</option>`
+      )
+    );
+    picker.innerHTML = opts.join('');
+    picker.value = shSelectedPackage || '';
+    picker.onchange = () => {
+      shSelectedPackage = picker.value || null;
+      initSalesHome();
+    };
+  } catch (e) {
+    picker.innerHTML = '<option value="">Gagal muat</option>';
+  }
 }
 
 // Phase 14a-2: hide/show panel live berdasarkan is_current_period

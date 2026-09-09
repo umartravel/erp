@@ -19,7 +19,9 @@ _MGMT_ROLES = ("admin", "management")
 
 
 @router.get("/api/mgmt/home")
-async def mgmt_home(year: int | None = None, month: int | None = None, user=Depends(authenticate_token)):
+async def mgmt_home(year: int | None = None, month: int | None = None,
+                    package: str | None = None,
+                    user=Depends(authenticate_token)):
     """Executive landing untuk role management. Fokus: omzet MoM/YoY, sales
     performance vs target, top agen, ops readiness, approval inbox mgmt-only.
 
@@ -30,6 +32,9 @@ async def mgmt_home(year: int | None = None, month: int | None = None, user=Depe
     false` -- frontend hide panel live (approvals, attention) & tampilkan
     banner historis. Snapshot forward-looking (cash saldo, piutang) tetap
     real-time.
+    Phase 14b: query param `package` filter metrik ke-scope paket: this_month,
+    MoM, sales_perf, top_agents, year_summary. Snapshot tetap global: cash,
+    piutang, refund/komisi/incident inbox, upcoming_packages, company_target.
     """
     require_role(user, *_MGMT_ROLES)
 
@@ -49,12 +54,17 @@ async def mgmt_home(year: int | None = None, month: int | None = None, user=Depe
     ym_prev = dt_prev.strftime("%Y-%m")
     year_str = str(year)
 
+    # Phase 14b: filter paket (nullable) -- helper builder.
+    pkg_where = " AND package_type = ?" if package else ""
+    pkg_params = (package,) if package else ()
+
     def month_stat(ym):
         row = db.query_one(
             "SELECT COUNT(*) c, COALESCE(SUM(total_price),0) omzet FROM jamaah "
             "WHERE strftime('%Y-%m', COALESCE(order_date, created_at)) = ? "
-            "AND status NOT IN ('Cancelled', 'Lead - Follow Up')",
-            (ym,),
+            "AND status NOT IN ('Cancelled', 'Lead - Follow Up')"
+            + pkg_where,
+            (ym,) + pkg_params,
         )
         return {"count": row["c"] or 0, "omzet": row["omzet"] or 0}
 
@@ -100,8 +110,9 @@ async def mgmt_home(year: int | None = None, month: int | None = None, user=Depe
         actual = db.query_one(
             "SELECT COUNT(*) c, COALESCE(SUM(total_price),0) omzet FROM jamaah "
             "WHERE sales_id = ? AND strftime('%Y-%m', COALESCE(order_date, created_at)) = ? "
-            "AND status NOT IN ('Cancelled', 'Lead - Follow Up')",
-            (s["id"], ym_now),
+            "AND status NOT IN ('Cancelled', 'Lead - Follow Up')"
+            + pkg_where,
+            (s["id"], ym_now) + pkg_params,
         )
         target = db.query_one(
             "SELECT target_closing, target_omzet FROM sales_targets WHERE user_id = ? AND month = ?",
@@ -120,12 +131,14 @@ async def mgmt_home(year: int | None = None, month: int | None = None, user=Depe
         })
     sales_perf.sort(key=lambda x: (x["actual_omzet"] or 0), reverse=True)
 
+    ta_pkg_clause = " AND j.package_type = ?" if package else ""
     top_agents = db.query_all(
         "SELECT a.id, a.name, COUNT(j.id) closings, COALESCE(SUM(j.total_price),0) omzet "
         "FROM agents a JOIN jamaah j ON j.agent_id = a.id "
         "WHERE strftime('%Y-%m', COALESCE(j.order_date, j.created_at)) = ? "
-        "AND j.status NOT IN ('Cancelled', 'Lead - Follow Up') "
-        "GROUP BY a.id ORDER BY omzet DESC LIMIT 10", (ym_now,),
+        "AND j.status NOT IN ('Cancelled', 'Lead - Follow Up')"
+        + ta_pkg_clause +
+        " GROUP BY a.id ORDER BY omzet DESC LIMIT 10", (ym_now,) + pkg_params,
     )
 
     upcoming_pkg = db.query_all(
@@ -187,12 +200,13 @@ async def mgmt_home(year: int | None = None, month: int | None = None, user=Depe
         attention.append({"key": "sales_under", "severity": "medium",
                           "label": f"{len(under)} sales < 50% target closing bulan ini", "goto": "mgmt-home"})
 
-    # Phase 14a: Ringkasan tahun terpilih.
+    # Phase 14a: Ringkasan tahun terpilih. Phase 14b: + filter paket.
     year_stat = db.query_one(
         "SELECT COUNT(*) c, COALESCE(SUM(total_price),0) omzet FROM jamaah "
         "WHERE status NOT IN ('Cancelled', 'Lead - Follow Up') "
-        "AND SUBSTR(COALESCE(order_date, created_at), 1, 4) = ?",
-        (year_str,),
+        "AND SUBSTR(COALESCE(order_date, created_at), 1, 4) = ?"
+        + pkg_where,
+        (year_str,) + pkg_params,
     ) or {"c": 0, "omzet": 0}
 
     return {
@@ -212,6 +226,8 @@ async def mgmt_home(year: int | None = None, month: int | None = None, user=Depe
         "is_current_period": is_current_period,
         "period_ym": ym_now,
         "prev_ym": ym_prev,
+        # Phase 14b: filter paket (null = semua).
+        "package": package,
         "year_summary": {
             "closing_total": year_stat["c"] or 0,
             "omzet_total": year_stat["omzet"] or 0,

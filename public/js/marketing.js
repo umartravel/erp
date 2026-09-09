@@ -287,16 +287,19 @@ async function loadFilterOptions() {
   }
 }
 
+const MKT_FILTER_IDS = [
+  'mkt-filter-period', 'mkt-filter-paket', 'mkt-filter-admin', 'mkt-filter-channel', 'mkt-filter-statpay',
+  'mkt-filter-closing-from', 'mkt-filter-closing-to',  // Phase 14b
+];
+
 function wireFilterHandlers() {
-  ['mkt-filter-period', 'mkt-filter-paket', 'mkt-filter-admin', 'mkt-filter-channel', 'mkt-filter-statpay']
-    .forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.addEventListener('change', refreshMarketing);
-    });
+  MKT_FILTER_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', refreshMarketing);
+  });
   const reset = document.getElementById('mkt-filter-reset');
   if (reset) reset.addEventListener('click', () => {
-    ['mkt-filter-period', 'mkt-filter-paket', 'mkt-filter-admin', 'mkt-filter-channel', 'mkt-filter-statpay']
-      .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    MKT_FILTER_IDS.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     refreshMarketing();
   });
 }
@@ -308,6 +311,8 @@ function readFilters() {
     admin: (document.getElementById('mkt-filter-admin') || {}).value || '',
     channel: (document.getElementById('mkt-filter-channel') || {}).value || '',
     statpay: (document.getElementById('mkt-filter-statpay') || {}).value || '',
+    closing_from: (document.getElementById('mkt-filter-closing-from') || {}).value || '',
+    closing_to: (document.getElementById('mkt-filter-closing-to') || {}).value || '',
   };
 }
 

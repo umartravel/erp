@@ -29,16 +29,37 @@ router = APIRouter(tags=["jamaah-read"])
 
 
 @router.get("/api/jamaah")
-async def jamaah_list(user=Depends(authenticate_token)):
+async def jamaah_list(
+    package: str | None = None,
+    closing_from: str | None = None,
+    closing_to: str | None = None,
+    user=Depends(authenticate_token),
+):
+    """Phase 14b: filter opsional `package` (nama paket) + `closing_from` /
+    `closing_to` (YYYY-MM-DD) pakai COALESCE(order_date, created_at) sebagai
+    tanggal closing. Filter di layer SQL supaya query cepat.
+    """
     query = (
         "SELECT j.*, (SELECT GROUP_CONCAT(item_name, ', ') FROM jamaah_inventory "
         "WHERE jamaah_id = j.id) as received_items, u.name as sales_name "
         "FROM jamaah j LEFT JOIN users u ON j.sales_id = u.id "
     )
+    where = []
     params = []
     if user["role"] == "sales":  # RBAC: sales hanya lihat miliknya
-        query += " WHERE j.sales_id = ? "
+        where.append("j.sales_id = ?")
         params.append(user["id"])
+    if package:
+        where.append("j.package_type = ?")
+        params.append(package)
+    if closing_from:
+        where.append("date(COALESCE(j.order_date, j.created_at)) >= date(?)")
+        params.append(closing_from)
+    if closing_to:
+        where.append("date(COALESCE(j.order_date, j.created_at)) <= date(?)")
+        params.append(closing_to)
+    if where:
+        query += " WHERE " + " AND ".join(where)
     query += " ORDER BY j.created_at DESC"
     return db.query_all(query, tuple(params))
 

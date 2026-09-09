@@ -833,6 +833,9 @@
                                 <select id="sh-year-picker" class="text-sm font-bold border rounded-lg px-2 py-1" style="color:#1D1D1B;background:white;">
                                     <option value="">Tahun</option>
                                 </select>
+                                <select id="sh-package-picker" class="text-sm font-bold border rounded-lg px-2 py-1" style="color:#1D1D1B;background:white;" title="Filter Paket (Phase 14b)">
+                                    <option value="">Semua Paket</option>
+                                </select>
                                 <button id="sh-reset-period" type="button" class="text-[10px] font-bold px-2 py-1 rounded-lg hidden" style="background:#F4F1EA;color:#B8860B;border:1px solid #B8860B;" title="Kembali ke periode berjalan">Ke Bulan Ini</button>
                             </div>
                         </div>
@@ -1679,6 +1682,10 @@
                             <select id="filter-jamaah-status" class="px-3 py-2 text-sm border rounded-lg bg-white" onchange="renderTables()">
                                 <option value="">Semua Status</option>
                             </select>
+                            <!-- Phase 14b: Periode Closing (date range, server-side filter) -->
+                            <input type="date" id="filter-jamaah-closing-from" class="px-3 py-2 text-sm border rounded-lg bg-white" title="Closing dari tanggal" onchange="fetchData()">
+                            <input type="date" id="filter-jamaah-closing-to" class="px-3 py-2 text-sm border rounded-lg bg-white" title="Closing sampai tanggal" onchange="fetchData()">
+                            <button type="button" id="filter-jamaah-reset-closing" class="px-2 py-2 text-xs font-semibold border rounded-lg hidden" style="color:#B8860B;border-color:#B8860B;background:#FFFDF7;" title="Reset periode closing" onclick="document.getElementById('filter-jamaah-closing-from').value='';document.getElementById('filter-jamaah-closing-to').value='';this.classList.add('hidden');fetchData();">Reset</button>
                             <input type="text" id="search-jamaah" placeholder="Cari Nama/NIK..." class="px-4 py-2 text-sm border rounded-lg" onkeyup="filterTable('table-jamaah', this.value)">
                         </div>
                     </div>
@@ -2064,6 +2071,9 @@
                                 </select>
                                 <select id="mh-year-picker" class="text-sm font-bold border rounded-lg px-2 py-1">
                                     <option value="">Tahun</option>
+                                </select>
+                                <select id="mh-package-picker" class="text-sm font-bold border rounded-lg px-2 py-1" title="Filter Paket (Phase 14b)">
+                                    <option value="">Semua Paket</option>
                                 </select>
                                 <button id="mh-reset-period" type="button" class="text-[10px] font-bold px-2 py-1 rounded-lg hidden bg-purple-50 text-purple-700 border border-purple-500" title="Kembali ke periode berjalan">Ke Bulan Ini</button>
                             </div>
@@ -3051,6 +3061,17 @@
                             <button id="mkt-filter-reset" class="w-full px-3 py-1.5 text-xs font-semibold rounded" style="background:var(--umar-gold-deep);color:#FFFFFF;">
                                 <i data-lucide="rotate-ccw" class="inline w-3 h-3 mr-1"></i>Reset Filter
                             </button>
+                        </div>
+                    </div>
+                    <!-- Phase 14b: Periode Closing (date range) -->
+                    <div class="grid grid-cols-2 md:grid-cols-6 gap-3 mt-3 pt-3 border-t">
+                        <div class="md:col-span-2">
+                            <label class="block text-[10px] font-semibold uppercase tracking-wide mb-1 text-gray-600">Closing Dari</label>
+                            <input type="date" id="mkt-filter-closing-from" class="w-full px-2 py-1.5 text-xs rounded border bg-white text-gray-800">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-[10px] font-semibold uppercase tracking-wide mb-1 text-gray-600">Closing Sampai</label>
+                            <input type="date" id="mkt-filter-closing-to" class="w-full px-2 py-1.5 text-xs rounded border bg-white text-gray-800">
                         </div>
                     </div>
                 </div>
@@ -6578,7 +6599,16 @@
         async function fetchData(isBackgroundSync = false) {
             try {
                 await loadUsersDirectory();
-                const res = await authFetch('/jamaah'); allJamaah = await res.json();
+                // Phase 14b: server-side filter closing date range
+                const fromEl = document.getElementById('filter-jamaah-closing-from');
+                const toEl = document.getElementById('filter-jamaah-closing-to');
+                const resetBtn = document.getElementById('filter-jamaah-reset-closing');
+                const qs = [];
+                if (fromEl && fromEl.value) qs.push('closing_from=' + encodeURIComponent(fromEl.value));
+                if (toEl && toEl.value) qs.push('closing_to=' + encodeURIComponent(toEl.value));
+                if (resetBtn) resetBtn.classList.toggle('hidden', qs.length === 0);
+                const url = '/jamaah' + (qs.length ? '?' + qs.join('&') : '');
+                const res = await authFetch(url); allJamaah = await res.json();
                 renderTables();
                 const searchInput = document.getElementById('search-jamaah');
                 if (searchInput && searchInput.value) filterTable('table-jamaah', searchInput.value);

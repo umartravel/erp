@@ -127,7 +127,9 @@ def _compute_attention(followup_due, payment_stale, stale_contact, new_leads):
 
 
 @router.get("/api/sales/home")
-async def sales_home(year: int | None = None, month: int | None = None, user=Depends(authenticate_token)):
+async def sales_home(year: int | None = None, month: int | None = None,
+                     package: str | None = None,
+                     user=Depends(authenticate_token)):
     """Data dashboard sales -- MY-scoped: cuma jamaah/lead yang di-handle user login.
     Admin & management dapat scope 'admin' (agregasi semua sales) untuk preview
     tanpa perlu login sebagai sales tertentu.
@@ -139,6 +141,9 @@ async def sales_home(year: int | None = None, month: int | None = None, user=Dep
     live (follow-up jatuh tempo, payment reminder, stale contact, prioritas) &
     tampilkan banner historis. Snapshot forward-looking (pipeline, piutang) tetap
     real-time.
+    Phase 14b: query param `package` (nama paket) filter metrik ke-scope paket:
+    this_month, year_summary, leaderboard. Snapshot (pipeline, piutang) tetap
+    global -- foto lengkap sales.
     """
     role = user.get("role")
     if role not in ("sales", "admin", "management"):
@@ -164,6 +169,13 @@ async def sales_home(year: int | None = None, month: int | None = None, user=Dep
     year_str = str(year)
     is_current_period = (year == current_year and month == current_month)
 
+    # Phase 14b: filter paket -- affect metrik ke-scope (this_month, year, leaderboard)
+    pkg_where = ""
+    pkg_params = ()
+    if package:
+        pkg_where = " AND j.package_type = ?"
+        pkg_params = (package,)
+
     # 1. My Pipeline: jamaah aktif (bukan Cancelled)
     pipeline = db.query_one(
         f"SELECT COUNT(*) c FROM jamaah j WHERE {sales_filter} AND j.status != 'Cancelled'",
@@ -178,8 +190,9 @@ async def sales_home(year: int | None = None, month: int | None = None, user=Dep
     this_month = db.query_one(
         f"SELECT COUNT(*) c, COALESCE(SUM(j.total_price),0) omzet FROM jamaah j "
         f"WHERE {sales_filter} AND j.status != 'Cancelled' "
-        f"AND SUBSTR(COALESCE(j.order_date, j.created_at), 1, 7) = ?",
-        params + (ym,),
+        f"AND SUBSTR(COALESCE(j.order_date, j.created_at), 1, 7) = ?"
+        f"{pkg_where}",
+        params + (ym,) + pkg_params,
     )
 
     # Phase 14a: Ringkasan tahun terpilih (agregat setahun).
@@ -187,8 +200,9 @@ async def sales_home(year: int | None = None, month: int | None = None, user=Dep
     year_stat = db.query_one(
         f"SELECT COUNT(*) c, COALESCE(SUM(j.total_price),0) omzet FROM jamaah j "
         f"WHERE {sales_filter} AND j.status != 'Cancelled' "
-        f"AND SUBSTR(COALESCE(j.order_date, j.created_at), 1, 4) = ?",
-        params + (year_str,),
+        f"AND SUBSTR(COALESCE(j.order_date, j.created_at), 1, 4) = ?"
+        f"{pkg_where}",
+        params + (year_str,) + pkg_params,
     ) or {"c": 0, "omzet": 0}
 
     # 3. My Piutang
@@ -231,13 +245,16 @@ async def sales_home(year: int | None = None, month: int | None = None, user=Dep
     )
 
     # 7. Leaderboard sales bulan ini (mini) -- semua sales, biar sales tahu posisinya
+    # Phase 14b: filter by package kalau dipilih.
+    lb_pkg_clause = " AND j.package_type = ?" if package else ""
     leaderboard = db.query_all(
         "SELECT u.id, u.name, COUNT(j.id) closing, COALESCE(SUM(j.total_price),0) omzet "
         "FROM users u LEFT JOIN jamaah j ON j.sales_id = u.id "
         "AND j.status != 'Cancelled' "
-        "AND SUBSTR(COALESCE(j.order_date, j.created_at), 1, 7) = ? "
-        "WHERE u.role = 'sales' GROUP BY u.id ORDER BY closing DESC",
-        (ym,),
+        "AND SUBSTR(COALESCE(j.order_date, j.created_at), 1, 7) = ?"
+        + lb_pkg_clause +
+        " WHERE u.role = 'sales' GROUP BY u.id ORDER BY closing DESC",
+        (ym,) + pkg_params,
     )
 
     # 8. Paket Terjadwal: 5 paket berangkat ke depan -- quick reference untuk sales
@@ -307,6 +324,8 @@ async def sales_home(year: int | None = None, month: int | None = None, user=Dep
         "current_month": current_month,
         "is_current_period": is_current_period,
         "period_ym": ym,
+        # Phase 14b: filter paket (null = semua).
+        "package": package,
         "year_summary": {
             "closing_total": year_stat["c"] or 0,
             "omzet_total": year_stat["omzet"] or 0,

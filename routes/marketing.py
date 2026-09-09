@@ -90,10 +90,20 @@ async def marketing_summary(
     admin: str | None = None,           # nama sales (LINA/TITIN/FARAH)
     channel: str | None = None,         # ONLINE/OFFLINE (dari lead_source)
     statpay: str | None = None,         # LUNAS/BELUM LUNAS
+    closing_from: str | None = None,    # Phase 14b: YYYY-MM-DD lower bound order_date
+    closing_to: str | None = None,      # Phase 14b: YYYY-MM-DD upper bound order_date
     user=Depends(authenticate_token),
 ):
     _require_marketing_access(user)
     rows = db.query_all(_MKT_SELECT)
+
+    def _closing_date(r):
+        # Phase 14b: tanggal closing = order_date (fallback ke created_at slice ke YYYY-MM-DD).
+        s = r.get("order_date") or ""
+        if s:
+            return s[:10]
+        ct = r.get("created_at") or ""
+        return ct[:10] if ct else ""
 
     def _match(r):
         if paket and (r.get("package_type") or "") != paket:
@@ -108,6 +118,14 @@ async def marketing_summary(
             return False
         if period:
             if _txn_month(r) != period:
+                return False
+        if closing_from or closing_to:
+            cd = _closing_date(r)
+            if not cd:
+                return False
+            if closing_from and cd < closing_from:
+                return False
+            if closing_to and cd > closing_to:
                 return False
         return True
 
@@ -263,28 +281,40 @@ async def marketing_rows(
     limit: int = 50,
     offset: int = 0,
     q: str | None = None,
+    paket: str | None = None,           # Phase 14b
+    closing_from: str | None = None,    # Phase 14b: YYYY-MM-DD
+    closing_to: str | None = None,      # Phase 14b: YYYY-MM-DD
     user=Depends(authenticate_token),
 ):
     _require_marketing_access(user)
     limit = max(1, min(200, limit))
     offset = max(0, offset)
+
+    clauses = []
+    params_list = []
     if q:
         like = f"%{q.strip().upper()}%"
-        where = (
-            "WHERE UPPER(j.name) LIKE ? OR UPPER(COALESCE(j.orderer_name,'')) LIKE ? "
+        clauses.append(
+            "(UPPER(j.name) LIKE ? OR UPPER(COALESCE(j.orderer_name,'')) LIKE ? "
             "OR UPPER(COALESCE(j.external_id,'')) LIKE ? "
-            "OR UPPER(COALESCE(j.province,'')) LIKE ? OR UPPER(COALESCE(j.city,'')) LIKE ?"
+            "OR UPPER(COALESCE(j.province,'')) LIKE ? OR UPPER(COALESCE(j.city,'')) LIKE ?)"
         )
-        params = (like, like, like, like, like)
-        total_row = db.query_one(f"SELECT COUNT(*) as c FROM jamaah j {where}", params)
-        rows = db.query_all(
-            _MKT_SELECT + f" {where} ORDER BY j.id DESC LIMIT ? OFFSET ?",
-            params + (limit, offset),
-        )
-    else:
-        total_row = db.query_one("SELECT COUNT(*) as c FROM jamaah")
-        rows = db.query_all(
-            _MKT_SELECT + " ORDER BY j.id DESC LIMIT ? OFFSET ?",
-            (limit, offset),
-        )
+        params_list += [like, like, like, like, like]
+    if paket:
+        clauses.append("j.package_type = ?")
+        params_list.append(paket)
+    if closing_from:
+        clauses.append("date(COALESCE(j.order_date, j.created_at)) >= date(?)")
+        params_list.append(closing_from)
+    if closing_to:
+        clauses.append("date(COALESCE(j.order_date, j.created_at)) <= date(?)")
+        params_list.append(closing_to)
+    where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+    params = tuple(params_list)
+
+    total_row = db.query_one(f"SELECT COUNT(*) as c FROM jamaah j {where}", params)
+    rows = db.query_all(
+        _MKT_SELECT + f" {where} ORDER BY j.id DESC LIMIT ? OFFSET ?",
+        params + (limit, offset),
+    )
     return {"total": total_row["c"] if total_row else 0, "rows": rows}
