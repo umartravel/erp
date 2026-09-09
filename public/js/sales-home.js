@@ -29,9 +29,18 @@ function shDaysDiff(iso) {
   return Math.round((Date.now() - t) / (1000 * 60 * 60 * 24));
 }
 
+// Phase 14a: current year selected (default = year berjalan)
+let shSelectedYear = null;
+
 async function initSalesHome() {
   try {
-    const res = await shFetch('/api/sales/home');
+    // Phase 14a: populate year picker sekali di awal
+    if (!window.__shYearsLoaded) {
+      window.__shYearsLoaded = true;
+      shLoadYears();
+    }
+    const qs = shSelectedYear ? `?year=${shSelectedYear}` : '';
+    const res = await shFetch('/api/sales/home' + qs);
     if (!res.ok) {
       console.error('[sales-home] fetch gagal', res.status);
       return;
@@ -74,6 +83,9 @@ function renderSalesHome(data) {
   if (typeof umarRenderWelcomeHero === 'function') {
     umarRenderWelcomeHero('sh-hero-mount', data.me?.name || 'Tim Sales');
   }
+
+  // Phase 14a: render year summary
+  shRenderYearSummary(data);
 
   const k = data.kpi || {};
   set('sh-kpi-pipeline', (k.pipeline || 0).toLocaleString('id-ID'));
@@ -433,6 +445,36 @@ async function loadLeadScores() {
   } catch (e) {
     body.innerHTML = '<div class="p-4 text-center text-xs text-red-500">Gagal memuat prioritas.</div>';
   }
+}
+
+// Phase 14a: helper untuk populate year picker + render year summary.
+async function shLoadYears() {
+  const picker = document.getElementById('sh-year-picker');
+  if (!picker) return;
+  try {
+    const res = await shFetch('/api/dashboard/years');
+    const d = await res.json();
+    const years = d.years || [];
+    const current = d.current_year;
+    shSelectedYear = shSelectedYear || current;
+    picker.innerHTML = years.map(y =>
+      `<option value="${y}"${y === shSelectedYear ? ' selected' : ''}>${y}${y === current ? ' (berjalan)' : ''}</option>`
+    ).join('');
+    picker.onchange = () => {
+      shSelectedYear = parseInt(picker.value, 10) || current;
+      initSalesHome();  // re-fetch dgn year baru
+    };
+  } catch (e) {
+    picker.innerHTML = '<option value="">Gagal muat</option>';
+  }
+}
+
+function shRenderYearSummary(data) {
+  const closingEl = document.getElementById('sh-year-closing');
+  const omzetEl = document.getElementById('sh-year-omzet');
+  const ys = data.year_summary || {closing_total: 0, omzet_total: 0};
+  if (closingEl) closingEl.textContent = (ys.closing_total || 0).toLocaleString('id-ID') + ' jamaah';
+  if (omzetEl) omzetEl.textContent = shFmtRp(ys.omzet_total || 0);
 }
 
 window.initSalesHome = initSalesHome;

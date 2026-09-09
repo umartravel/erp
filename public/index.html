@@ -820,6 +820,29 @@
                 <!-- Phase 5b: shared welcome hero (Assalamu'alaikum + jam realtime + quote harian) -->
                 <div id="sh-hero-mount"></div>
 
+                <!-- Phase 14a: Year picker + ringkasan tahun terpilih -->
+                <div class="rounded-xl border shadow-sm p-4 flex items-center justify-between gap-4 flex-wrap" style="background:#FFFDF7;border-color:#F4F1EA;">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="calendar-range" class="w-5 h-5" style="color:#B8860B;"></i>
+                        <div>
+                            <p class="text-[10px] font-bold uppercase tracking-wider" style="color:#B8860B;">Tampilan Tahun</p>
+                            <select id="sh-year-picker" class="text-sm font-bold border rounded-lg px-2 py-1 mt-0.5" style="color:#1D1D1B;background:white;">
+                                <option value="">Memuat...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-6 text-right">
+                        <div>
+                            <p class="text-[10px] uppercase tracking-wider" style="color:#B8860B;font-weight:700;">Closing Tahun Ini</p>
+                            <p class="text-lg font-black mt-0.5" id="sh-year-closing" style="color:#1D1D1B;">0</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] uppercase tracking-wider" style="color:#B8860B;font-weight:700;">Omzet Tahun Ini</p>
+                            <p class="text-lg font-black mt-0.5" id="sh-year-omzet" style="color:#B8860B;">Rp 0</p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Butuh Perhatian Hari Ini (hero): quick-scan aksi urgen -->
                 <div id="sh-attention" class="rounded-xl border shadow-sm p-4 hidden" style="background:linear-gradient(135deg,#FEF3C7 0%, #FFFDF7 100%);border-color:#F8BE20;">
                     <div class="flex items-center gap-3 mb-3">
@@ -2014,6 +2037,29 @@
             <div id="page-mgmt-home" class="page-content hidden space-y-6">
                 <!-- Phase 5b: shared welcome hero -->
                 <div id="mh-hero-mount"></div>
+
+                <!-- Phase 14a: Year picker + ringkasan tahun terpilih -->
+                <div class="rounded-xl border shadow-sm p-4 flex items-center justify-between gap-4 flex-wrap bg-white">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="calendar-range" class="w-5 h-5 text-purple-600"></i>
+                        <div>
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-purple-700">Tampilan Tahun</p>
+                            <select id="mh-year-picker" class="text-sm font-bold border rounded-lg px-2 py-1 mt-0.5">
+                                <option value="">Memuat...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-6 text-right">
+                        <div>
+                            <p class="text-[10px] uppercase tracking-wider font-bold text-purple-700">Closing Tahun Ini</p>
+                            <p class="text-lg font-black mt-0.5 text-gray-800" id="mh-year-closing">0</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] uppercase tracking-wider font-bold text-purple-700">Omzet Tahun Ini</p>
+                            <p class="text-lg font-black mt-0.5 text-purple-700" id="mh-year-omzet">Rp 0</p>
+                        </div>
+                    </div>
+                </div>
 
                 <div id="mh-attention" class="hidden bg-gradient-to-br from-purple-50 to-amber-50 border-l-4 border-purple-500 rounded-xl shadow-sm p-5">
                     <div class="flex items-start justify-between gap-4">

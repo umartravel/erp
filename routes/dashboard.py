@@ -167,6 +167,39 @@ async def audit_logs(user=Depends(authenticate_token)):
 
 
 # ===========================================================================
+# Phase 14a: Year picker options untuk semua Home dashboard.
+# ===========================================================================
+@router.get("/api/dashboard/years")
+async def dashboard_years(user=Depends(authenticate_token)):
+    """Return list tahun yang punya data jamaah (untuk populate dropdown year
+    picker di Home Sales/Mgmt). Sort DESC (terbaru dulu).
+
+    Kalau DB kosong / tidak ada order_date, minimal return tahun berjalan
+    supaya dropdown tidak empty.
+    """
+    import datetime as _dt
+    rows = db.query_all(
+        "SELECT DISTINCT SUBSTR(COALESCE(order_date, created_at), 1, 4) y "
+        "FROM jamaah WHERE COALESCE(order_date, created_at) IS NOT NULL "
+        "ORDER BY y DESC"
+    ) or []
+    years = []
+    for r in rows:
+        y = r["y"]
+        try:
+            yi = int(y)
+            if 2000 <= yi <= 2100:
+                years.append(yi)
+        except (ValueError, TypeError):
+            pass
+    current = _dt.datetime.now().year
+    if current not in years:
+        years.insert(0, current)
+    years = sorted(set(years), reverse=True)
+    return {"years": years, "current_year": current}
+
+
+# ===========================================================================
 # GLOBAL SEARCH (Cmd+K palette): 5 hasil per kategori, role-scoped untuk sales
 # ===========================================================================
 @router.get("/api/search")

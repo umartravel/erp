@@ -19,14 +19,21 @@ _MGMT_ROLES = ("admin", "management")
 
 
 @router.get("/api/mgmt/home")
-async def mgmt_home(user=Depends(authenticate_token)):
+async def mgmt_home(year: int | None = None, user=Depends(authenticate_token)):
     """Executive landing untuk role management. Fokus: omzet MoM/YoY, sales
-    performance vs target, top agen, ops readiness, approval inbox mgmt-only."""
+    performance vs target, top agen, ops readiness, approval inbox mgmt-only.
+
+    Phase 14a: query param `year` (default = tahun berjalan) filter metrik agregat
+    tahunan (year_summary). Metrik bulan berjalan (this_month, MoM) tetap real-time.
+    """
     require_role(user, *_MGMT_ROLES)
 
     now = datetime.datetime.now()
     ym_now = now.strftime("%Y-%m")
     ym_prev = (now.replace(day=1) - datetime.timedelta(days=1)).strftime("%Y-%m")
+    current_year = now.year
+    year = year if year else current_year
+    year_str = str(year)
 
     def month_stat(ym):
         row = db.query_one(
@@ -164,6 +171,14 @@ async def mgmt_home(user=Depends(authenticate_token)):
         attention.append({"key": "sales_under", "severity": "medium",
                           "label": f"{len(under)} sales < 50% target closing bulan ini", "goto": "mgmt-home"})
 
+    # Phase 14a: Ringkasan tahun terpilih.
+    year_stat = db.query_one(
+        "SELECT COUNT(*) c, COALESCE(SUM(total_price),0) omzet FROM jamaah "
+        "WHERE status NOT IN ('Cancelled', 'Lead - Follow Up') "
+        "AND SUBSTR(COALESCE(order_date, created_at), 1, 4) = ?",
+        (year_str,),
+    ) or {"c": 0, "omzet": 0}
+
     return {
         "kpi": kpi,
         "attention": attention,
@@ -172,4 +187,11 @@ async def mgmt_home(user=Depends(authenticate_token)):
         "upcoming_packages": upcoming_pkg,
         "approvals": approvals,
         "month": ym_now,
+        # Phase 14a: year picker context.
+        "year": year,
+        "current_year": current_year,
+        "year_summary": {
+            "closing_total": year_stat["c"] or 0,
+            "omzet_total": year_stat["omzet"] or 0,
+        },
     }

@@ -127,10 +127,15 @@ def _compute_attention(followup_due, payment_stale, stale_contact, new_leads):
 
 
 @router.get("/api/sales/home")
-async def sales_home(user=Depends(authenticate_token)):
+async def sales_home(year: int | None = None, user=Depends(authenticate_token)):
     """Data dashboard sales -- MY-scoped: cuma jamaah/lead yang di-handle user login.
     Admin & management dapat scope 'admin' (agregasi semua sales) untuk preview
-    tanpa perlu login sebagai sales tertentu."""
+    tanpa perlu login sebagai sales tertentu.
+
+    Phase 14a: query param `year` (default = tahun berjalan) filter metrik agregat
+    tahunan (year_summary). Metrik bulan berjalan (this_month, piutang, pipeline)
+    tetap real-time supaya sales tahu posisi sekarang.
+    """
     role = user.get("role")
     if role not in ("sales", "admin", "management"):
         raise HTTPException(status_code=403, detail="Halaman Home Sales hanya untuk role sales.")
@@ -145,6 +150,11 @@ async def sales_home(user=Depends(authenticate_token)):
         params = ()
         scope = "all_sales"
 
+    now = datetime.datetime.now()
+    current_year = now.year
+    year = year if year else current_year
+    year_str = str(year)
+
     # 1. My Pipeline: jamaah aktif (bukan Cancelled)
     pipeline = db.query_one(
         f"SELECT COUNT(*) c FROM jamaah j WHERE {sales_filter} AND j.status != 'Cancelled'",
@@ -153,13 +163,22 @@ async def sales_home(user=Depends(authenticate_token)):
 
     # 2. My Closing Bulan Ini: pakai order_date supaya akurat (created_at semua =
     # tanggal migrasi historis). Falls back ke created_at kalau order_date NULL.
-    ym = datetime.datetime.now().strftime("%Y-%m")
+    ym = now.strftime("%Y-%m")
     this_month = db.query_one(
         f"SELECT COUNT(*) c, COALESCE(SUM(j.total_price),0) omzet FROM jamaah j "
         f"WHERE {sales_filter} AND j.status != 'Cancelled' "
         f"AND SUBSTR(COALESCE(j.order_date, j.created_at), 1, 7) = ?",
         params + (ym,),
     )
+
+    # Phase 14a: Ringkasan tahun terpilih (agregat setahun).
+    # Default = tahun berjalan. Sales bisa switch tahun via ?year=YYYY.
+    year_stat = db.query_one(
+        f"SELECT COUNT(*) c, COALESCE(SUM(j.total_price),0) omzet FROM jamaah j "
+        f"WHERE {sales_filter} AND j.status != 'Cancelled' "
+        f"AND SUBSTR(COALESCE(j.order_date, j.created_at), 1, 4) = ?",
+        params + (year_str,),
+    ) or {"c": 0, "omzet": 0}
 
     # 3. My Piutang
     piutang = db.query_one(
@@ -269,6 +288,13 @@ async def sales_home(user=Depends(authenticate_token)):
     return {
         "scope": scope,
         "me": {"id": user["id"], "name": user["name"]},
+        # Phase 14a: year picker context.
+        "year": year,
+        "current_year": current_year,
+        "year_summary": {
+            "closing_total": year_stat["c"] or 0,
+            "omzet_total": year_stat["omzet"] or 0,
+        },
         "kpi": {
             "pipeline": pipeline,
             "closing_this_month": this_month["c"] if this_month else 0,

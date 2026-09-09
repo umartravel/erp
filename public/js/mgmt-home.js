@@ -334,18 +334,58 @@
         }
     }
 
+    // Phase 14a: year picker state (default = year berjalan; set via /api/dashboard/years)
+    let mhSelectedYear = null;
+
+    async function mhLoadYears() {
+        const picker = document.getElementById('mh-year-picker');
+        if (!picker) return;
+        try {
+            const res = await mhFetch('/dashboard/years');
+            const d = await res.json();
+            const years = d.years || [];
+            const current = d.current_year;
+            mhSelectedYear = mhSelectedYear || current;
+            picker.innerHTML = years.map(y =>
+                `<option value="${y}"${y === mhSelectedYear ? ' selected' : ''}>${y}${y === current ? ' (berjalan)' : ''}</option>`
+            ).join('');
+            picker.onchange = () => {
+                mhSelectedYear = parseInt(picker.value, 10) || current;
+                window.initMgmtHome();
+            };
+        } catch (e) {
+            picker.innerHTML = '<option value="">Gagal muat</option>';
+        }
+    }
+
+    function mhRenderYearSummary(data) {
+        const closingEl = document.getElementById('mh-year-closing');
+        const omzetEl = document.getElementById('mh-year-omzet');
+        const ys = data.year_summary || {closing_total: 0, omzet_total: 0};
+        if (closingEl) closingEl.textContent = (ys.closing_total || 0).toLocaleString('id-ID') + ' jamaah';
+        if (omzetEl) omzetEl.textContent = mhFmtShort(ys.omzet_total || 0);
+    }
+
     window.initMgmtHome = async function() {
         if (mhLoading) return;
         mhLoading = true;
         ensureMonthPicker();
+        // Phase 14a: populate year picker sekali di awal
+        if (!window.__mhYearsLoaded) {
+            window.__mhYearsLoaded = true;
+            mhLoadYears();
+        }
         try {
-            const res = await mhFetch('/mgmt/home');
+            const qs = mhSelectedYear ? `?year=${mhSelectedYear}` : '';
+            const res = await mhFetch('/mgmt/home' + qs);
             if (!res.ok) throw new Error('Gagal memuat Home Management');
             const data = await res.json();
             // Phase 5b: shared welcome hero
             if (typeof umarRenderWelcomeHero === 'function') {
                 umarRenderWelcomeHero('mh-hero-mount', (typeof currentUser !== 'undefined' && currentUser?.name) || 'Manajemen');
             }
+            // Phase 14a: render year summary
+            mhRenderYearSummary(data);
             renderKPI(data.kpi || {});
             renderAttention(data.attention || []);
             renderSalesPerf(data.sales_performance || []);
