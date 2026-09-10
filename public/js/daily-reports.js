@@ -50,6 +50,38 @@
     return d.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
   }
 
+  // -------------------- MINI PANEL (Phase DT-2b) --------------------
+  // Populates `.dr-mini-panel` elements di 5 home page. Ambil 1 hit ke
+  // /today (upsert idempotent) supaya panel selalu punya row draft yg
+  // valid utk klik "Buka" -- konsisten dgn initDailyMine.
+  window.initDailyMineMini = async function() {
+    const panels = document.querySelectorAll('.dr-mini-panel');
+    if (!panels.length) return;
+    try {
+      const r = await drFetch('/api/daily-reports/today', {
+        method: 'POST',
+        body: JSON.stringify({}),
+      });
+      if (!r.ok) return;
+      const report = await r.json();
+      // Ambil detail utk hitung item count
+      const detailR = await drFetch(`/api/daily-reports/${report.id}`);
+      const detail = detailR.ok ? await detailR.json() : { items: [] };
+      const items = detail.items || [];
+      const done = items.filter(t => t.status === 'Done').length;
+      const total = items.length;
+      panels.forEach(panel => {
+        const stEl = panel.querySelector('.dr-mini-status');
+        const prEl = panel.querySelector('.dr-mini-progress');
+        if (stEl) {
+          stEl.textContent = report.status || 'Draft';
+          stEl.style.color = report.status === 'Submitted' ? '#166534' : '#92400E';
+        }
+        if (prEl) prEl.textContent = `${done}/${total} task selesai`;
+      });
+    } catch (e) { /* silent */ }
+  };
+
   // -------------------- INIT --------------------
   window.initDailyMine = async function() {
     document.getElementById('dr-today-date').textContent =
