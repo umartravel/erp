@@ -128,13 +128,59 @@ async def transactions_list(user=Depends(authenticate_token)):
 async def transactions_expense(body: dict = Depends(json_body), user=Depends(authenticate_token)):
     require_role(user, "admin", "finance")
     g = body.get
+    # Phase F2: category_id opsional (FK expense_categories). category (text)
+    # tetap disimpan utk backward-compat + display cepat tanpa join.
+    category_id = g("category_id") or None
+    if category_id:
+        cat = db.query_one(
+            "SELECT id, group_type FROM expense_categories WHERE id = ? AND is_active = 1",
+            (category_id,))
+        if not cat:
+            raise HTTPException(status_code=400,
+                                detail="category_id tidak valid atau nonaktif.")
+        if cat["group_type"] != "expense":
+            raise HTTPException(status_code=400,
+                                detail="category_id harus group_type='expense'.")
     db.execute(
-        "INSERT INTO transactions (type, category, amount, description, package_name) VALUES (?, ?, ?, ?, ?)",
-        ("expense", g("category"), int(g("amount")), g("description"), g("package_name") or None),
+        "INSERT INTO transactions (type, category, amount, description, package_name, category_id) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        ("expense", g("category"), int(g("amount")), g("description"),
+         g("package_name") or None, category_id),
     )
     log_action(user, "EXPENSE", f"Catat pengeluaran Rp {g('amount')} ({g('category')})")
     notify("data_updated", "transaction")
     return {"message": "Pengeluaran operasional berhasil dicatat."}
+
+
+@router.post("/api/transactions/income")
+async def transactions_income(body: dict = Depends(json_body), user=Depends(authenticate_token)):
+    """Phase F2: Catat pemasukan NON-jamaah (bunga bank, komisi vendor, dsb)
+    dgn kategori. Pemasukan jamaah tetap via jamaah_payment_submissions flow."""
+    require_role(user, "admin", "finance")
+    g = body.get
+    amount = int(g("amount") or 0)
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Jumlah harus > 0.")
+    category_id = g("category_id") or None
+    if category_id:
+        cat = db.query_one(
+            "SELECT id, group_type FROM expense_categories WHERE id = ? AND is_active = 1",
+            (category_id,))
+        if not cat:
+            raise HTTPException(status_code=400,
+                                detail="category_id tidak valid atau nonaktif.")
+        if cat["group_type"] != "income":
+            raise HTTPException(status_code=400,
+                                detail="category_id harus group_type='income'.")
+    db.execute(
+        "INSERT INTO transactions (type, category, amount, description, category_id) "
+        "VALUES (?, ?, ?, ?, ?)",
+        ("income", g("category") or "other", amount,
+         g("description") or "", category_id),
+    )
+    log_action(user, "INCOME", f"Catat pemasukan Rp {amount}")
+    notify("data_updated", "transaction")
+    return {"message": "Pemasukan berhasil dicatat."}
 
 
 @router.post("/api/payroll")
