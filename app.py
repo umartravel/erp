@@ -164,6 +164,7 @@ from routes.wa import router as wa_router  # noqa: E402
 from routes.dashboard import router as dashboard_router  # noqa: E402
 from routes.jamaah_read import router as jamaah_read_router  # noqa: E402
 from routes.jamaah_write import router as jamaah_write_router  # noqa: E402
+from routes.daily_reports import router as daily_reports_router  # noqa: E402
 from routes.static_pages import router as static_pages_router  # noqa: E402
 from routes.boq import router as boq_router  # noqa: E402
 from routes.exports import router as exports_router  # noqa: E402 -- Phase 8a
@@ -207,6 +208,7 @@ app.include_router(reminders_router)  # Phase 9a: /api/reminders/departures*
 app.include_router(audit_trail_router)  # Phase 10a: /api/audit/{entity}/{id}
 app.include_router(jamaah_payments_router)  # Phase 13a: /api/{jamaah|payment}-submissions
 app.include_router(finance_categories_router)  # Phase F2: /api/finance/categories + summary
+app.include_router(daily_reports_router)  # Phase DT-1a: /api/daily-reports/*
 
 
 # Static files (public/) dipasang TERAKHIR agar route /api, /panduan, /uploads menang.
