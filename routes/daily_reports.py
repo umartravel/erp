@@ -26,6 +26,7 @@ from deps import (
     log_action,
     notify,
 )
+from deps.notifications import notify_role, notify_user
 
 router = APIRouter(tags=["daily-reports"])
 
@@ -374,3 +375,112 @@ async def daily_reports_delete_item(iid: int, user=Depends(authenticate_token)):
     log_action(user, "DELETE_DAILY_TASK_ITEM", f"Task #{iid}")
     notify("data_updated", "daily_report")
     return {"message": "Task item berhasil dihapus."}
+
+
+# ===========================================================================
+# ENDPOINTS - SUBMIT + FEEDBACK (Phase DT-1b)
+# ===========================================================================
+@router.post("/api/daily-reports/{rid}/submit")
+async def daily_reports_submit(rid: int, user=Depends(authenticate_token)):
+    """Lock laporan (Draft -> Submitted). Owner-only. Butuh minimal 1 item
+    ATAU summary_text ke-isi supaya submit tidak "kosong"."""
+    report = _get_report_or_404(rid)
+    _assert_report_access(report, user, edit=True)
+
+    if report["status"] != "Draft":
+        raise HTTPException(
+            status_code=400,
+            detail="Laporan sudah di-submit sebelumnya.")
+
+    summary = (report["summary_text"] or "").strip()
+    item_count = db.query_one(
+        "SELECT COUNT(*) AS c FROM daily_task_items WHERE report_id = ?", (rid,))["c"]
+    if not summary and item_count == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Isi minimal ringkasan atau 1 task sebelum submit.")
+
+    db.execute(
+        "UPDATE daily_reports SET status = 'Submitted', "
+        "submitted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP "
+        "WHERE id = ?", (rid,))
+    log_action(user, "SUBMIT_DAILY_REPORT", f"Laporan #{rid} ({report['report_date']})")
+    notify("data_updated", "daily_report")
+
+    # Notif ke management + admin -- ada laporan baru siap direview.
+    label = user.get("name") or user.get("username") or "Seseorang"
+    title = f"Laporan harian dari {label} ({user.get('role', '-')})"
+    body_note = f"Tanggal {report['report_date']}. Buka Laporan Tim untuk review."
+    link = f"#page-daily-team?date={report['report_date']}"
+    notify_role("management", "daily_report_submitted", title, body=body_note, link=link)
+    notify_role("admin", "daily_report_submitted", title, body=body_note, link=link)
+
+    return {"message": "Laporan berhasil di-submit.",
+            "id": rid, "status": "Submitted"}
+
+
+@router.post("/api/daily-reports/{rid}/feedback")
+async def daily_reports_feedback(rid: int, body: dict = Depends(json_body),
+                                 user=Depends(authenticate_token)):
+    """Post comment ke thread feedback. 2 arah:
+    - Mgmt/admin komen -> notify owner.
+    - Owner (karyawan) reply -> notify management + admin.
+    Feedback boleh di Draft maupun Submitted (biar mgmt bisa nudge Draft).
+    """
+    report = _get_report_or_404(rid)
+
+    is_owner = report["user_id"] == user["id"]
+    is_mgmt = _is_privileged(user)
+    if not (is_owner or is_mgmt):
+        raise HTTPException(status_code=403, detail="Akses ditolak.")
+
+    g = body.get if body else (lambda k, d=None: d)
+    text = (g("comment_text") or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Isi komentar tidak boleh kosong.")
+    if len(text) > 2000:
+        raise HTTPException(status_code=400, detail="Komentar maksimal 2000 karakter.")
+
+    is_from_mgmt = 1 if is_mgmt and not is_owner else 0
+    # Edge case: user yg BOTH owner AND mgmt (admin yg lapor sendiri).
+    # Prefer "owner" perspective supaya tidak kirim notif ke diri sendiri.
+    if is_owner and is_mgmt:
+        is_from_mgmt = 0
+
+    last_id, _ = db.execute(
+        "INSERT INTO daily_report_feedback "
+        "(report_id, user_id, comment_text, is_from_management) "
+        "VALUES (?, ?, ?, ?)",
+        (rid, user["id"], text, is_from_mgmt))
+    log_action(user, "FEEDBACK_DAILY_REPORT", f"Report #{rid}")
+    notify("data_updated", "daily_report")
+
+    author = user.get("name") or user.get("username") or "Seseorang"
+    link = (f"#page-daily-team?rid={rid}"
+            if is_from_mgmt else f"#page-daily-mine?rid={rid}")
+    snippet = (text[:80] + "...") if len(text) > 80 else text
+
+    if is_from_mgmt:
+        # Mgmt komen -> notify owner karyawan
+        notify_user(
+            report["user_id"], "daily_report_feedback",
+            f"Feedback dari {author} pada laporan {report['report_date']}",
+            body=snippet, link=f"#page-daily-mine?rid={rid}")
+    else:
+        # Owner reply -> notify mgmt + admin (broadcast)
+        notify_role(
+            "management", "daily_report_feedback",
+            f"Balasan {author} di laporan {report['report_date']}",
+            body=snippet, link=link)
+        notify_role(
+            "admin", "daily_report_feedback",
+            f"Balasan {author} di laporan {report['report_date']}",
+            body=snippet, link=link)
+
+    # Return the new comment row (utk render langsung di UI thread)
+    return dict(db.query_one(
+        "SELECT f.id, f.report_id, f.user_id, f.comment_text, "
+        "f.is_from_management, f.created_at, u.name AS user_name "
+        "FROM daily_report_feedback f "
+        "LEFT JOIN users u ON u.id = f.user_id "
+        "WHERE f.id = ?", (last_id,)))

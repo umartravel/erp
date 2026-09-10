@@ -11,7 +11,27 @@ Cover:
 """
 import datetime
 
+import db
+
 from tests.conftest import bearer
+
+
+def _wipe_today_report(user_id):
+    """Purge today report + items + feedback utk user tsb -- gunanya biar test
+    yg butuh 'meja bersih' bebas dari state test lain (client scope=session)."""
+    today = datetime.date.today().isoformat()
+    rows = db.query_all(
+        "SELECT id FROM daily_reports WHERE user_id = ? AND report_date = ?",
+        (user_id, today))
+    for r in rows:
+        db.execute("DELETE FROM daily_task_items WHERE report_id = ?", (r["id"],))
+        db.execute("DELETE FROM daily_report_feedback WHERE report_id = ?", (r["id"],))
+        db.execute("DELETE FROM daily_reports WHERE id = ?", (r["id"],))
+
+
+def _user_id_by_username(username):
+    row = db.query_one("SELECT id FROM users WHERE username = ?", (username,))
+    return row["id"] if row else None
 
 
 # ---------------------------------------------------------------------------
@@ -265,3 +285,201 @@ def test_admin_can_read_any_report(client, sales_token, admin_token):
 def test_unauth_denied(client):
     r = client.get("/api/daily-reports/mine")
     assert r.status_code in (401, 403)
+
+
+# ---------------------------------------------------------------------------
+# Phase DT-1b: Submit endpoint
+# ---------------------------------------------------------------------------
+def _has_notif_with_kind(client, token, kind_prefix):
+    """Helper: cek user login punya minimal 1 notif dgn kind starting kind_prefix."""
+    r = client.get("/api/notifications", headers=bearer(token))
+    if r.status_code != 200:
+        return False
+    return any(str(n.get("kind", "")).startswith(kind_prefix) for n in r.json())
+
+
+def test_submit_empty_report_rejected(client, ops_token):
+    """Report tanpa summary & tanpa item -> submit ditolak.
+    Wipe state ops1 dulu -- session-scoped fixture, prior tests bisa isi."""
+    _wipe_today_report(_user_id_by_username("ops1"))
+    rep = _create_today(client, ops_token)  # no summary
+    # Kadang _create_today balik row lama (idempotent); tapi wipe di atas
+    # ensured tidak ada row -> ini baru create empty. Force clear summary:
+    db.execute(
+        "UPDATE daily_reports SET summary_text = '' WHERE id = ?", (rep["id"],))
+    r = client.post(f"/api/daily-reports/{rep['id']}/submit",
+                    headers=bearer(ops_token))
+    assert r.status_code == 400
+
+
+def test_submit_with_summary_only_ok(client, sales_token):
+    rep = _create_today(client, sales_token, summary="Sudah follow-up 3 jamaah.")
+    r = client.post(f"/api/daily-reports/{rep['id']}/submit",
+                    headers=bearer(sales_token))
+    assert r.status_code == 200
+    data = r.json()
+    assert data["status"] == "Submitted"
+
+    detail = client.get(f"/api/daily-reports/{rep['id']}",
+                        headers=bearer(sales_token)).json()
+    assert detail["status"] == "Submitted"
+    assert detail["submitted_at"] is not None
+
+
+def test_submit_with_items_only_ok(client, finance_token):
+    """Boleh submit tanpa summary asalkan ada task item."""
+    rep = _create_today(client, finance_token)
+    client.post(f"/api/daily-reports/{rep['id']}/items",
+                json={"title": "Reconcile BCA"},
+                headers=bearer(finance_token))
+    r = client.post(f"/api/daily-reports/{rep['id']}/submit",
+                    headers=bearer(finance_token))
+    assert r.status_code == 200
+
+
+def test_submit_twice_rejected(client, sales_token):
+    rep = _create_today(client, sales_token, summary="draft")
+    client.post(f"/api/daily-reports/{rep['id']}/submit",
+                headers=bearer(sales_token))
+    r = client.post(f"/api/daily-reports/{rep['id']}/submit",
+                    headers=bearer(sales_token))
+    assert r.status_code == 400
+
+
+def test_submit_locks_edit(client, sales_token):
+    """After submit, PUT summary + POST items harus 400 (report tidak editable)."""
+    rep = _create_today(client, sales_token, summary="draft")
+    client.post(f"/api/daily-reports/{rep['id']}/submit",
+                headers=bearer(sales_token))
+
+    r = client.put(f"/api/daily-reports/{rep['id']}",
+                   json={"summary_text": "coba edit"},
+                   headers=bearer(sales_token))
+    assert r.status_code == 400
+
+    r2 = client.post(f"/api/daily-reports/{rep['id']}/items",
+                     json={"title": "coba tambah"},
+                     headers=bearer(sales_token))
+    assert r2.status_code == 400
+
+
+def test_non_owner_cannot_submit(client, sales_token, finance_token):
+    sales_rep = _create_today(client, sales_token, summary="draft")
+    r = client.post(f"/api/daily-reports/{sales_rep['id']}/submit",
+                    headers=bearer(finance_token))
+    assert r.status_code == 403
+
+
+def test_submit_notifies_management(client, sales_token, management_token):
+    """notify_role('management', 'daily_report_submitted', ...) harus jalan.
+    Wipe dulu supaya submit BARU jalan (idempotent create bisa return row
+    yg sudah Submitted dari test lain -> submit-nya tolak jadi tidak ada notif)."""
+    _wipe_today_report(_user_id_by_username("sales1"))
+    rep = _create_today(client, sales_token, summary="notif test")
+    r = client.post(f"/api/daily-reports/{rep['id']}/submit",
+                    headers=bearer(sales_token))
+    assert r.status_code == 200
+
+    assert _has_notif_with_kind(client, management_token, "daily_report_submitted"), \
+        "Management harus dapat notif daily_report_submitted setelah sales submit."
+
+
+# ---------------------------------------------------------------------------
+# Phase DT-1b: Feedback endpoint (2-way thread)
+# ---------------------------------------------------------------------------
+def test_management_can_comment_on_submitted_report(client, sales_token,
+                                                    management_token):
+    rep = _create_today(client, sales_token, summary="isi")
+    client.post(f"/api/daily-reports/{rep['id']}/submit",
+                headers=bearer(sales_token))
+
+    r = client.post(f"/api/daily-reports/{rep['id']}/feedback",
+                    json={"comment_text": "Bagus, lanjutkan!"},
+                    headers=bearer(management_token))
+    assert r.status_code == 200
+    comment = r.json()
+    assert comment["comment_text"] == "Bagus, lanjutkan!"
+    assert comment["is_from_management"] == 1
+
+
+def test_owner_can_reply_after_mgmt_comment(client, sales_token, management_token):
+    rep = _create_today(client, sales_token, summary="isi")
+    client.post(f"/api/daily-reports/{rep['id']}/submit",
+                headers=bearer(sales_token))
+    client.post(f"/api/daily-reports/{rep['id']}/feedback",
+                json={"comment_text": "gimana progress?"},
+                headers=bearer(management_token))
+
+    r = client.post(f"/api/daily-reports/{rep['id']}/feedback",
+                    json={"comment_text": "sudah on-track pak"},
+                    headers=bearer(sales_token))
+    assert r.status_code == 200
+    comment = r.json()
+    assert comment["is_from_management"] == 0
+    assert comment["comment_text"] == "sudah on-track pak"
+
+
+def test_feedback_thread_ordered_ascending(client, sales_token, management_token):
+    """Wipe state utk cek urutan dari nol -- test lain bisa sudah kasih
+    feedback ke report sales1 hari ini."""
+    _wipe_today_report(_user_id_by_username("sales1"))
+    rep = _create_today(client, sales_token, summary="isi")
+    client.post(f"/api/daily-reports/{rep['id']}/submit",
+                headers=bearer(sales_token))
+    client.post(f"/api/daily-reports/{rep['id']}/feedback",
+                json={"comment_text": "MGMT pertama"},
+                headers=bearer(management_token))
+    client.post(f"/api/daily-reports/{rep['id']}/feedback",
+                json={"comment_text": "SALES kedua"},
+                headers=bearer(sales_token))
+    client.post(f"/api/daily-reports/{rep['id']}/feedback",
+                json={"comment_text": "MGMT ketiga"},
+                headers=bearer(management_token))
+
+    detail = client.get(f"/api/daily-reports/{rep['id']}",
+                        headers=bearer(sales_token)).json()
+    texts = [f["comment_text"] for f in detail["feedback"]]
+    assert texts == ["MGMT pertama", "SALES kedua", "MGMT ketiga"]
+
+
+def test_feedback_rejects_empty(client, sales_token, management_token):
+    rep = _create_today(client, sales_token, summary="isi")
+    client.post(f"/api/daily-reports/{rep['id']}/submit",
+                headers=bearer(sales_token))
+    r = client.post(f"/api/daily-reports/{rep['id']}/feedback",
+                    json={"comment_text": "   "},
+                    headers=bearer(management_token))
+    assert r.status_code == 400
+
+
+def test_random_role_cannot_comment(client, sales_token, finance_token,
+                                    management_token):
+    """finance1 bukan mgmt/admin dan bukan owner -> 403."""
+    rep = _create_today(client, sales_token, summary="isi")
+    client.post(f"/api/daily-reports/{rep['id']}/submit",
+                headers=bearer(sales_token))
+    r = client.post(f"/api/daily-reports/{rep['id']}/feedback",
+                    json={"comment_text": "outsider"},
+                    headers=bearer(finance_token))
+    assert r.status_code == 403
+
+
+def test_feedback_notifies_owner_on_mgmt_comment(client, sales_token,
+                                                 management_token):
+    rep = _create_today(client, sales_token, summary="isi")
+    client.post(f"/api/daily-reports/{rep['id']}/submit",
+                headers=bearer(sales_token))
+    client.post(f"/api/daily-reports/{rep['id']}/feedback",
+                json={"comment_text": "review please"},
+                headers=bearer(management_token))
+    assert _has_notif_with_kind(client, sales_token, "daily_report_feedback"), \
+        "Sales owner harus dapat notif setelah mgmt komen."
+
+
+def test_feedback_on_draft_also_allowed(client, sales_token, management_token):
+    """Mgmt boleh komen sebelum karyawan submit (nudge)."""
+    rep = _create_today(client, sales_token, summary="masih draft")
+    r = client.post(f"/api/daily-reports/{rep['id']}/feedback",
+                    json={"comment_text": "sudah isi belum?"},
+                    headers=bearer(management_token))
+    assert r.status_code == 200
