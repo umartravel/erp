@@ -41,7 +41,29 @@ async def procurement_list(user=Depends(authenticate_token)):
     # kontrak baru (procurement_create) tetap dibatasi admin/finance karena menyangkut
     # deposit yang (setelah disetujui) memotong Buku Kas.
     require_role(user, "admin", "finance", "management", "ops")
-    return db.query_all("SELECT * FROM procurement ORDER BY created_at DESC", ())
+    # Phase F1b-3: join expense_categories utk kirim category_name ke UI.
+    return db.query_all(
+        "SELECT p.*, c.name AS category_name "
+        "FROM procurement p "
+        "LEFT JOIN expense_categories c ON c.id = p.category_id "
+        "ORDER BY p.created_at DESC", ()
+    )
+
+
+def _validate_procurement_category(category_id):
+    """Phase F1b-3: pastikan category_id (kalau diisi) aktif + group_type='expense'."""
+    if not category_id:
+        return None
+    cat = db.query_one(
+        "SELECT id, group_type FROM expense_categories WHERE id = ? AND is_active = 1",
+        (category_id,))
+    if not cat:
+        raise HTTPException(status_code=400,
+                            detail="category_id tidak valid atau nonaktif.")
+    if cat["group_type"] != "expense":
+        raise HTTPException(status_code=400,
+                            detail="category_id harus group_type='expense'.")
+    return int(category_id)
 
 
 @router.post("/api/procurement")
@@ -56,10 +78,13 @@ async def procurement_create(body: dict = Depends(json_body), user=Depends(authe
         raise HTTPException(status_code=400, detail="Nama vendor wajib diisi.")
     total_stock = parse_int(g("total_stock"), "total kuota/blok")
     total_price = parse_int(g("total_price"), "total nilai kontrak")
+    category_id = _validate_procurement_category(g("category_id"))
     last_id, _ = db.execute(
         "INSERT INTO procurement (vendor_name, service_type, total_stock, total_price, "
-        "deposit_paid, package_name, status, created_by) VALUES (?, ?, ?, ?, 0, ?, 'Pending', ?)",
-        (vendor_name, g("service_type"), total_stock, total_price, g("package_name") or None, user["name"]),
+        "deposit_paid, package_name, status, created_by, category_id) "
+        "VALUES (?, ?, ?, ?, 0, ?, 'Pending', ?, ?)",
+        (vendor_name, g("service_type"), total_stock, total_price,
+         g("package_name") or None, user["name"], category_id),
     )
     log_action(user, "CREATE_PROCUREMENT", f"Mengajukan kontrak vendor: {vendor_name} ({g('service_type')})")
     notify("data_updated", "procurement")
@@ -91,10 +116,17 @@ async def procurement_update(pid: int, body: dict = Depends(json_body), user=Dep
             detail=f"Total nilai kontrak tidak boleh lebih kecil dari total yang sudah dibayar "
             f"(Rp {row['deposit_paid']:,}).".replace(",", "."),
         )
+    # Phase F1b-3: category_id opsional. Kalau body kirim key 'category_id' (bahkan null),
+    # treat sebagai perubahan; kalau tidak ada key, keep existing.
+    if "category_id" in body:
+        category_id = _validate_procurement_category(g("category_id"))
+    else:
+        category_id = row["category_id"] if "category_id" in row.keys() else None
     db.execute(
         "UPDATE procurement SET vendor_name = ?, service_type = ?, total_stock = ?, "
-        "total_price = ?, package_name = ? WHERE id = ?",
-        (vendor_name, g("service_type"), total_stock, total_price, g("package_name") or None, pid),
+        "total_price = ?, package_name = ?, category_id = ? WHERE id = ?",
+        (vendor_name, g("service_type"), total_stock, total_price,
+         g("package_name") or None, category_id, pid),
     )
     log_action(user, "UPDATE_PROCUREMENT", f"Mengubah data kontrak vendor: {row['vendor_name']} -> {vendor_name}")
     notify("data_updated", "procurement")
@@ -192,12 +224,15 @@ async def procurement_payment(pid: int, body: dict = Depends(json_body), user=De
             status_code=400, detail=f"Nominal melebihi sisa tagihan (Rp {sisa:,}).".replace(",", "."),
         )
     db.execute("UPDATE procurement SET deposit_paid = deposit_paid + ? WHERE id = ?", (amount, pid))
+    # Phase F1b-3: propagate procurement.category_id ke transactions.category_id.
+    # Kalau tidak diisi saat create, tetap NULL (breakdown akan hitung 'Tanpa Kategori').
+    category_id_col = row["category_id"] if "category_id" in row.keys() else None
     db.execute(
-        "INSERT INTO transactions (type, category, amount, description, reference_id, package_name) "
-        "VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO transactions (type, category, amount, description, reference_id, package_name, category_id) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
         ("expense", "procurement_payment", amount,
          f"Pembayaran Vendor {row['service_type']}: {row['vendor_name']} (Blok {row['total_stock']} pax)",
-         pid, row["package_name"]),
+         pid, row["package_name"], category_id_col),
     )
     log_action(
         user, "PAY_PROCUREMENT",

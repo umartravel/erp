@@ -145,13 +145,19 @@ async def expense_projects_deactivate(pid: int, user=Depends(authenticate_token)
 async def expense_reports_list(user=Depends(authenticate_token)):
     if user["role"] in ("admin", "management", "finance"):
         rows = db.query_all(
-            "SELECT r.*, p.name as project_name FROM expense_reports r "
-            "LEFT JOIN expense_projects p ON r.project_id = p.id ORDER BY r.created_at DESC", ()
+            "SELECT r.*, p.name as project_name, c.name as category_name "
+            "FROM expense_reports r "
+            "LEFT JOIN expense_projects p ON r.project_id = p.id "
+            "LEFT JOIN expense_categories c ON c.id = r.category_id "
+            "ORDER BY r.created_at DESC", ()
         )
     else:
         rows = db.query_all(
-            "SELECT r.*, p.name as project_name FROM expense_reports r "
-            "LEFT JOIN expense_projects p ON r.project_id = p.id WHERE r.user_id = ? ORDER BY r.created_at DESC",
+            "SELECT r.*, p.name as project_name, c.name as category_name "
+            "FROM expense_reports r "
+            "LEFT JOIN expense_projects p ON r.project_id = p.id "
+            "LEFT JOIN expense_categories c ON c.id = r.category_id "
+            "WHERE r.user_id = ? ORDER BY r.created_at DESC",
             (user["id"],),
         )
     result = []
@@ -162,6 +168,22 @@ async def expense_reports_list(user=Depends(authenticate_token)):
         r.update({"amount_net": net, "amount_tax": tax, "amount_gross": gross, "line_count": len(lines)})
         result.append(r)
     return result
+
+
+def _validate_expense_category(category_id):
+    """Phase F1b-2: pastikan category_id (kalau diisi) aktif + group_type='expense'."""
+    if not category_id:
+        return None
+    cat = db.query_one(
+        "SELECT id, group_type FROM expense_categories WHERE id = ? AND is_active = 1",
+        (category_id,))
+    if not cat:
+        raise HTTPException(status_code=400,
+                            detail="category_id tidak valid atau nonaktif.")
+    if cat["group_type"] != "expense":
+        raise HTTPException(status_code=400,
+                            detail="category_id harus group_type='expense'.")
+    return int(category_id)
 
 
 @router.post("/api/expense-reports")
@@ -176,14 +198,17 @@ async def expense_reports_create(body: dict = Depends(json_body), user=Depends(a
         raise HTTPException(status_code=404, detail="Project tidak ditemukan.")
     approver_id = g("approver_id")
     approver = db.query_one("SELECT name FROM users WHERE id = ?", (approver_id,)) if approver_id else None
+    category_id = _validate_expense_category(g("category_id"))
 
     ref = _generate_expense_ref()
     last_id, _ = db.execute(
         "INSERT INTO expense_reports (ref, project_id, user_id, user_name, period_from, period_to, "
-        "approver_id, approver_name, note, note_visibility) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "approver_id, approver_name, note, note_visibility, category_id) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (ref, project_id, user["id"], user["name"], g("period_from"), g("period_to") or g("period_from"),
          approver_id, approver["name"] if approver else None, g("note") or "",
-         g("note_visibility") if g("note_visibility") in ("public", "private") else "public"),
+         g("note_visibility") if g("note_visibility") in ("public", "private") else "public",
+         category_id),
     )
     log_action(user, "CREATE_EXPENSE_REPORT", f"Membuat Expense Report {ref} untuk project {project['name']}")
     notify("data_updated", "expense_report")
@@ -193,8 +218,11 @@ async def expense_reports_create(body: dict = Depends(json_body), user=Depends(a
 @router.get("/api/expense-reports/{rid}")
 async def expense_reports_get(rid: int, user=Depends(authenticate_token)):
     r = db.query_one(
-        "SELECT r.*, p.name as project_name FROM expense_reports r "
-        "LEFT JOIN expense_projects p ON r.project_id = p.id WHERE r.id = ?", (rid,)
+        "SELECT r.*, p.name as project_name, c.name as category_name "
+        "FROM expense_reports r "
+        "LEFT JOIN expense_projects p ON r.project_id = p.id "
+        "LEFT JOIN expense_categories c ON c.id = r.category_id "
+        "WHERE r.id = ?", (rid,)
     )
     if not r:
         raise HTTPException(status_code=404, detail="Expense Report tidak ditemukan")
@@ -221,13 +249,20 @@ async def expense_reports_update(rid: int, body: dict = Depends(json_body), user
     g = body.get
     approver_id = g("approver_id")
     approver = db.query_one("SELECT name FROM users WHERE id = ?", (approver_id,)) if approver_id else None
+    # Phase F1b-2: category_id opsional. Kalau body kirim key 'category_id' (bahkan null)
+    # kita treat sebagai perubahan; kalau tidak kirim sama sekali, keep existing.
+    if "category_id" in body:
+        category_id = _validate_expense_category(g("category_id"))
+    else:
+        category_id = r["category_id"] if "category_id" in r.keys() else None
     db.execute(
         "UPDATE expense_reports SET period_from = ?, period_to = ?, approver_id = ?, approver_name = ?, "
-        "note = ?, note_visibility = ? WHERE id = ?",
+        "note = ?, note_visibility = ?, category_id = ? WHERE id = ?",
         (g("period_from") or r["period_from"], g("period_to") or r["period_to"],
          approver_id or r["approver_id"], approver["name"] if approver else r["approver_name"],
          g("note") if g("note") is not None else r["note"],
-         g("note_visibility") if g("note_visibility") in ("public", "private") else r["note_visibility"], rid),
+         g("note_visibility") if g("note_visibility") in ("public", "private") else r["note_visibility"],
+         category_id, rid),
     )
     log_action(user, "UPDATE_EXPENSE_REPORT", f"Mengubah header Expense Report {r['ref']}")
     notify("data_updated", "expense_report")
@@ -386,9 +421,15 @@ async def expense_reports_pay(rid: int, user=Depends(authenticate_token)):
     lines = db.query_all("SELECT * FROM expense_lines WHERE report_id = ?", (rid,))
     _, _, gross = _report_totals(lines)
 
+    # Phase F1b-2: propagate expense_reports.category_id ke transactions.category_id.
+    # Kalau user tidak pilih kategori saat submit, tetap NULL (breakdown per-kategori
+    # nanti akan hitung ini sebagai 'Tanpa Kategori').
+    category_id_col = r["category_id"] if "category_id" in r.keys() else None
     last_id, _ = db.execute(
-        "INSERT INTO transactions (type, category, amount, description, reference_id) VALUES (?, ?, ?, ?, ?)",
-        ("expense", "expense_report", gross, f"Expense Report {r['ref']}: {r['user_name']}", rid),
+        "INSERT INTO transactions (type, category, amount, description, reference_id, category_id) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        ("expense", "expense_report", gross,
+         f"Expense Report {r['ref']}: {r['user_name']}", rid, category_id_col),
     )
     db.execute(
         "UPDATE expense_reports SET status = 'Paid', paid_by = ?, paid_at = CURRENT_TIMESTAMP, "
@@ -409,11 +450,13 @@ async def expense_reports_clone(rid: int, user=Depends(authenticate_token)):
     _assert_report_access(r, user, owner_only=True)
 
     ref = _generate_expense_ref()
+    src_cat = r["category_id"] if "category_id" in r.keys() else None
     new_id, _ = db.execute(
         "INSERT INTO expense_reports (ref, project_id, user_id, user_name, period_from, period_to, "
-        "approver_id, approver_name, note, note_visibility) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "approver_id, approver_name, note, note_visibility, category_id) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (ref, r["project_id"], r["user_id"], r["user_name"], r["period_from"], r["period_to"],
-         r["approver_id"], r["approver_name"], r["note"], r["note_visibility"]),
+         r["approver_id"], r["approver_name"], r["note"], r["note_visibility"], src_cat),
     )
     lines = db.query_all("SELECT * FROM expense_lines WHERE report_id = ?", (rid,))
     for ln in lines:

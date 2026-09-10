@@ -4260,6 +4260,9 @@
                 <div><label class="text-xs font-medium">Project <span class="text-red-500">*</span></label>
                     <select id="exp-new-project" class="w-full border p-2 rounded text-sm bg-gray-50" required><option value="">-- Pilih Project --</option></select>
                 </div>
+                <div><label class="text-xs font-medium">Kategori Pengeluaran <span class="text-gray-400 text-[10px]">(opsional, untuk Analisis Keuangan)</span></label>
+                    <select id="exp-new-category" class="w-full border p-2 rounded text-sm bg-gray-50"><option value="">-- Tanpa Kategori --</option></select>
+                </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div><label class="text-xs font-medium">Tanggal Mulai</label><input type="date" id="exp-new-from" class="w-full border p-2 rounded text-sm bg-gray-50" required></div>
                     <div><label class="text-xs font-medium">Tanggal Selesai</label><input type="date" id="exp-new-to" class="w-full border p-2 rounded text-sm bg-gray-50" required></div>
@@ -4392,6 +4395,7 @@
                 <div><label class="text-xs font-medium">Nama Vendor/Maskapai</label><input type="text" id="proc-vendor" class="w-full border p-2 rounded text-sm bg-gray-50" placeholder="Cth: Saudia Airlines" required></div>
                 <div><label class="text-xs font-medium">Jenis Layanan</label><select id="proc-type" class="w-full border p-2 rounded text-sm bg-gray-50"><option value="Tiket Pesawat">Tiket Pesawat</option><option value="Hotel Mekkah/Madinah">Hotel Mekkah/Madinah</option><option value="Provider Visa">Provider Visa</option></select></div>
                 <div><label class="text-xs font-medium">Paket / Keberangkatan Terkait (Opsional)</label><select id="proc-package" class="w-full border p-2 rounded text-sm bg-gray-50"><option value="">-- Tidak spesifik ke satu paket --</option></select></div>
+                <div><label class="text-xs font-medium">Kategori Pengeluaran <span class="text-gray-400 text-[10px]">(opsional, untuk Analisis Keuangan)</span></label><select id="proc-category" class="w-full border p-2 rounded text-sm bg-gray-50"><option value="">-- Tanpa Kategori --</option></select></div>
                 <div><label class="text-xs font-medium">Total Kuota / Blok (Pax)</label><input type="number" id="proc-stock" class="w-full border p-2 rounded text-sm bg-gray-50" required></div>
                 <div><label class="text-xs font-medium">Total Nilai Kontrak (Rp)</label><input type="text" id="proc-price" class="w-full border p-2 rounded text-sm bg-gray-50" required oninput="formatCurrencyInput(this)"></div>
                 <p id="proc-modal-note" class="text-xs text-gray-400 leading-relaxed">Kontrak akan masuk sebagai <b>Pending</b> menunggu persetujuan Admin/Management. Pembayaran (termasuk deposit awal) dicatat terpisah setelah kontrak Aktif &mdash; belum memotong Kas di tahap ini.</p>
@@ -6878,6 +6882,29 @@
             } catch(e) {}
         }
 
+        // Phase F1b-2: dropdown kategori pengeluaran utk expense report modal.
+        // Endpoint /api/finance/categories return {income: [...], expense: [...]}
+        // dgn nested subcategories -- kita flatten ke option group parent->sub.
+        async function loadExpenseCategories() {
+            const sel = document.getElementById('exp-new-category');
+            if (!sel) return;
+            try {
+                const res = await authFetch('/finance/categories');
+                const data = await res.json();
+                const opts = ['<option value="">-- Tanpa Kategori --</option>'];
+                (data.expense || []).forEach(parent => {
+                    const subs = parent.subcategories || [];
+                    if (subs.length === 0) return;
+                    opts.push(`<optgroup label="${parent.name}">`);
+                    subs.forEach(s => opts.push(`<option value="${s.id}">${s.name}</option>`));
+                    opts.push('</optgroup>');
+                });
+                sel.innerHTML = opts.join('');
+            } catch(e) {
+                sel.innerHTML = '<option value="">-- Tanpa Kategori --</option>';
+            }
+        }
+
         async function openNewExpenseReportModal() {
             expenseEditMode = false;
             currentExpenseReportId = null;
@@ -6891,6 +6918,8 @@
             document.getElementById('btn-expense-new-submit').innerText = 'Create Expense Report';
             await fetchExpenseProjects();
             await loadExpenseApprovers();
+            await loadExpenseCategories();
+            document.getElementById('exp-new-category').value = '';
             openModal('modal-expense-new');
         }
 
@@ -6901,8 +6930,10 @@
             currentExpenseReportId = report.id;
             await fetchExpenseProjects();
             await loadExpenseApprovers();
+            await loadExpenseCategories();
             document.getElementById('exp-new-project').value = report.project_id;
             document.getElementById('exp-new-project').disabled = true;
+            document.getElementById('exp-new-category').value = report.category_id || '';
             document.getElementById('exp-new-from').value = report.period_from || '';
             document.getElementById('exp-new-to').value = report.period_to || '';
             document.getElementById('exp-new-employee').value = report.user_name;
@@ -6918,6 +6949,7 @@
 
         document.getElementById('form-expense-new')?.addEventListener('submit', async e => {
             e.preventDefault();
+            const catRaw = document.getElementById('exp-new-category')?.value || '';
             const payload = {
                 project_id: document.getElementById('exp-new-project').value,
                 period_from: document.getElementById('exp-new-from').value,
@@ -6925,6 +6957,7 @@
                 approver_id: document.getElementById('exp-new-approver').value,
                 note: document.getElementById('exp-new-note').value,
                 note_visibility: document.querySelector('input[name="exp-new-visibility"]:checked').value,
+                category_id: catRaw ? parseInt(catRaw, 10) : null,
             };
             try {
                 if (expenseEditMode && currentExpenseReportId) {
@@ -7134,6 +7167,7 @@
             document.getElementById('exd-info').innerHTML =
                 infoRow('User', report.user_name) +
                 infoRow('Project', report.project_name) +
+                infoRow('Kategori', report.category_name || '<span class="text-gray-400 italic">Tanpa kategori</span>') +
                 infoRow('Periode', `${report.period_from || '-'} s/d ${report.period_to || '-'}`) +
                 infoRow('User responsible for approval', report.approver_name) +
                 infoRow('Validation date', report.validation_date ? new Date(report.validation_date).toLocaleString('id-ID') : '-') +
@@ -10299,15 +10333,38 @@
             } catch(e) {}
         }
 
-        function openAddProcurementModal() {
+        // Phase F1b-3: dropdown kategori expense utk modal Procurement.
+        async function loadProcurementCategories(selectedId = '') {
+            const sel = document.getElementById('proc-category');
+            if (!sel) return;
+            try {
+                const res = await authFetch('/finance/categories');
+                const data = await res.json();
+                const opts = ['<option value="">-- Tanpa Kategori --</option>'];
+                (data.expense || []).forEach(parent => {
+                    const subs = parent.subcategories || [];
+                    if (subs.length === 0) return;
+                    opts.push(`<optgroup label="${parent.name}">`);
+                    subs.forEach(s => opts.push(`<option value="${s.id}">${s.name}</option>`));
+                    opts.push('</optgroup>');
+                });
+                sel.innerHTML = opts.join('');
+                sel.value = selectedId || '';
+            } catch(e) {
+                sel.innerHTML = '<option value="">-- Tanpa Kategori --</option>';
+            }
+        }
+
+        async function openAddProcurementModal() {
             document.getElementById('proc-edit-id').value = '';
             document.getElementById('modal-procurement-title').innerText = 'Ajukan Kontrak Vendor';
             document.getElementById('modal-procurement-submit-btn').innerText = 'Ajukan Kontrak';
             document.getElementById('form-add-procurement').reset();
             document.getElementById('proc-modal-note').classList.remove('hidden');
+            await loadProcurementCategories('');
             openModal('modal-procurement');
         }
-        function openEditProcurementModal(id) {
+        async function openEditProcurementModal(id) {
             const p = procurementCache.find(x => x.id === id);
             if (!p) return;
             document.getElementById('proc-edit-id').value = p.id;
@@ -10319,6 +10376,7 @@
             document.getElementById('proc-stock').value = p.total_stock || '';
             document.getElementById('proc-price').value = parseInt(p.total_price || 0).toLocaleString('id-ID');
             document.getElementById('proc-modal-note').classList.add('hidden');
+            await loadProcurementCategories(p.category_id || '');
             openModal('modal-procurement');
         }
         async function reviewProcurement(id, action) {
@@ -10392,12 +10450,14 @@
         document.getElementById('form-add-procurement').addEventListener('submit', async e => {
             e.preventDefault();
             const editId = document.getElementById('proc-edit-id').value;
+            const catRaw = document.getElementById('proc-category')?.value || '';
             const payload = {
                 vendor_name: document.getElementById('proc-vendor').value,
                 service_type: document.getElementById('proc-type').value,
                 package_name: document.getElementById('proc-package').value,
                 total_stock: document.getElementById('proc-stock').value,
                 total_price: parseCurrency(document.getElementById('proc-price').value),
+                category_id: catRaw ? parseInt(catRaw, 10) : null,
             };
             try {
                 const res = editId
