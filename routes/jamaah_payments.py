@@ -35,6 +35,7 @@ from fastapi import APIRouter
 
 import db
 from deps import (
+    CAT_PAYMENT_JAMAAH,
     Depends,
     HTTPException,
     assert_jamaah_access,
@@ -44,6 +45,7 @@ from deps import (
     notify,
     parse_int,
     require_role,
+    resolve_cat_id,
 )
 from deps.notifications import notify_role, notify_user
 
@@ -232,10 +234,10 @@ async def submission_review(sid: int, body: dict = Depends(json_body),
     )
     tx_id, _ = db.execute(
         "INSERT INTO transactions (type, category, amount, description, "
-        "reference_id, package_name) VALUES (?, ?, ?, ?, ?, ?)",
+        "reference_id, package_name, category_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
         ("income", "payment", amount,
          f"Pembayaran Umroh: {jamaah['name']} ({sub['payment_kind']})",
-         jamaah["id"], jamaah["package_type"]),
+         jamaah["id"], jamaah["package_type"], resolve_cat_id(CAT_PAYMENT_JAMAAH)),
     )
     db.execute(
         "UPDATE jamaah_payment_submissions SET status = 'Verified', "

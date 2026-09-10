@@ -8,6 +8,7 @@ from fastapi import APIRouter
 
 import db
 from deps import (
+    CAT_KOMISI_AGEN,
     Depends,
     HTTPException,
     authenticate_token,
@@ -16,6 +17,7 @@ from deps import (
     notify,
     parse_int,
     require_role,
+    resolve_cat_id,
 )
 
 router = APIRouter(tags=["agents"])
@@ -353,12 +355,13 @@ async def commission_claim_disburse(cid: int, user=Depends(authenticate_token)):
     jamaah = db.query_one("SELECT name, package_type FROM jamaah WHERE id = ?", (c["jamaah_id"],))
 
     last_id, _ = db.execute(
-        "INSERT INTO transactions (type, category, amount, description, reference_id, package_name) "
-        "VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO transactions (type, category, amount, description, reference_id, package_name, category_id) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
         (
             "expense", "commission", c["amount"],
             f"Pencairan Komisi: {agent['name'] if agent else '-'} (Jamaah: {jamaah['name'] if jamaah else '-'})",
             c["agent_id"], jamaah["package_type"] if jamaah else None,
+            resolve_cat_id(CAT_KOMISI_AGEN),
         ),
     )
     db.execute(

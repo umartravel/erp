@@ -25,6 +25,14 @@ from auth import authenticate_token
 from realtime import notify
 
 from .audit import get_setting, log_action
+from .finance_category import (
+    CAT_EXTRAS_JAMAAH,
+    CAT_GAJI_TUNJANGAN,
+    CAT_KOMISI_AGEN,
+    CAT_PAYMENT_JAMAAH,
+    CAT_REFUND_JAMAAH,
+    resolve_cat_id,
+)
 from .http import json_body, require_role
 from .jamaah_status import (
     _derive_status,
@@ -51,4 +59,8 @@ __all__ = [
     "_field_change", "assert_jamaah_access",
     # Paths
     "BASE_DIR", "PUBLIC_DIR", "UPLOAD_DIR", "BRANDING_DIR",
+    # Finance category (Phase F1b)
+    "resolve_cat_id",
+    "CAT_PAYMENT_JAMAAH", "CAT_REFUND_JAMAAH", "CAT_GAJI_TUNJANGAN",
+    "CAT_KOMISI_AGEN", "CAT_EXTRAS_JAMAAH",
 ]

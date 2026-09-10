@@ -12,6 +12,7 @@ from fastapi import APIRouter
 
 import db
 from deps import (
+    CAT_EXTRAS_JAMAAH,
     Depends,
     HTTPException,
     authenticate_token,
@@ -20,6 +21,7 @@ from deps import (
     log_action,
     notify,
     require_role,
+    resolve_cat_id,
 )
 
 router = APIRouter(tags=["inventory"])
@@ -269,8 +271,9 @@ async def inventory_restock(body: dict = Depends(json_body), user=Depends(authen
 
     if cost and int(cost) > 0:
         db.execute(
-            "INSERT INTO transactions (type, category, amount, description) VALUES (?, ?, ?, ?)",
-            ("expense", "operational", int(cost), f"Pembelian Logistik Gudang: {qty}x {item_name}"),
+            "INSERT INTO transactions (type, category, amount, description, category_id) VALUES (?, ?, ?, ?, ?)",
+            ("expense", "operational", int(cost), f"Pembelian Logistik Gudang: {qty}x {item_name}",
+             resolve_cat_id(CAT_EXTRAS_JAMAAH)),
         )
         log_action(user, "RESTOCK_EXPENSE", f"Beli {qty}x {item_name} seharga Rp {cost}")
         notify("data_updated", "transaction")

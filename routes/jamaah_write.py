@@ -25,6 +25,7 @@ import db
 import visa_checker
 import whatsapp as wa
 from deps import (
+    CAT_PAYMENT_JAMAAH,
     Depends,
     HTTPException,
     UPLOAD_DIR,
@@ -37,6 +38,7 @@ from deps import (
     notify,
     parse_int,
     require_role,
+    resolve_cat_id,
     status_to_dims,
     sync_status_mirror,
 )
@@ -375,9 +377,10 @@ async def jamaah_payment(jid: int, body: dict = Depends(json_body), user=Depends
     )
     new_status = sync_status_mirror(jid)
     db.execute(
-        "INSERT INTO transactions (type, category, amount, description, reference_id, package_name) "
-        "VALUES (?, ?, ?, ?, ?, ?)",
-        ("income", "payment", paid_amount, f"Pembayaran Umroh: {jamaah['name']}", jid, jamaah["package_type"]),
+        "INSERT INTO transactions (type, category, amount, description, reference_id, package_name, category_id) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        ("income", "payment", paid_amount, f"Pembayaran Umroh: {jamaah['name']}", jid, jamaah["package_type"],
+         resolve_cat_id(CAT_PAYMENT_JAMAAH)),
     )
     notify("data_updated", "transaction")
 

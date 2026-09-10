@@ -18,6 +18,7 @@ from fastapi import APIRouter
 import db
 from deps.notifications import notify_role  # Phase 8c-3
 from deps import (
+    CAT_REFUND_JAMAAH,
     Depends,
     HTTPException,
     assert_jamaah_access,
@@ -27,6 +28,7 @@ from deps import (
     notify,
     parse_int,
     require_role,
+    resolve_cat_id,
     sync_status_mirror,
 )
 
@@ -261,9 +263,10 @@ async def refund_request_disburse(rid: int, user=Depends(authenticate_token)):
         new_payment = "Unpaid"
 
     last_id, _ = db.execute(
-        "INSERT INTO transactions (type, category, amount, description, reference_id, package_name) "
-        "VALUES (?, ?, ?, ?, ?, ?)",
-        ("expense", "refund", r["amount"], f"Refund: {jamaah['name']}", jamaah["id"], jamaah["package_type"]),
+        "INSERT INTO transactions (type, category, amount, description, reference_id, package_name, category_id) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        ("expense", "refund", r["amount"], f"Refund: {jamaah['name']}", jamaah["id"], jamaah["package_type"],
+         resolve_cat_id(CAT_REFUND_JAMAAH)),
     )
     db.execute(
         "UPDATE jamaah SET paid_amount = ?, payment_status = ? WHERE id = ?",

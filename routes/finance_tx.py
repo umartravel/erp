@@ -11,6 +11,7 @@ from fastapi import APIRouter
 
 import db
 from deps import (
+    CAT_GAJI_TUNJANGAN,
     Depends,
     HTTPException,
     authenticate_token,
@@ -18,6 +19,7 @@ from deps import (
     log_action,
     notify,
     require_role,
+    resolve_cat_id,
     sync_status_mirror,
 )
 
@@ -204,8 +206,10 @@ async def payroll(body: dict = Depends(json_body), user=Depends(authenticate_tok
     processed = 0
     for u in users:
         db.execute(
-            "INSERT INTO transactions (type, category, amount, description, reference_id) VALUES (?, ?, ?, ?, ?)",
-            ("expense", "payroll", u["base_salary"], f"Gaji Karyawan: {u['name']}", u["id"]),
+            "INSERT INTO transactions (type, category, amount, description, reference_id, category_id) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            ("expense", "payroll", u["base_salary"], f"Gaji Karyawan: {u['name']}", u["id"],
+             resolve_cat_id(CAT_GAJI_TUNJANGAN)),
         )
         processed += 1
     log_action(user, "PAYROLL", f"Memproses penggajian untuk {processed} karyawan")
