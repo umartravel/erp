@@ -6,6 +6,15 @@ const SH_COLORS = {
   cream: '#F4F1EA', gray500: '#6B7280', red: '#DC2626', amber: '#B45309',
 };
 
+// XSS guard: nama jamaah/paket/agen user-supplied. Wrap semua string
+// user-supplied dgn shEsc() sebelum inject via innerHTML.
+function shEsc(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 function shFetch(url) {
   return (window.authFetch || fetch)(url);
 }
@@ -214,10 +223,10 @@ function renderMyAgents(m) {
     return `
       <div class="rounded-lg border p-3" style="background:${SH_COLORS.cream};border-color:#E8DFC8;">
         <div class="flex justify-between items-start mb-1">
-          <b class="text-xs leading-tight flex-1 pr-2" style="color:${SH_COLORS.charcoal};">${a.name || '(tanpa nama)'}</b>
+          <b class="text-xs leading-tight flex-1 pr-2" style="color:${SH_COLORS.charcoal};">${shEsc(a.name || '(tanpa nama)')}</b>
           <span class="text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0" style="background:${rankBg};color:${SH_COLORS.charcoal};">${rank}</span>
         </div>
-        <div class="text-[10px] mb-1" style="color:${SH_COLORS.gray500};">${loc}</div>
+        <div class="text-[10px] mb-1" style="color:${SH_COLORS.gray500};">${shEsc(loc)}</div>
         <div class="text-xs">${jamaahLabel}</div>
         <div class="text-[10px] mt-1" style="color:${SH_COLORS.gray500};">${lastLabel}</div>
       </div>`;
@@ -247,9 +256,8 @@ function renderStaleContact(list) {
       ? `${daysNoContact} hari sejak kontak terakhir`
       : (r.order_date ? `Belum pernah dikontak (order ${daysNoContact} hari lalu)` : 'Belum pernah dikontak');
     const sisa = (r.total_price || 0) - (r.paid_amount || 0);
-    const waHref = r.phone
-      ? `https://wa.me/${String(r.phone).replace(/\D/g, '').replace(/^0/, '62')}`
-      : null;
+    const stalePhoneClean = r.phone ? String(r.phone).replace(/\D/g, '').replace(/^0/, '62') : '';
+    const waHref = stalePhoneClean ? `https://wa.me/${encodeURIComponent(stalePhoneClean)}` : null;
     const waBtn = waHref
       ? `<a href="${waHref}" target="_blank" class="text-xs px-2 py-1 rounded font-medium ml-2" style="background:#DCFCE7;color:#166534;"><i data-lucide="message-circle" class="w-3 h-3 inline"></i> WA</a>`
       : '';
@@ -257,11 +265,11 @@ function renderStaleContact(list) {
       <div class="px-5 py-3 border-b hover:bg-gray-50" style="border-color:#F4F1EA;">
         <div class="flex justify-between items-start gap-3">
           <div class="flex-1 min-w-0">
-            <b class="text-sm block truncate" style="color:${SH_COLORS.charcoal};">${r.name || '(tanpa nama)'}</b>
+            <b class="text-sm block truncate" style="color:${SH_COLORS.charcoal};">${shEsc(r.name || '(tanpa nama)')}</b>
             <div class="text-[11px] mt-0.5" style="color:${SH_COLORS.gray500};">
-              ${r.package_type || '-'} &middot; status <b style="color:${SH_COLORS.charcoal};">${r.status || '-'}</b>
+              ${shEsc(r.package_type || '-')} &middot; status <b style="color:${SH_COLORS.charcoal};">${shEsc(r.status || '-')}</b>
             </div>
-            <div class="text-[11px] mt-0.5" style="color:${SH_COLORS.red};">${label}</div>
+            <div class="text-[11px] mt-0.5" style="color:${SH_COLORS.red};">${shEsc(label)}</div>
           </div>
           <div class="text-right shrink-0">
             ${sisa > 0 ? `<div class="text-[11px] font-bold" style="color:${SH_COLORS.darkGold};">${shFmtRp(sisa)}</div><div class="text-[10px]" style="color:${SH_COLORS.gray500};">sisa</div>` : ''}
@@ -295,16 +303,16 @@ function renderUpcomingPackages(list) {
     return `
       <div class="rounded-lg border p-3" style="background:${SH_COLORS.cream};border-color:#E8DFC8;">
         <div class="flex justify-between items-start mb-2">
-          <b class="text-xs leading-tight flex-1 pr-2" style="color:${SH_COLORS.charcoal};">${p.name}</b>
+          <b class="text-xs leading-tight flex-1 pr-2" style="color:${SH_COLORS.charcoal};">${shEsc(p.name)}</b>
           <span class="text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0" style="background:${seatColor};color:white;">${sisa} kursi</span>
         </div>
         <div class="text-[10px]" style="color:${SH_COLORS.gray500};">
-          ${shFmtDate(p.departure_date)} &middot; <b>${daysToGo}</b> hari lagi &middot; ${p.duration || 9}D
+          ${shFmtDate(p.departure_date)} &middot; <b>${daysToGo}</b> hari lagi &middot; ${Number(p.duration) || 9}D
         </div>
         <div class="text-sm font-bold mt-1" style="color:${SH_COLORS.darkGold};">${shFmtRp(p.price)}</div>
         <div class="text-[10px] mt-1 space-y-0.5" style="color:${SH_COLORS.gray500};">
-          ${p.hotel_mekkah ? `<div>Mekkah: <b style="color:${SH_COLORS.charcoal};">${p.hotel_mekkah}</b></div>` : ''}
-          ${p.airline_depart ? `<div>Maskapai: <b style="color:${SH_COLORS.charcoal};">${p.airline_depart}</b></div>` : ''}
+          ${p.hotel_mekkah ? `<div>Mekkah: <b style="color:${SH_COLORS.charcoal};">${shEsc(p.hotel_mekkah)}</b></div>` : ''}
+          ${p.airline_depart ? `<div>Maskapai: <b style="color:${SH_COLORS.charcoal};">${shEsc(p.airline_depart)}</b></div>` : ''}
         </div>
       </div>`;
   }).join('') + `</div>`;
@@ -333,16 +341,20 @@ function renderFollowupDue(list) {
     const overdueBadge = overdue
       ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:#FEE2E2;color:${SH_COLORS.red};">OVERDUE</span>`
       : `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:#FEF3C7;color:${SH_COLORS.amber};">HARI INI</span>`;
-    const phone = r.phone ? `<a href="https://wa.me/${r.phone}" target="_blank" class="text-xs" style="color:${SH_COLORS.darkGold};text-decoration:underline;">${r.phone}</a>` : '<span class="text-xs text-gray-400">-</span>';
+    // Sanitize phone -- keep digits + '+' only, so href tidak bisa disuntik javascript:.
+    const phoneClean = r.phone ? String(r.phone).replace(/[^\d+]/g, '') : '';
+    const phone = phoneClean
+      ? `<a href="https://wa.me/${encodeURIComponent(phoneClean)}" target="_blank" class="text-xs" style="color:${SH_COLORS.darkGold};text-decoration:underline;">${shEsc(phoneClean)}</a>`
+      : '<span class="text-xs text-gray-400">-</span>';
     return `
       <div class="px-5 py-3 border-b flex justify-between items-center hover:bg-gray-50" style="border-color:#F4F1EA;">
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2">
-            <b class="text-sm truncate" style="color:${SH_COLORS.charcoal};">${r.name || '(tanpa nama)'}</b>
+            <b class="text-sm truncate" style="color:${SH_COLORS.charcoal};">${shEsc(r.name || '(tanpa nama)')}</b>
             ${overdueBadge}
           </div>
           <div class="text-[11px] mt-0.5" style="color:${SH_COLORS.gray500};">
-            ${r.package_type || '-'} &middot; ${phone} &middot; jatuh tempo ${shFmtDate(r.next_follow_up)}
+            ${shEsc(r.package_type || '-')} &middot; ${phone} &middot; jatuh tempo ${shFmtDate(r.next_follow_up)}
           </div>
         </div>
         <button onclick="openActivityModal(${r.id}, ${JSON.stringify(r.name || '').replace(/"/g, '&quot;')})" class="text-xs px-3 py-1.5 rounded-lg font-medium ml-3 shrink-0" style="background:${SH_COLORS.gold};color:${SH_COLORS.charcoal};">Catat Aktivitas</button>
@@ -370,9 +382,9 @@ function renderPaymentStale(list) {
     return `
       <div class="px-5 py-3 border-b flex justify-between items-center hover:bg-gray-50" style="border-color:#F4F1EA;">
         <div class="flex-1 min-w-0">
-          <b class="text-sm block truncate" style="color:${SH_COLORS.charcoal};">${r.name || '(tanpa nama)'}</b>
+          <b class="text-sm block truncate" style="color:${SH_COLORS.charcoal};">${shEsc(r.name || '(tanpa nama)')}</b>
           <div class="text-[11px] mt-0.5" style="color:${SH_COLORS.gray500};">
-            ${r.package_type || '-'} &middot; sudah <b style="color:${SH_COLORS.red};">${days} hari</b> sejak order
+            ${shEsc(r.package_type || '-')} &middot; sudah <b style="color:${SH_COLORS.red};">${Number(days) || 0} hari</b> sejak order
           </div>
         </div>
         <div class="text-right ml-3">
@@ -397,9 +409,9 @@ function renderLeaderboard(list, myId) {
     return `
       <li class="flex justify-between items-center px-2 py-1.5 rounded" style="background:${bg};">
         <span class="text-sm font-medium" style="color:${SH_COLORS.charcoal};">
-          <span class="mr-1 font-bold">${rank}</span>${r.name}${isMe ? ' <span class="text-[9px] font-bold" style="color:'+SH_COLORS.darkGold+';">(YOU)</span>' : ''}
+          <span class="mr-1 font-bold">${rank}</span>${shEsc(r.name)}${isMe ? ' <span class="text-[9px] font-bold" style="color:'+SH_COLORS.darkGold+';">(YOU)</span>' : ''}
         </span>
-        <span class="text-xs font-bold" style="color:${isMe ? SH_COLORS.charcoal : SH_COLORS.darkGold};">${r.closing} closing</span>
+        <span class="text-xs font-bold" style="color:${isMe ? SH_COLORS.charcoal : SH_COLORS.darkGold};">${Number(r.closing) || 0} closing</span>
       </li>`;
   }).join('');
 }
@@ -430,9 +442,8 @@ async function loadLeadScores() {
                    : lead.score >= 40 ? '#D1FAE5'
                    : '#F3F4F6';
       const sisa = (lead.total_price || 0) - (lead.paid_amount || 0);
-      const waHref = lead.phone
-        ? `https://wa.me/${String(lead.phone).replace(/\D/g, '').replace(/^0/, '62')}`
-        : null;
+      const leadPhoneClean = lead.phone ? String(lead.phone).replace(/\D/g, '').replace(/^0/, '62') : '';
+      const waHref = leadPhoneClean ? `https://wa.me/${encodeURIComponent(leadPhoneClean)}` : null;
       return `<div class="px-4 py-3 border-b hover:bg-amber-50/40" style="border-color:#F4F1EA;">
         <div class="flex items-start gap-3">
           <div class="shrink-0 flex flex-col items-center justify-center w-12 h-12 rounded-lg font-black text-lg"
@@ -441,11 +452,11 @@ async function loadLeadScores() {
           </div>
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
-              <b class="text-sm truncate" style="color:${SH_COLORS.charcoal};">${lead.name || '(tanpa nama)'}</b>
-              <span class="text-[10px] px-1.5 py-0.5 rounded font-bold" style="background:#EEF2FF;color:#3730A3;">${lead.status || '-'}</span>
+              <b class="text-sm truncate" style="color:${SH_COLORS.charcoal};">${shEsc(lead.name || '(tanpa nama)')}</b>
+              <span class="text-[10px] px-1.5 py-0.5 rounded font-bold" style="background:#EEF2FF;color:#3730A3;">${shEsc(lead.status || '-')}</span>
             </div>
             <div class="text-[11px] mt-0.5" style="color:${SH_COLORS.gray500};">
-              ${lead.package_type || '-'} &middot; ${lead.top_reason || '-'}
+              ${shEsc(lead.package_type || '-')} &middot; ${shEsc(lead.top_reason || '-')}
             </div>
             ${sisa > 0 ? `<div class="text-[10px] mt-0.5" style="color:${SH_COLORS.darkGold};">Sisa ${shFmtRp(sisa)}</div>` : ''}
           </div>
@@ -545,7 +556,7 @@ async function shLoadPackages() {
     const list = await res.json();
     const opts = ['<option value="">Semua Paket</option>'].concat(
       (list || []).map(p =>
-        `<option value="${p.name}">${p.name}</option>`
+        `<option value="${shEsc(p.name)}">${shEsc(p.name)}</option>`
       )
     );
     picker.innerHTML = opts.join('');

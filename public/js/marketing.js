@@ -14,6 +14,15 @@ const MKT_COLORS = {
   gray800: '#1F2937',
 };
 
+// XSS guard: nama agen/jamaah/paket user-supplied. Wrap semua string
+// user-supplied dgn mktEsc() sebelum inject via innerHTML.
+function mktEsc(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 const INDONESIA_CITY_COORDINATES = {
   "JAKARTA": [-6.2088, 106.8456],
   "JAKARTA PUSAT": [-6.1818, 106.8223],
@@ -275,7 +284,7 @@ async function loadFilterOptions() {
       const el = document.getElementById(id);
       if (!el) return;
       el.innerHTML = '<option value="">-- Semua --</option>' +
-        arr.map(v => `<option value="${v}">${labelPrefix}${v}</option>`).join('');
+        arr.map(v => `<option value="${mktEsc(v)}">${mktEsc(labelPrefix)}${mktEsc(v)}</option>`).join('');
     };
     fill('mkt-filter-period', data.period || []);
     fill('mkt-filter-paket', data.paket || []);
@@ -459,8 +468,8 @@ function renderTopKota(list) {
   const top10 = list.slice(0, 10);
   el.innerHTML = top10.length ? top10.map((r, i) => `
     <li style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #F3F4F6;font-size:0.8rem;">
-      <span><b style="color:${MKT_COLORS.darkGold};">${i+1}.</b> ${r.kab_kota}</span>
-      <b style="color:${MKT_COLORS.charcoal};">${r.count}</b>
+      <span><b style="color:${MKT_COLORS.darkGold};">${i+1}.</b> ${mktEsc(r.kab_kota)}</span>
+      <b style="color:${MKT_COLORS.charcoal};">${Number(r.count) || 0}</b>
     </li>`).join('') : '<li style="color:#9CA3AF;font-size:0.8rem;text-align:center;padding:12px;">Belum ada data.</li>';
 }
 
@@ -470,8 +479,8 @@ function renderTopAgen(list) {
   const top10 = list.slice(0, 10);
   el.innerHTML = top10.length ? top10.map((r, i) => `
     <li style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #F3F4F6;font-size:0.8rem;">
-      <span><b style="color:${MKT_COLORS.darkGold};">${i+1}.</b> ${r.name}</span>
-      <b style="color:${MKT_COLORS.charcoal};">${r.count}</b>
+      <span><b style="color:${MKT_COLORS.darkGold};">${i+1}.</b> ${mktEsc(r.name)}</span>
+      <b style="color:${MKT_COLORS.charcoal};">${Number(r.count) || 0}</b>
     </li>`).join('') : '<li style="color:#9CA3AF;font-size:0.8rem;text-align:center;padding:12px;">Belum ada data.</li>';
 }
 
@@ -561,7 +570,7 @@ function renderChartChannel(channel, subchannel) {
   if (subEl) {
     subEl.innerHTML = subchannel.length ? subchannel.map(r => `
       <li style="display:flex;justify-content:space-between;padding:4px 0;font-size:0.75rem;color:${MKT_COLORS.gray600};">
-        <span>${r.name || '(kosong)'}</span><b>${r.count}</b>
+        <span>${mktEsc(r.name || '(kosong)')}</span><b>${Number(r.count) || 0}</b>
       </li>`).join('') : '';
   }
 }

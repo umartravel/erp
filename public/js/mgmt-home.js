@@ -39,8 +39,10 @@
         wrap.classList.remove('hidden');
         inner.innerHTML = list.map(a => {
             const cls = SEV_CLASS[a.severity] || SEV_CLASS.low;
-            const goto = a.goto && a.goto !== 'mgmt-home' ? `onclick="showPage('${a.goto}')"` : '';
-            return `<button ${goto} class="text-xs font-medium px-3 py-1.5 rounded-full border ${cls} hover:opacity-80 transition">${mhEscape(a.label)}</button>`;
+            // XSS guard: whitelist page-name utk hindari injection lewat 'goto'.
+            const safeGoto = /^[a-z0-9-]+$/i.test(a.goto || '') && a.goto !== 'mgmt-home'
+                ? `onclick="showPage('${a.goto}')"` : '';
+            return `<button ${safeGoto} class="text-xs font-medium px-3 py-1.5 rounded-full border ${cls} hover:opacity-80 transition">${mhEscape(a.label)}</button>`;
         }).join('');
         const urgent = list.filter(a => a.severity === 'critical' || a.severity === 'high').length;
         mhUpdateTabBadge(urgent);
@@ -313,7 +315,7 @@
             `).join('');
             body.innerHTML = `
                 <div class="text-[10px] text-gray-500 mb-2">
-                    ${d.total_jamaah_with_boq} jamaah pilih skenario BOQ (periode: ${d.period === 'all' ? 'semua waktu' : d.period}).
+                    ${Number(d.total_jamaah_with_boq) || 0} jamaah pilih skenario BOQ (periode: ${mhEscape(d.period === 'all' ? 'semua waktu' : d.period)}).
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-xs">
@@ -407,7 +409,7 @@
             const res = await mhFetch('/packages');
             const list = await res.json();
             const opts = ['<option value="">Semua Paket</option>'].concat(
-                (list || []).map(p => `<option value="${p.name}">${p.name}</option>`)
+                (list || []).map(p => `<option value="${mhEscape(p.name)}">${mhEscape(p.name)}</option>`)
             );
             picker.innerHTML = opts.join('');
             picker.value = mhSelectedPackage || '';
