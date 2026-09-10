@@ -182,6 +182,173 @@ async def daily_reports_today(body: dict = Depends(json_body),
         "SELECT * FROM daily_reports WHERE id = ?", (last_id,)))
 
 
+# ===========================================================================
+# ENDPOINTS - MGMT SCOPE (Phase DT-3a) -- registered BEFORE /{rid} routes
+# supaya /team dan /team/summary tidak nyangkut ke {rid: int} matcher.
+# ===========================================================================
+_ALL_ROLES = ("admin", "sales", "finance", "ops", "management")
+_DEFAULT_TEAM_ROLES = ("sales", "finance", "ops", "management")
+
+
+def _parse_date_or_400(s, field_name="date"):
+    try:
+        return datetime.date.fromisoformat(s)
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{field_name} harus format YYYY-MM-DD.")
+
+
+@router.get("/api/daily-reports/team")
+async def daily_reports_team(date: str | None = None,
+                             role: str | None = None,
+                             user=Depends(authenticate_token)):
+    """Mgmt bird's-eye view: semua user + status lapor untuk 1 tanggal.
+
+    Karyawan tanpa report di tanggal itu tetap muncul dgn status='NotSubmitted'
+    (biar Mgmt langsung tahu siapa yg belum). Filter `role` optional; kalau
+    kosong, exclude 'admin' by default (bukan karyawan operasional).
+    """
+    if not _is_privileged(user):
+        raise HTTPException(status_code=403, detail="Hanya management/admin.")
+
+    target_date = date or _today_str()
+    _parse_date_or_400(target_date, "date")
+    if role and role not in _ALL_ROLES:
+        raise HTTPException(
+            status_code=400, detail=f"role harus salah satu dari {_ALL_ROLES}.")
+
+    if role:
+        where = "u.role = ?"
+        params: list = [role]
+    else:
+        where = "u.role IN ({})".format(",".join(["?"] * len(_DEFAULT_TEAM_ROLES)))
+        params = list(_DEFAULT_TEAM_ROLES)
+
+    rows = db.query_all(
+        "SELECT u.id AS user_id, u.name AS user_name, u.username, u.role, "
+        "  r.id AS report_id, r.status AS report_status, r.mood, "
+        "  r.summary_text, r.submitted_at, r.updated_at, "
+        "  (SELECT COUNT(*) FROM daily_task_items WHERE report_id = r.id) "
+        "    AS item_count, "
+        "  (SELECT COUNT(*) FROM daily_task_items "
+        "    WHERE report_id = r.id AND status = 'Done') AS done_count "
+        "FROM users u "
+        "LEFT JOIN daily_reports r "
+        "  ON r.user_id = u.id AND r.report_date = ? "
+        f"WHERE {where} "
+        "ORDER BY u.role, u.name",
+        (target_date, *params),
+    )
+
+    result = []
+    for r in rows:
+        d = dict(r)
+        if d.get("report_id") is None:
+            d["status"] = "NotSubmitted"
+        else:
+            d["status"] = d.get("report_status") or "Draft"
+        d.pop("report_status", None)
+        d["item_count"] = d.get("item_count") or 0
+        d["done_count"] = d.get("done_count") or 0
+        result.append(d)
+
+    total_users = len(result)
+    submitted = sum(1 for x in result if x["status"] == "Submitted")
+    drafts = sum(1 for x in result if x["status"] == "Draft")
+    not_submitted = sum(1 for x in result if x["status"] == "NotSubmitted")
+    return {
+        "date": target_date,
+        "role_filter": role,
+        "totals": {
+            "users": total_users,
+            "submitted": submitted,
+            "drafts": drafts,
+            "not_submitted": not_submitted,
+            "submit_rate_pct": (
+                round((submitted / total_users) * 100, 1) if total_users else 0),
+        },
+        "users": result,
+    }
+
+
+@router.get("/api/daily-reports/team/summary")
+async def daily_reports_team_summary(date_from: str | None = None,
+                                     date_to: str | None = None,
+                                     role: str | None = None,
+                                     user=Depends(authenticate_token)):
+    """Agregat range per user: hari submit / total hari + total task + % done.
+
+    Default range: 30 hari terakhir (date_to = hari ini). Filter role optional.
+    """
+    if not _is_privileged(user):
+        raise HTTPException(status_code=403, detail="Hanya management/admin.")
+
+    if not date_to:
+        date_to = _today_str()
+    d_to = _parse_date_or_400(date_to, "date_to")
+    if not date_from:
+        date_from = (d_to - datetime.timedelta(days=29)).isoformat()
+    d_from = _parse_date_or_400(date_from, "date_from")
+    if d_from > d_to:
+        raise HTTPException(status_code=400, detail="date_from harus <= date_to.")
+    if role and role not in _ALL_ROLES:
+        raise HTTPException(
+            status_code=400, detail=f"role harus salah satu dari {_ALL_ROLES}.")
+    if (d_to - d_from).days > 365:
+        raise HTTPException(status_code=400, detail="Rentang maksimal 365 hari.")
+
+    if role:
+        where = "u.role = ?"
+        params: list = [role]
+    else:
+        where = "u.role IN ({})".format(",".join(["?"] * len(_DEFAULT_TEAM_ROLES)))
+        params = list(_DEFAULT_TEAM_ROLES)
+
+    total_days = (d_to - d_from).days + 1
+
+    rows = db.query_all(
+        "SELECT u.id AS user_id, u.name AS user_name, u.username, u.role, "
+        "  COUNT(DISTINCT CASE WHEN r.status = 'Submitted' "
+        "    THEN r.report_date END) AS submitted_days, "
+        "  COUNT(DISTINCT CASE WHEN r.status = 'Draft' "
+        "    THEN r.report_date END) AS draft_days, "
+        "  COALESCE(SUM(("
+        "    SELECT COUNT(*) FROM daily_task_items t "
+        "    WHERE t.report_id = r.id)), 0) AS total_tasks, "
+        "  COALESCE(SUM(("
+        "    SELECT COUNT(*) FROM daily_task_items t "
+        "    WHERE t.report_id = r.id AND t.status = 'Done')), 0) AS done_tasks "
+        "FROM users u "
+        "LEFT JOIN daily_reports r "
+        "  ON r.user_id = u.id AND r.report_date BETWEEN ? AND ? "
+        f"WHERE {where} "
+        "GROUP BY u.id "
+        "ORDER BY u.role, u.name",
+        (date_from, date_to, *params),
+    )
+
+    result = []
+    for r in rows:
+        d = dict(r)
+        d["total_days"] = total_days
+        d["submit_rate_pct"] = (
+            round((d["submitted_days"] / total_days) * 100, 1)
+            if total_days else 0)
+        d["done_pct"] = (
+            round((d["done_tasks"] / d["total_tasks"]) * 100, 1)
+            if d["total_tasks"] else 0)
+        result.append(d)
+
+    return {
+        "date_from": date_from,
+        "date_to": date_to,
+        "total_days": total_days,
+        "role_filter": role,
+        "users": result,
+    }
+
+
 @router.put("/api/daily-reports/{rid}")
 async def daily_reports_update(rid: int, body: dict = Depends(json_body),
                                user=Depends(authenticate_token)):

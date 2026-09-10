@@ -204,6 +204,26 @@ async def mgmt_home(year: int | None = None, month: int | None = None,
         attention.append({"key": "sales_under", "severity": "medium",
                           "label": f"{len(under)} sales < 50% target closing bulan ini", "goto": "mgmt-home"})
 
+    # Phase DT-3a: chip "belum lapor 3+ hari" -- karyawan (sales/ops/finance)
+    # yang tidak ada submitted daily_report dalam 3 hari terakhir. Hanya untuk
+    # current period supaya panel historis tidak menampakan alert live.
+    if is_current_period:
+        cutoff_3d = (datetime.date.today() - datetime.timedelta(days=3)).isoformat()
+        overdue_users = db.query_all(
+            "SELECT u.id FROM users u "
+            "WHERE u.role IN ('sales', 'ops', 'finance') "
+            "AND NOT EXISTS ("
+            "  SELECT 1 FROM daily_reports r "
+            "  WHERE r.user_id = u.id AND r.status = 'Submitted' "
+            "  AND r.report_date >= ?)",
+            (cutoff_3d,))
+        n_overdue = len(overdue_users)
+        if n_overdue:
+            attention.append({
+                "key": "daily_report_overdue", "severity": "medium",
+                "label": f"{n_overdue} karyawan belum lapor 3+ hari",
+                "goto": "daily-team"})
+
     # Phase 14a: Ringkasan tahun terpilih. Phase 14b: + filter paket.
     year_stat = db.query_one(
         "SELECT COUNT(*) c, COALESCE(SUM(total_price),0) omzet FROM jamaah "

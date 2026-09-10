@@ -483,3 +483,139 @@ def test_feedback_on_draft_also_allowed(client, sales_token, management_token):
                     json={"comment_text": "sudah isi belum?"},
                     headers=bearer(management_token))
     assert r.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Phase DT-3a: Mgmt-scope endpoints (/team + /team/summary) + attention chip
+# ---------------------------------------------------------------------------
+def test_team_endpoint_requires_privileged(client, sales_token):
+    r = client.get("/api/daily-reports/team", headers=bearer(sales_token))
+    assert r.status_code == 403
+
+
+def test_team_endpoint_returns_users_with_status_today(client, sales_token,
+                                                        finance_token,
+                                                        management_token):
+    """Grid Mgmt hari ini: sales1 punya draft, finance1 tidak submit."""
+    _wipe_today_report(_user_id_by_username("sales1"))
+    _wipe_today_report(_user_id_by_username("finance1"))
+    _create_today(client, sales_token, summary="hari ini")
+
+    r = client.get("/api/daily-reports/team", headers=bearer(management_token))
+    assert r.status_code == 200
+    data = r.json()
+    assert data["date"] == _today()
+    assert "totals" in data and "users" in data
+    users_map = {u["username"]: u for u in data["users"]}
+    assert "sales1" in users_map
+    assert users_map["sales1"]["status"] == "Draft"
+    assert "finance1" in users_map
+    assert users_map["finance1"]["status"] == "NotSubmitted"
+    assert users_map["finance1"]["item_count"] == 0
+    assert users_map["finance1"]["done_count"] == 0
+
+
+def test_team_endpoint_filter_role(client, management_token):
+    r = client.get("/api/daily-reports/team?role=sales",
+                   headers=bearer(management_token))
+    assert r.status_code == 200
+    data = r.json()
+    assert data["role_filter"] == "sales"
+    for u in data["users"]:
+        assert u["role"] == "sales"
+
+
+def test_team_endpoint_default_excludes_admin(client, management_token):
+    """Default (tanpa role filter) exclude admin (bukan karyawan operasional)."""
+    r = client.get("/api/daily-reports/team", headers=bearer(management_token))
+    for u in r.json()["users"]:
+        assert u["role"] != "admin"
+
+
+def test_team_endpoint_rejects_invalid_date(client, management_token):
+    r = client.get("/api/daily-reports/team?date=2026-99-99",
+                   headers=bearer(management_token))
+    assert r.status_code == 400
+
+
+def test_team_endpoint_rejects_invalid_role(client, management_token):
+    r = client.get("/api/daily-reports/team?role=hacker",
+                   headers=bearer(management_token))
+    assert r.status_code == 400
+
+
+def test_team_endpoint_admin_can_access(client, admin_token):
+    """Admin sama seperti mgmt — bird's-eye view."""
+    r = client.get("/api/daily-reports/team", headers=bearer(admin_token))
+    assert r.status_code == 200
+
+
+def test_team_summary_default_30_days(client, management_token):
+    r = client.get("/api/daily-reports/team/summary",
+                   headers=bearer(management_token))
+    assert r.status_code == 200
+    data = r.json()
+    assert data["total_days"] == 30
+    assert isinstance(data["users"], list)
+    for u in data["users"]:
+        assert "submitted_days" in u
+        assert "submit_rate_pct" in u
+        assert "done_pct" in u
+        assert "total_days" in u
+
+
+def test_team_summary_requires_privileged(client, sales_token):
+    r = client.get("/api/daily-reports/team/summary",
+                   headers=bearer(sales_token))
+    assert r.status_code == 403
+
+
+def test_team_summary_single_day_math(client, sales_token, management_token):
+    """Range 1 hari, sales1 submit -> submitted_days=1, submit_rate=100."""
+    _wipe_today_report(_user_id_by_username("sales1"))
+    rep = _create_today(client, sales_token, summary="isi")
+    r_sub = client.post(f"/api/daily-reports/{rep['id']}/submit",
+                        headers=bearer(sales_token))
+    assert r_sub.status_code == 200
+
+    today = _today()
+    r = client.get(
+        f"/api/daily-reports/team/summary?date_from={today}&date_to={today}",
+        headers=bearer(management_token))
+    assert r.status_code == 200
+    data = r.json()
+    assert data["total_days"] == 1
+    sales_row = next(u for u in data["users"] if u["username"] == "sales1")
+    assert sales_row["submitted_days"] == 1
+    assert sales_row["submit_rate_pct"] == 100.0
+
+
+def test_team_summary_reject_from_after_to(client, management_token):
+    r = client.get(
+        "/api/daily-reports/team/summary?date_from=2026-09-15&date_to=2026-09-10",
+        headers=bearer(management_token))
+    assert r.status_code == 400
+
+
+def test_team_summary_reject_range_too_large(client, management_token):
+    r = client.get(
+        "/api/daily-reports/team/summary?date_from=2020-01-01&date_to=2026-09-11",
+        headers=bearer(management_token))
+    assert r.status_code == 400
+
+
+def test_mgmt_home_attention_daily_report_overdue(client, management_token):
+    """Chip 'daily_report_overdue' muncul kalau ada user sales/ops/finance
+    yg tidak submit dalam 3 hari terakhir. Kita clear submitted history sales1
+    supaya minimal 1 karyawan overdue -> chip harus muncul."""
+    sales1_id = _user_id_by_username("sales1")
+    cutoff = (datetime.date.today() - datetime.timedelta(days=3)).isoformat()
+    db.execute(
+        "UPDATE daily_reports SET status = 'Draft', submitted_at = NULL "
+        "WHERE user_id = ? AND report_date >= ? AND status = 'Submitted'",
+        (sales1_id, cutoff))
+
+    r = client.get("/api/mgmt/home", headers=bearer(management_token))
+    assert r.status_code == 200, r.text
+    keys = [a["key"] for a in r.json().get("attention", [])]
+    assert "daily_report_overdue" in keys
