@@ -187,6 +187,18 @@ function renderOhAttention(a) {
   ].filter(Boolean).join('');
 }
 
+// Security fix: escape HTML utk cegah stored XSS. Semua string DB yg dirender
+// via innerHTML wajib lewat ohEscape supaya <script> dsb tidak dieksekusi.
+function ohEscape(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function ohEmpty(msg) {
   return `<div class="p-6 text-center">
     <div class="inline-flex w-12 h-12 rounded-full items-center justify-center mb-2" style="background:#D1FAE5;">
@@ -696,14 +708,14 @@ function renderOhIncidents(list) {
       <div class="flex items-start justify-between gap-2">
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2 mb-1">
-            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:${(sevColor[i.severity]||OH_COLORS.gray500)}20;color:${sevColor[i.severity]||OH_COLORS.gray500};">${i.severity || 'Medium'}</span>
-            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:#F4F1EA;color:${OH_COLORS.charcoal};">${i.status || 'Open'}</span>
-            <span class="text-[10px]" style="color:${OH_COLORS.gray500};">${i.package_name || 'Umum'}</span>
+            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:${(sevColor[i.severity]||OH_COLORS.gray500)}20;color:${sevColor[i.severity]||OH_COLORS.gray500};">${ohEscape(i.severity || 'Medium')}</span>
+            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:#F4F1EA;color:${OH_COLORS.charcoal};">${ohEscape(i.status || 'Open')}</span>
+            <span class="text-[10px]" style="color:${OH_COLORS.gray500};">${ohEscape(i.package_name || 'Umum')}</span>
           </div>
-          <p class="text-xs truncate" style="color:${OH_COLORS.charcoal};">${(i.incident_text || '').slice(0, 120)}</p>
+          <p class="text-xs truncate" style="color:${OH_COLORS.charcoal};">${ohEscape((i.incident_text || '').slice(0, 120))}</p>
           <p class="text-[10px] mt-0.5" style="color:${OH_COLORS.gray500};">
-            Reporter: <b>${i.reported_by || '-'}</b>
-            ${i.assigned_to ? '&middot; PIC: <b>' + i.assigned_to + '</b>' : '&middot; <span style="color:'+OH_COLORS.red+';">Belum di-assign</span>'}
+            Reporter: <b>${ohEscape(i.reported_by || '-')}</b>
+            ${i.assigned_to ? '&middot; PIC: <b>' + ohEscape(i.assigned_to) + '</b>' : '&middot; <span style="color:'+OH_COLORS.red+';">Belum di-assign</span>'}
           </p>
         </div>
         <button onclick="openIncidentDetail(${i.id})" class="text-xs px-2 py-1 rounded font-medium shrink-0" style="background:${OH_COLORS.gold};color:${OH_COLORS.charcoal};">Kelola</button>

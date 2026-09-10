@@ -32,7 +32,12 @@ def _mk_jamaah(client, admin_token, name, total_price=30_000_000):
         "status": "Terdaftar",
     }, headers=bearer(admin_token))
     assert r.status_code == 200, r.text
-    return r.json()["id"], price
+    jid = r.json()["id"]
+    # Security fix: attach ke sales1 supaya assert_jamaah_access lolos.
+    sales1 = db.query_one("SELECT id FROM users WHERE username = 'sales1'")
+    if sales1:
+        db.execute("UPDATE jamaah SET sales_id = ? WHERE id = ?", (sales1["id"], jid))
+    return jid, price
 
 
 def _submit(client, token, jid, amount, kind="Cicilan"):

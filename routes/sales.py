@@ -166,6 +166,9 @@ async def sales_home(year: int | None = None, month: int | None = None,
     month = month if month else current_month
     if month < 1 or month > 12:
         month = current_month
+    # Security fix: clamp year (defensive, konsisten dgn mgmt_home).
+    if year < 2000 or year > 2100:
+        year = current_year
     year_str = str(year)
     is_current_period = (year == current_year and month == current_month)
 

@@ -45,6 +45,10 @@ async def mgmt_home(year: int | None = None, month: int | None = None,
     month = month if month else current_month
     if month < 1 or month > 12:
         month = current_month
+    # Security fix: clamp year -- datetime.date(0, m, 1) atau (99999, m, 1)
+    # raise ValueError yg jadi 500 uncaught. Batasi ke rentang wajar.
+    if year < 2000 or year > 2100:
+        year = current_year
     is_current_period = (year == current_year and month == current_month)
     ym_now = f"{year:04d}-{month:02d}"
     # Bulan sebelumnya dari bulan terpilih (bukan dari 'now') supaya MoM benar

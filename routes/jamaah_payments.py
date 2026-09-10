@@ -37,6 +37,7 @@ import db
 from deps import (
     Depends,
     HTTPException,
+    assert_jamaah_access,
     authenticate_token,
     json_body,
     log_action,
@@ -59,6 +60,8 @@ async def submission_create(jid: int, body: dict = Depends(json_body),
     """Sales/admin submit pembayaran jamaah utk di-ACC finance.
     Status awal Pending -- belum apply ke paid_amount jamaah."""
     require_role(user, "admin", "sales")
+    # Security fix: sales cuma boleh submit utk jamaah miliknya.
+    assert_jamaah_access(jid, user)
 
     jamaah = db.query_one(
         "SELECT id, name, total_price, paid_amount, sales_id FROM jamaah WHERE id = ?",
@@ -146,6 +149,8 @@ async def submissions_list(status: str | None = None, scope: str = "all",
 @router.get("/api/jamaah/{jid}/payment-submissions")
 async def submissions_for_jamaah(jid: int, user=Depends(authenticate_token)):
     require_role(user, "admin", "sales", "finance", "management")
+    # Security fix: sales lain tidak boleh lihat history submission jamaah bukan miliknya.
+    assert_jamaah_access(jid, user)
     return db.query_all(
         "SELECT * FROM jamaah_payment_submissions WHERE jamaah_id = ? "
         "ORDER BY submitted_at DESC", (jid,),

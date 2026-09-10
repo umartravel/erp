@@ -17,7 +17,13 @@ RBAC:
 from fastapi import APIRouter
 
 import db
-from deps import Depends, HTTPException, authenticate_token, require_role
+from deps import (
+    Depends,
+    HTTPException,
+    assert_jamaah_access,
+    authenticate_token,
+    require_role,
+)
 
 router = APIRouter(tags=["audit-trail"])
 
@@ -44,23 +50,44 @@ BOQ_ACTIONS = (
 )
 
 
+import re
+
+_NIK_RE = re.compile(r"\b(\d{4})(\d{8})(\d{4})\b")
+_PASSPORT_RE = re.compile(r"\b([A-Z])(\d{5,7})(\d)\b")
+
+
+def _mask_pii(text: str) -> str:
+    """Security fix: masking NIK 16-digit + paspor di response audit.
+    Yang lihat cuma butuh tahu 'NIK diubah', bukan tahu 16 digit lengkapnya."""
+    if not text:
+        return text
+    text = _NIK_RE.sub(r"\1-XXXXXXXX-\3", text)
+    text = _PASSPORT_RE.sub(r"\1-XXXXXX-\3", text)
+    return text
+
+
 def _fetch_audit(actions: tuple, needle: str, limit: int = 100):
     """Query audit_logs dgn action IN (...) AND details LIKE '%needle%'."""
     if not needle:
         return []
     ph_actions = ",".join(["?"] * len(actions))
-    return db.query_all(
+    rows = db.query_all(
         f"SELECT id, user_name, action, details, created_at, role "
         f"FROM audit_logs "
         f"WHERE action IN ({ph_actions}) AND details LIKE ? "
         f"ORDER BY created_at DESC, id DESC LIMIT ?",
         (*actions, f"%{needle}%", limit),
     ) or []
+    for r in rows:
+        r["details"] = _mask_pii(r.get("details") or "")
+    return rows
 
 
 @router.get("/api/audit/jamaah/{jid}")
 async def audit_jamaah(jid: int, user=Depends(authenticate_token)):
     require_role(user, "admin", "management", "sales", "finance", "ops")
+    # Security fix: sales lain tidak boleh baca audit trail jamaah bukan miliknya.
+    assert_jamaah_access(jid, user)
     row = db.query_one("SELECT id, name, orderer_name FROM jamaah WHERE id = ?", (jid,))
     if not row:
         raise HTTPException(status_code=404, detail="Jamaah tidak ditemukan.")

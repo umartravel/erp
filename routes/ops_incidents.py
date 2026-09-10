@@ -51,6 +51,9 @@ async def incidents_list(
     package: str | None = None,
     user=Depends(authenticate_token),
 ):
+    # Security fix: incidents list adalah data operasional company-wide (nama
+    # jamaah, insiden, dsb) -- jangan buka utk semua role.
+    require_role(user, "admin", "ops", "management")
     where = []
     params = []
     if status:

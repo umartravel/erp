@@ -27,7 +27,12 @@ def _mk_jamaah_via_api(client, admin_token, name, pkg_name, price):
         "package_type": pkg_name, "total_price": price, "status": "Terdaftar",
     }, headers=bearer(admin_token))
     assert r.status_code == 200, r.text
-    return r.json()["id"]
+    jid = r.json()["id"]
+    # Security fix: attach ke sales1 supaya assert_jamaah_access lolos.
+    sales1 = db.query_one("SELECT id FROM users WHERE username = 'sales1'")
+    if sales1:
+        db.execute("UPDATE jamaah SET sales_id = ? WHERE id = ?", (sales1["id"], jid))
+    return jid
 
 
 def test_audit_jamaah_returns_history(client, admin_token):
