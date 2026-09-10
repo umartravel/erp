@@ -14,8 +14,10 @@ Endpoint:
 import datetime
 
 from fastapi import APIRouter
+from fastapi.responses import Response
 
 import db
+from auth import authenticate_file_token
 from deps import (
     Depends,
     HTTPException,
@@ -24,6 +26,8 @@ from deps import (
     log_action,
     require_role,
 )
+from finance_analytics_pdf import build_month_report_pdf, build_year_report_pdf
+from finance_analytics_xlsx import build_month_report_xlsx, build_year_report_xlsx
 
 router = APIRouter(tags=["finance-categories"])
 
@@ -162,10 +166,8 @@ def _by_category_breakdown(period_sql: str, params: tuple):
     return list(by_cat_map.values())
 
 
-@router.get("/api/finance/summary/year")
-async def summary_year(year: int | None = None,
-                       user=Depends(authenticate_token)):
-    require_role(user, *_FINANCE_ROLES)
+def _build_year_payload(year):
+    """Phase F4: shared helper -- dipakai endpoint JSON + export PDF/Excel."""
     now = datetime.datetime.now()
     year = _clamp_year(year, now.year)
     ys = str(year)
@@ -213,10 +215,8 @@ async def summary_year(year: int | None = None,
     }
 
 
-@router.get("/api/finance/summary/month")
-async def summary_month(year: int | None = None, month: int | None = None,
-                        user=Depends(authenticate_token)):
-    require_role(user, *_FINANCE_ROLES)
+def _build_month_payload(year, month):
+    """Phase F4: shared helper -- dipakai endpoint JSON + export PDF/Excel."""
     now = datetime.datetime.now()
     year = _clamp_year(year, now.year)
     month = month if month else now.month
@@ -259,3 +259,92 @@ async def summary_month(year: int | None = None, month: int | None = None,
         "by_category": by_category,
         "transactions": transactions,
     }
+
+
+@router.get("/api/finance/summary/year")
+async def summary_year(year: int | None = None,
+                       user=Depends(authenticate_token)):
+    require_role(user, *_FINANCE_ROLES)
+    return _build_year_payload(year)
+
+
+@router.get("/api/finance/summary/month")
+async def summary_month(year: int | None = None, month: int | None = None,
+                        user=Depends(authenticate_token)):
+    require_role(user, *_FINANCE_ROLES)
+    return _build_month_payload(year, month)
+
+
+# ===========================================================================
+# Phase F4: Export PDF & Excel
+# authenticate_file_token supaya bisa dibuka via <a target="_blank">?token=xxx
+# tanpa header Authorization.
+# ===========================================================================
+def _generated_meta(user):
+    now = datetime.datetime.now()
+    return {
+        "generated_by": user.get("name") or user.get("username") or "-",
+        "generated_at": now.strftime("%d %b %Y %H:%M"),
+    }
+
+
+@router.get("/api/finance/export/year.pdf")
+async def export_year_pdf(year: int | None = None,
+                          user=Depends(authenticate_file_token)):
+    require_role(user, *_FINANCE_ROLES)
+    payload = _build_year_payload(year)
+    payload.update(_generated_meta(user))
+    log_action(user, "EXPORT_FINANCE_YEAR_PDF", f"Tahun {payload['year']}")
+    pdf = build_year_report_pdf(payload)
+    fname = f"analisis-keuangan-{payload['year']}.pdf"
+    return Response(
+        content=pdf, media_type="application/pdf",
+        headers={"Content-Disposition": f"inline; filename={fname}"},
+    )
+
+
+@router.get("/api/finance/export/year.xlsx")
+async def export_year_xlsx(year: int | None = None,
+                           user=Depends(authenticate_file_token)):
+    require_role(user, *_FINANCE_ROLES)
+    payload = _build_year_payload(year)
+    payload.update(_generated_meta(user))
+    log_action(user, "EXPORT_FINANCE_YEAR_XLSX", f"Tahun {payload['year']}")
+    xlsx = build_year_report_xlsx(payload)
+    fname = f"analisis-keuangan-{payload['year']}.xlsx"
+    return Response(
+        content=xlsx,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={fname}"},
+    )
+
+
+@router.get("/api/finance/export/month.pdf")
+async def export_month_pdf(year: int | None = None, month: int | None = None,
+                           user=Depends(authenticate_file_token)):
+    require_role(user, *_FINANCE_ROLES)
+    payload = _build_month_payload(year, month)
+    payload.update(_generated_meta(user))
+    log_action(user, "EXPORT_FINANCE_MONTH_PDF", f"Periode {payload['period']}")
+    pdf = build_month_report_pdf(payload)
+    fname = f"analisis-keuangan-{payload['period']}.pdf"
+    return Response(
+        content=pdf, media_type="application/pdf",
+        headers={"Content-Disposition": f"inline; filename={fname}"},
+    )
+
+
+@router.get("/api/finance/export/month.xlsx")
+async def export_month_xlsx(year: int | None = None, month: int | None = None,
+                            user=Depends(authenticate_file_token)):
+    require_role(user, *_FINANCE_ROLES)
+    payload = _build_month_payload(year, month)
+    payload.update(_generated_meta(user))
+    log_action(user, "EXPORT_FINANCE_MONTH_XLSX", f"Periode {payload['period']}")
+    xlsx = build_month_report_xlsx(payload)
+    fname = f"analisis-keuangan-{payload['period']}.xlsx"
+    return Response(
+        content=xlsx,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={fname}"},
+    )

@@ -237,10 +237,30 @@
     } catch (e) { alert('Error: ' + e.message); }
   };
 
-  window.faDownloadPdf = function() {
-    alert('Export PDF Analisis Keuangan menyusul di Phase F4.');
+  // Phase F4: buka endpoint export dgn ?token=... supaya route ber-authenticate_file_token
+  // dpt verifikasi tanpa header Authorization (browser <a target="_blank"> tidak kirim header).
+  function faBuildExportUrl(period, fmt) {
+    const y = faYear || new Date().getFullYear();
+    const m = faMonth || (new Date().getMonth() + 1);
+    const token = encodeURIComponent(sessionStorage.getItem('token') || '');
+    const params = period === 'month'
+      ? `year=${y}&month=${m}&token=${token}`
+      : `year=${y}&token=${token}`;
+    return `/api/finance/export/${period}.${fmt}?${params}`;
+  }
+
+  window.faDownloadPdf = function(period) {
+    period = period === 'month' ? 'month' : 'year';
+    window.open(faBuildExportUrl(period, 'pdf'), '_blank');
   };
-  window.faDownloadExcel = function() {
-    alert('Export Excel Analisis Keuangan menyusul di Phase F4.');
+  window.faDownloadExcel = function(period) {
+    period = period === 'month' ? 'month' : 'year';
+    // Content-Disposition: attachment -- trigger download via anchor click.
+    const a = document.createElement('a');
+    a.href = faBuildExportUrl(period, 'xlsx');
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 })();
