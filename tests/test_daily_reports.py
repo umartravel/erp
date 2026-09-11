@@ -702,6 +702,82 @@ def test_reminders_check_draft_still_gets_reminder(client, sales_token,
         "User dgn Draft (belum submit) tetap harus dapat reminder."
 
 
+# ---------------------------------------------------------------------------
+# Phase DT-5: Digest PDF + Excel export
+# ---------------------------------------------------------------------------
+def _assert_pdf_response(resp):
+    assert resp.status_code == 200, resp.text
+    assert resp.headers["content-type"].startswith("application/pdf")
+    body = resp.content
+    assert body[:5] == b"%PDF-", f"bukan PDF: {body[:20]!r}"
+    assert len(body) > 500
+    assert resp.headers.get("content-disposition", "").startswith("inline")
+
+
+def _assert_xlsx_response(resp):
+    assert resp.status_code == 200, resp.text
+    assert "spreadsheetml.sheet" in resp.headers["content-type"]
+    body = resp.content
+    # XLSX = ZIP archive => magic PK\x03\x04
+    assert body[:4] == b"PK\x03\x04", f"bukan XLSX: {body[:8]!r}"
+    assert len(body) > 500
+    assert resp.headers.get("content-disposition", "").startswith("attachment")
+
+
+def test_export_pdf_via_query_token(client, management_token):
+    """Klik dari <a target=_blank> pakai ?token= query -- authenticate_file_token."""
+    r = client.get(
+        f"/api/daily-reports/export.pdf?token={management_token}")
+    _assert_pdf_response(r)
+
+
+def test_export_xlsx_via_query_token(client, management_token):
+    r = client.get(
+        f"/api/daily-reports/export.xlsx?token={management_token}")
+    _assert_xlsx_response(r)
+
+
+def test_export_pdf_via_bearer_header(client, admin_token):
+    """authenticate_file_token juga terima Bearer header."""
+    r = client.get("/api/daily-reports/export.pdf",
+                   headers=bearer(admin_token))
+    _assert_pdf_response(r)
+
+
+def test_export_pdf_denied_without_token(client):
+    r = client.get("/api/daily-reports/export.pdf")
+    assert r.status_code == 401
+
+
+def test_export_pdf_denied_for_sales(client, sales_token):
+    """Sales role tidak boleh export -- restricted admin+mgmt saja."""
+    r = client.get(f"/api/daily-reports/export.pdf?token={sales_token}")
+    assert r.status_code == 403
+
+
+def test_export_xlsx_denied_for_finance(client, finance_token):
+    r = client.get(f"/api/daily-reports/export.xlsx?token={finance_token}")
+    assert r.status_code == 403
+
+
+def test_export_pdf_with_date_range_and_role(client, management_token):
+    """Test lengkap dgn filter date + role, konfirmasi payload non-empty."""
+    today = _today()
+    r = client.get(
+        f"/api/daily-reports/export.pdf"
+        f"?date_from={today}&date_to={today}&role=sales"
+        f"&token={management_token}")
+    _assert_pdf_response(r)
+
+
+def test_export_reject_invalid_date_range(client, management_token):
+    """date_from > date_to -> 400."""
+    r = client.get(
+        f"/api/daily-reports/export.pdf"
+        f"?date_from=2026-09-15&date_to=2026-09-10&token={management_token}")
+    assert r.status_code == 400
+
+
 def test_mgmt_home_attention_daily_report_overdue(client, management_token):
     """Chip 'daily_report_overdue' muncul kalau ada user sales/ops/finance
     yg tidak submit dalam 3 hari terakhir. Kita clear submitted history sales1

@@ -15,9 +15,12 @@ Submit + feedback + notify hooks = phase DT-1b (extend endpoint yg sama).
 """
 import datetime
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Response
 
 import db
+from auth import authenticate_file_token
+from daily_report_pdf import build_daily_digest_pdf
+from daily_report_xlsx import build_daily_digest_xlsx
 from deps import (
     Depends,
     HTTPException,
@@ -333,18 +336,14 @@ async def daily_reminders_check(user=Depends(authenticate_token)):
             "sent": sent, "skipped": skipped}
 
 
-@router.get("/api/daily-reports/team/summary")
-async def daily_reports_team_summary(date_from: str | None = None,
-                                     date_to: str | None = None,
-                                     role: str | None = None,
-                                     user=Depends(authenticate_token)):
-    """Agregat range per user: hari submit / total hari + total task + % done.
+def _team_summary_data(date_from: str | None, date_to: str | None,
+                       role: str | None) -> dict:
+    """Build summary payload untuk /team/summary + export PDF/XLSX. Raise
+    HTTPException 400 kalau tanggal/rentang/role tidak valid.
 
-    Default range: 30 hari terakhir (date_to = hari ini). Filter role optional.
+    Return: {date_from, date_to, total_days, role_filter, users:[...]}
+    di mana users berisi row per user dgn submit_rate_pct, done_pct, dll.
     """
-    if not _is_privileged(user):
-        raise HTTPException(status_code=403, detail="Hanya management/admin.")
-
     if not date_to:
         date_to = _today_str()
     d_to = _parse_date_or_400(date_to, "date_to")
@@ -408,6 +407,75 @@ async def daily_reports_team_summary(date_from: str | None = None,
         "role_filter": role,
         "users": result,
     }
+
+
+def _generated_meta(user) -> dict:
+    """Metadata "digenerate oleh X pada Y" utk header PDF/Excel."""
+    now = datetime.datetime.now()
+    return {
+        "generated_by": user.get("name") or user.get("username") or "-",
+        "generated_at": now.strftime("%d %b %Y %H:%M"),
+    }
+
+
+@router.get("/api/daily-reports/team/summary")
+async def daily_reports_team_summary(date_from: str | None = None,
+                                     date_to: str | None = None,
+                                     role: str | None = None,
+                                     user=Depends(authenticate_token)):
+    """Agregat range per user: hari submit / total hari + total task + % done.
+
+    Default range: 30 hari terakhir (date_to = hari ini). Filter role optional.
+    """
+    if not _is_privileged(user):
+        raise HTTPException(status_code=403, detail="Hanya management/admin.")
+    return _team_summary_data(date_from, date_to, role)
+
+
+@router.get("/api/daily-reports/export.pdf")
+async def daily_report_export_pdf(date_from: str | None = None,
+                                  date_to: str | None = None,
+                                  role: str | None = None,
+                                  user=Depends(authenticate_file_token)):
+    """Export digest PDF (rentang date + optional role filter).
+    Guard: admin+mgmt only. Auth via ?token= atau Bearer header
+    (authenticate_file_token). Content-Disposition inline supaya
+    langsung buka di tab baru saat klik dari UI Mgmt."""
+    if not _is_privileged(user):
+        raise HTTPException(status_code=403, detail="Hanya management/admin.")
+    payload = _team_summary_data(date_from, date_to, role)
+    payload.update(_generated_meta(user))
+    log_action(user, "EXPORT_DAILY_DIGEST_PDF",
+               f"{payload['date_from']} s/d {payload['date_to']}")
+    pdf = build_daily_digest_pdf(payload)
+    fname = f"digest-laporan-harian-{payload['date_from']}_{payload['date_to']}.pdf"
+    return Response(
+        content=pdf, media_type="application/pdf",
+        headers={"Content-Disposition": f"inline; filename={fname}"},
+    )
+
+
+@router.get("/api/daily-reports/export.xlsx")
+async def daily_report_export_xlsx(date_from: str | None = None,
+                                   date_to: str | None = None,
+                                   role: str | None = None,
+                                   user=Depends(authenticate_file_token)):
+    """Export digest XLSX (rentang date + optional role filter).
+    Guard: admin+mgmt only. Auth via ?token= atau Bearer header.
+    Content-Disposition attachment supaya klik = download langsung."""
+    if not _is_privileged(user):
+        raise HTTPException(status_code=403, detail="Hanya management/admin.")
+    payload = _team_summary_data(date_from, date_to, role)
+    payload.update(_generated_meta(user))
+    log_action(user, "EXPORT_DAILY_DIGEST_XLSX",
+               f"{payload['date_from']} s/d {payload['date_to']}")
+    xlsx = build_daily_digest_xlsx(payload)
+    fname = f"digest-laporan-harian-{payload['date_from']}_{payload['date_to']}.xlsx"
+    return Response(
+        content=xlsx,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={fname}"},
+    )
 
 
 @router.put("/api/daily-reports/{rid}")

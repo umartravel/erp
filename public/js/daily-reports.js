@@ -684,6 +684,42 @@
     }
   }
 
+  // Phase DT-5: Digest PDF/XLSX download. Endpoint pakai authenticate_file_token
+  // -- token dilewatkan via ?token= query string supaya <a target=_blank> jalan
+  // tanpa header Authorization. Rentang default: 30 hari terakhir ending di
+  // filter date. Filter role dibawa juga kalau di-set.
+  function drTeamBuildExportUrl(fmt) {
+    const dateEl = document.getElementById('dt-filter-date');
+    const roleEl = document.getElementById('dt-filter-role');
+    const dateTo = (dateEl && dateEl.value) || new Date().toISOString().slice(0, 10);
+    const dTo = new Date(dateTo + 'T00:00:00');
+    dTo.setDate(dTo.getDate() - 29);
+    const dateFrom = dTo.toISOString().slice(0, 10);
+    const role = roleEl ? roleEl.value : '';
+    const token = encodeURIComponent(sessionStorage.getItem('token') || '');
+    const params = [
+      `date_from=${dateFrom}`, `date_to=${dateTo}`,
+      `token=${token}`,
+    ];
+    if (role) params.push(`role=${encodeURIComponent(role)}`);
+    return `/api/daily-reports/export.${fmt}?${params.join('&')}`;
+  }
+
+  window.drTeamDownloadPdf = function() {
+    // inline disposition -> open tab baru
+    window.open(drTeamBuildExportUrl('pdf'), '_blank');
+  };
+
+  window.drTeamDownloadXlsx = function() {
+    // attachment disposition -> trigger anchor click download
+    const a = document.createElement('a');
+    a.href = drTeamBuildExportUrl('xlsx');
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
   window.drTeamSendFeedback = async function() {
     if (!DT.detailRid) return;
     const inputEl = document.getElementById('dt-detail-comment');
