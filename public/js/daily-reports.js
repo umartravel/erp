@@ -471,4 +471,240 @@
       await drLoadDetail(DR.report.id);
     } catch (e) { alert('Error: ' + e.message); }
   };
+
+  // ==========================================================================
+  // Phase DT-3b: Laporan Tim (mgmt bird's-eye view)
+  // ==========================================================================
+  const DT = {
+    date: null,       // yyyy-mm-dd currently loaded
+    role: '',         // '' | 'sales' | 'ops' | 'finance' | 'management'
+    users: [],        // rows dari /team endpoint
+    detailRid: null,  // rid yg sedang dibuka di modal detail
+  };
+
+  const ROLE_LABEL = {
+    sales: 'Sales', ops: 'Operasional', finance: 'Finance',
+    management: 'Management', admin: 'Admin',
+  };
+
+  const STATUS_STYLE = {
+    Submitted: { bg: '#DCFCE7', color: '#166534', border: '#16A34A', label: 'Submitted' },
+    Draft: { bg: '#FEF3C7', color: '#92400E', border: '#D97706', label: 'Draft' },
+    NotSubmitted: { bg: '#FEE2E2', color: '#991B1B', border: '#DC2626', label: 'Belum Lapor' },
+  };
+
+  const MOOD_LABEL = {
+    productive: '🚀 Produktif', neutral: '😐 Netral',
+    blocked: '⛔ Terhambat', off: '🌙 Off',
+  };
+
+  window.initDailyTeam = async function() {
+    const dateEl = document.getElementById('dt-filter-date');
+    const roleEl = document.getElementById('dt-filter-role');
+    if (dateEl && !dateEl.value) {
+      dateEl.value = new Date().toISOString().slice(0, 10);
+    }
+    DT.date = dateEl ? dateEl.value : new Date().toISOString().slice(0, 10);
+    DT.role = roleEl ? roleEl.value : '';
+    await drTeamLoad();
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  };
+
+  window.drTeamRefresh = async function() {
+    const dateEl = document.getElementById('dt-filter-date');
+    const roleEl = document.getElementById('dt-filter-role');
+    DT.date = (dateEl && dateEl.value) || new Date().toISOString().slice(0, 10);
+    DT.role = roleEl ? roleEl.value : '';
+    await drTeamLoad();
+  };
+
+  async function drTeamLoad() {
+    try {
+      const params = new URLSearchParams({ date: DT.date });
+      if (DT.role) params.set('role', DT.role);
+      const r = await drFetch(`/api/daily-reports/team?${params.toString()}`);
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error(err.detail || err.error || 'Gagal load laporan tim.');
+      }
+      const data = await r.json();
+      DT.users = data.users || [];
+      drTeamRenderKpis(data.totals || {});
+      drTeamRenderGrid(DT.users);
+    } catch (e) {
+      console.error('[dr-team] load error', e);
+      const body = document.getElementById('dt-grid-body');
+      if (body) {
+        body.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-xs" style="color:${DR_COLORS.red};">${drEsc(e.message)}</td></tr>`;
+      }
+    }
+  }
+
+  function drTeamRenderKpis(totals) {
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    set('dt-kpi-submitted', totals.submitted || 0);
+    set('dt-kpi-total', totals.users || 0);
+    set('dt-kpi-drafts', totals.drafts || 0);
+    set('dt-kpi-not-submitted', totals.not_submitted || 0);
+    set('dt-kpi-rate', `${totals.submit_rate_pct != null ? totals.submit_rate_pct : 0}%`);
+  }
+
+  function drTeamRenderGrid(users) {
+    const body = document.getElementById('dt-grid-body');
+    const countEl = document.getElementById('dt-grid-count');
+    if (!body) return;
+    if (countEl) countEl.textContent = `${users.length} baris`;
+
+    if (!users.length) {
+      body.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-xs italic" style="color:#9CA3AF;">Tidak ada data untuk filter ini.</td></tr>';
+      return;
+    }
+
+    body.innerHTML = users.map(u => {
+      const style = STATUS_STYLE[u.status] || STATUS_STYLE.NotSubmitted;
+      const statusBadge = `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full border" style="background:${style.bg};color:${style.color};border-color:${style.border};">${drEsc(style.label)}</span>`;
+      const roleLabel = ROLE_LABEL[u.role] || u.role || '-';
+      const mood = u.mood ? drEsc(MOOD_LABEL[u.mood] || u.mood) : '<span style="color:#D1D5DB;">-</span>';
+      const summary = u.summary_text
+        ? drEsc(u.summary_text.length > 60 ? u.summary_text.slice(0, 60) + '…' : u.summary_text)
+        : '<span style="color:#D1D5DB;">-</span>';
+      const total = Number(u.item_count) || 0;
+      const done = Number(u.done_count) || 0;
+      const taskCell = total > 0
+        ? `<span class="text-xs font-bold" style="color:${done === total ? DR_COLORS.green : DR_COLORS.charcoal};">${done}/${total}</span>`
+        : '<span class="text-xs" style="color:#D1D5DB;">-</span>';
+
+      const nameSafe = drEsc(u.user_name || u.username || '-');
+      const roleSafe = drEsc(roleLabel);
+      // Pass rid saja -- name/role di-lookup dari DT.users di handler,
+      // menghindari HTML entity decoding attack pada inline onclick string.
+      const actionBtn = u.report_id
+        ? `<button onclick="drTeamOpenDetail(${u.report_id})" class="text-[10px] font-bold px-2 py-1 rounded" style="background:${DR_COLORS.gold};color:white;">Detail</button>`
+        : `<span class="text-[10px]" style="color:#9CA3AF;">tidak ada</span>`;
+
+      return `<tr class="border-t hover:bg-yellow-50 transition-colors" style="border-color:#F3F4F6;">
+        <td class="px-3 py-2"><b class="text-xs" style="color:${DR_COLORS.charcoal};">${nameSafe}</b></td>
+        <td class="px-3 py-2"><span class="text-[10px] font-semibold px-2 py-0.5 rounded" style="background:#F3F4F6;color:#374151;">${roleSafe}</span></td>
+        <td class="px-3 py-2">${statusBadge}</td>
+        <td class="px-3 py-2 text-xs">${mood}</td>
+        <td class="px-3 py-2 text-xs" style="color:#374151;">${summary}</td>
+        <td class="px-3 py-2 text-center">${taskCell}</td>
+        <td class="px-3 py-2 text-center">${actionBtn}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  window.drTeamOpenDetail = async function(rid) {
+    if (!rid) {
+      alert('Karyawan ini belum lapor hari ini.');
+      return;
+    }
+    // Lookup name/role dari state (avoid embed string di inline onclick)
+    const row = DT.users.find(u => u.report_id === rid);
+    const name = row ? (row.user_name || row.username || 'Detail Laporan') : 'Detail Laporan';
+    const roleLabel = row ? (ROLE_LABEL[row.role] || row.role || '-') : '-';
+
+    DT.detailRid = rid;
+    document.getElementById('dt-detail-title').textContent = name;
+    document.getElementById('dt-detail-subtitle').textContent =
+      `${roleLabel} · ${drFormatDate(DT.date)}`;
+    document.getElementById('dt-detail-summary').textContent = 'Memuat…';
+    document.getElementById('dt-detail-tasks').innerHTML = '';
+    document.getElementById('dt-detail-feedback').innerHTML = '';
+    document.getElementById('dt-detail-comment').value = '';
+    document.getElementById('dr-team-detail-modal').classList.remove('hidden');
+    await drTeamLoadDetail(rid);
+  };
+
+  window.drTeamCloseDetail = function() {
+    DT.detailRid = null;
+    document.getElementById('dr-team-detail-modal').classList.add('hidden');
+  };
+
+  async function drTeamLoadDetail(rid) {
+    try {
+      const r = await drFetch(`/api/daily-reports/${rid}`);
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error(err.detail || err.error || 'Gagal load detail.');
+      }
+      const detail = await r.json();
+      document.getElementById('dt-detail-summary').textContent =
+        detail.summary_text || '(Tidak ada ringkasan)';
+      const tasksEl = document.getElementById('dt-detail-tasks');
+      const items = detail.items || [];
+      if (!items.length) {
+        tasksEl.innerHTML = '<p class="text-xs italic" style="color:#9CA3AF;">Tidak ada task.</p>';
+      } else {
+        tasksEl.innerHTML = items.map(t => {
+          const isDone = t.status === 'Done';
+          const icon = isDone
+            ? `<i data-lucide="check-circle-2" class="w-4 h-4 shrink-0" style="color:${DR_COLORS.green};"></i>`
+            : `<i data-lucide="circle" class="w-4 h-4 shrink-0" style="color:${DR_COLORS.gray500};"></i>`;
+          const priorityBadge = t.priority === 'high'
+            ? `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded ml-1" style="background:#FEE2E2;color:${DR_COLORS.red};">HIGH</span>`
+            : '';
+          const linkLabel = t.linked_entity_type
+            ? `<span class="text-[10px] px-1.5 py-0.5 rounded ml-1" style="background:#EEF2FF;color:#3730A3;">${drEsc(t.linked_entity_type)}#${Number(t.linked_entity_id) || 0}</span>`
+            : '';
+          return `<div class="flex items-start gap-2 p-2 border rounded" style="background:#FAFAF9;border-color:#E5E7EB;">
+            ${icon}
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center flex-wrap gap-1">
+                <b class="text-xs ${isDone ? 'line-through' : ''}" style="color:${DR_COLORS.charcoal};">${drEsc(t.title)}</b>
+                ${priorityBadge}
+                ${linkLabel}
+                <span class="text-[10px] ml-auto" style="color:${DR_COLORS.gray500};">${drEsc(t.status)}</span>
+              </div>
+              ${t.description ? `<p class="text-[10px] mt-0.5" style="color:${DR_COLORS.gray500};">${drEsc(t.description)}</p>` : ''}
+            </div>
+          </div>`;
+        }).join('');
+      }
+      const fbEl = document.getElementById('dt-detail-feedback');
+      const fb = detail.feedback || [];
+      if (!fb.length) {
+        fbEl.innerHTML = '<p class="text-xs italic text-center" style="color:#9CA3AF;">Belum ada komentar.</p>';
+      } else {
+        fbEl.innerHTML = fb.map(c => {
+          const isMgmt = c.is_from_management === 1 || c.is_from_management === true;
+          const bg = isMgmt ? '#FEF3C7' : '#EEF2FF';
+          const border = isMgmt ? '#D97706' : '#3730A3';
+          const label = isMgmt ? 'Manajemen' : (c.user_name || 'Karyawan');
+          return `<div class="rounded-lg p-2 border-l-2" style="background:${bg};border-color:${border};">
+            <p class="text-[10px] font-bold" style="color:${border};">${drEsc(label)}</p>
+            <p class="text-xs mt-0.5" style="color:${DR_COLORS.charcoal};">${drEsc(c.comment_text)}</p>
+            <p class="text-[9px] mt-1" style="color:${DR_COLORS.gray500};">${drFormatDateTime(c.created_at)}</p>
+          </div>`;
+        }).join('');
+      }
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    } catch (e) {
+      document.getElementById('dt-detail-summary').textContent = 'Error: ' + e.message;
+    }
+  }
+
+  window.drTeamSendFeedback = async function() {
+    if (!DT.detailRid) return;
+    const inputEl = document.getElementById('dt-detail-comment');
+    const text = (inputEl.value || '').trim();
+    if (!text) {
+      alert('Isi komentar dulu.');
+      return;
+    }
+    try {
+      const r = await drFetch(`/api/daily-reports/${DT.detailRid}/feedback`, {
+        method: 'POST',
+        body: JSON.stringify({ comment_text: text }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        throw new Error(data.detail || data.error || 'Gagal kirim.');
+      }
+      inputEl.value = '';
+      await drTeamLoadDetail(DT.detailRid);
+    } catch (e) {
+      alert('Error: ' + e.message);
+    }
+  };
 })();
