@@ -604,6 +604,104 @@ def test_team_summary_reject_range_too_large(client, management_token):
     assert r.status_code == 400
 
 
+# ---------------------------------------------------------------------------
+# Phase DT-4: Reminder cron endpoint + dedupe
+# ---------------------------------------------------------------------------
+def _wipe_today_reminders_for_user(user_id):
+    """Purge notif reminder hari ini utk user tsb -- gunanya biar test dedup
+    bebas dari state test lain."""
+    today_key = datetime.date.today().strftime("%Y%m%d")
+    db.execute(
+        "DELETE FROM user_notifications "
+        "WHERE user_id = ? AND kind = ?",
+        (user_id, f"daily_report_reminder_{today_key}"))
+
+
+def test_reminders_check_requires_privileged(client, sales_token):
+    r = client.post("/api/daily-reports/reminders/check",
+                    headers=bearer(sales_token))
+    assert r.status_code == 403
+
+
+def test_reminders_check_admin_can_call(client, admin_token):
+    r = client.post("/api/daily-reports/reminders/check",
+                    headers=bearer(admin_token))
+    assert r.status_code == 200
+    data = r.json()
+    assert "sent" in data
+    assert "candidates" in data
+    assert data["kind"].startswith("daily_report_reminder_")
+
+
+def test_reminders_check_notifies_user_who_has_not_submitted(client,
+                                                             sales_token,
+                                                             management_token):
+    """Sales1 belum submit hari ini -> setelah /check dipanggil, sales1
+    harus punya notif kind daily_report_reminder_*."""
+    _wipe_today_report(_user_id_by_username("sales1"))
+    _wipe_today_reminders_for_user(_user_id_by_username("sales1"))
+
+    r = client.post("/api/daily-reports/reminders/check",
+                    headers=bearer(management_token))
+    assert r.status_code == 200
+    assert _has_notif_with_kind(client, sales_token, "daily_report_reminder_"), \
+        "Sales1 (belum submit) harus dapat notif reminder."
+
+
+def test_reminders_check_skips_user_who_submitted_today(client, sales_token,
+                                                        management_token):
+    """Sales1 sudah Submitted hari ini -> tidak dapat notif reminder."""
+    _wipe_today_report(_user_id_by_username("sales1"))
+    _wipe_today_reminders_for_user(_user_id_by_username("sales1"))
+    rep = _create_today(client, sales_token, summary="sudah lapor")
+    r_sub = client.post(f"/api/daily-reports/{rep['id']}/submit",
+                        headers=bearer(sales_token))
+    assert r_sub.status_code == 200
+
+    r = client.post("/api/daily-reports/reminders/check",
+                    headers=bearer(management_token))
+    assert r.status_code == 200
+    # sales1 sudah submit -> tidak boleh dapat reminder
+    assert not _has_notif_with_kind(client, sales_token, "daily_report_reminder_"), \
+        "Sales1 (sudah submit) tidak boleh dapat notif reminder."
+
+
+def test_reminders_check_dedupe_second_call_zero_sent(client, sales_token,
+                                                       management_token):
+    """Panggil 2x, 2nd call harus sent=0 (semua sudah di-notify di call pertama)."""
+    _wipe_today_report(_user_id_by_username("sales1"))
+    _wipe_today_reminders_for_user(_user_id_by_username("sales1"))
+
+    r1 = client.post("/api/daily-reports/reminders/check",
+                     headers=bearer(management_token))
+    assert r1.status_code == 200
+    sent1 = r1.json()["sent"]
+    assert sent1 > 0, "Call pertama harus kirim minimal 1 notif"
+
+    r2 = client.post("/api/daily-reports/reminders/check",
+                     headers=bearer(management_token))
+    assert r2.status_code == 200
+    data2 = r2.json()
+    assert data2["sent"] == 0, \
+        f"Call kedua harus dedup semua, tapi sent={data2['sent']}"
+    assert data2["skipped"] >= sent1, \
+        f"Semua kandidat call pertama harus di-skip di call kedua"
+
+
+def test_reminders_check_draft_still_gets_reminder(client, sales_token,
+                                                    management_token):
+    """User yg punya Draft (belum submit) tetap masuk daftar reminder."""
+    _wipe_today_report(_user_id_by_username("sales1"))
+    _wipe_today_reminders_for_user(_user_id_by_username("sales1"))
+    _create_today(client, sales_token, summary="masih draft, belum submit")
+
+    r = client.post("/api/daily-reports/reminders/check",
+                    headers=bearer(management_token))
+    assert r.status_code == 200
+    assert _has_notif_with_kind(client, sales_token, "daily_report_reminder_"), \
+        "User dgn Draft (belum submit) tetap harus dapat reminder."
+
+
 def test_mgmt_home_attention_daily_report_overdue(client, management_token):
     """Chip 'daily_report_overdue' muncul kalau ada user sales/ops/finance
     yg tidak submit dalam 3 hari terakhir. Kita clear submitted history sales1

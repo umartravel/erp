@@ -272,6 +272,67 @@ async def daily_reports_team(date: str | None = None,
     }
 
 
+def _already_notified_user_today(uid: int, kind: str) -> bool:
+    """True kalau (uid, kind) sudah punya row hari ini. Cocok utk dedup
+    per-user (beda dari _already_notified_today di reminders.py yang global)."""
+    row = db.query_one(
+        "SELECT 1 x FROM user_notifications "
+        "WHERE user_id = ? AND kind = ? AND date(created_at) = date('now') LIMIT 1",
+        (uid, kind),
+    )
+    return bool(row)
+
+
+@router.post("/api/daily-reports/reminders/check")
+async def daily_reminders_check(user=Depends(authenticate_token)):
+    """Sweep karyawan yg belum submit report hari ini, kirim reminder halus
+    (kind per-user per-hari: 'daily_report_reminder_YYYYMMDD'). Aman dipanggil
+    berkali-kali -- dedupe garansi 1 notif per user per hari.
+
+    Pattern reuse: routes/reminders.py:102-110 (kind encode date). Bedanya di
+    sini per-user dedup, bukan global -- karena notify_user() bikin 1 row per
+    user, dan setiap user butuh cek sendiri-sendiri.
+
+    Guard: admin + management (sama seperti /team endpoint di DT-3a).
+    Dipanggil eksternal cron scheduler jam 16:30 lokal, atau manual dari UI."""
+    if not _is_privileged(user):
+        raise HTTPException(status_code=403, detail="Hanya management/admin.")
+
+    today_str = _today_str()
+    kind = f"daily_report_reminder_{today_str.replace('-', '')}"
+
+    # Karyawan operasional yg belum ada Submitted report hari ini. Draft
+    # tetap masuk daftar reminder -- artinya sudah mulai tapi belum kirim.
+    overdue = db.query_all(
+        "SELECT u.id, u.name, u.role FROM users u "
+        "WHERE u.role IN ('sales', 'ops', 'finance', 'management') "
+        "AND NOT EXISTS ("
+        "  SELECT 1 FROM daily_reports r "
+        "  WHERE r.user_id = u.id "
+        "  AND r.report_date = ? AND r.status = 'Submitted')",
+        (today_str,),
+    )
+
+    sent = 0
+    skipped = 0
+    for u in overdue:
+        uid = u["id"]
+        if _already_notified_user_today(uid, kind):
+            skipped += 1
+            continue
+        notify_user(
+            uid, kind,
+            "Reminder: Laporan Harian",
+            body=(f"Kamu belum submit laporan hari ini ({today_str}). "
+                  "Buka menu Laporan Harian utk isi sebelum pulang."),
+            link="#page-daily-mine",
+        )
+        sent += 1
+
+    return {"date": today_str, "kind": kind, "candidates": len(overdue),
+            "sent": sent, "skipped": skipped}
+
+
 @router.get("/api/daily-reports/team/summary")
 async def daily_reports_team_summary(date_from: str | None = None,
                                      date_to: str | None = None,
