@@ -64,7 +64,9 @@ def _resolve_category_tree():
 
 @router.get("/api/finance/categories")
 async def categories_list(user=Depends(authenticate_token)):
-    require_role(user, *_FINANCE_ROLES)
+    """Phase EX-1: dibuka untuk semua user login. Sales/Ops butuh list ini
+    untuk pilih kategori saat submit Expense Report -- READ tidak sensitif.
+    CRUD (POST/PUT/DELETE) tetap admin-only di endpoint di bawah."""
     tree = _resolve_category_tree()
     income = [t for t in tree if t["group_type"] == "income"]
     expense = [t for t in tree if t["group_type"] == "expense"]

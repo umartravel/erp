@@ -17,9 +17,11 @@ def test_categories_tree(client, admin_token):
     assert len(hpp["subcategories"]) >= 10
 
 
-def test_categories_denies_sales(client, sales_token):
+def test_categories_allow_sales(client, sales_token):
+    """Phase EX-1: GET /api/finance/categories dibuka untuk semua user login.
+    Sales/Ops butuh baca daftar kategori saat submit Expense Report."""
     r = client.get("/api/finance/categories", headers=bearer(sales_token))
-    assert r.status_code == 403
+    assert r.status_code == 200
 
 
 def test_category_create_and_update(client, admin_token):

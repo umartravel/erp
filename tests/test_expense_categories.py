@@ -61,3 +61,96 @@ def test_payment_jamaah_subcategory_present(client):
 def test_transactions_category_id_column_exists(client):
     cols = [r["name"] for r in db.query_all("PRAGMA table_info(transactions)")]
     assert "category_id" in cols, f"transactions.category_id missing. Cols: {cols}"
+
+
+# ============================================================================
+# Phase EX-1: unblock GET /finance/categories untuk semua role + wajibkan
+# category_id di POST /expense-reports.
+# ============================================================================
+
+from tests.conftest import bearer  # noqa: E402
+
+
+def _first_expense_category_id():
+    row = db.query_one(
+        "SELECT id FROM expense_categories "
+        "WHERE group_type = 'expense' AND parent_id IS NOT NULL AND is_active = 1 "
+        "ORDER BY id ASC LIMIT 1"
+    )
+    return row["id"] if row else None
+
+
+def _ensure_project(client, admin_token):
+    projs = client.get("/api/expense-projects", headers=bearer(admin_token)).json()
+    if projs:
+        return projs[0]["id"]
+    client.post("/api/expense-projects", json={"name": "PROJ-EX1"},
+                headers=bearer(admin_token))
+    projs = client.get("/api/expense-projects", headers=bearer(admin_token)).json()
+    return projs[0]["id"] if projs else None
+
+
+def test_ex1_sales_can_read_categories(client, sales_token):
+    """Sales HARUS bisa GET /api/finance/categories (Phase EX-1 unblock)."""
+    r = client.get("/api/finance/categories", headers=bearer(sales_token))
+    assert r.status_code == 200, f"Sales dapat {r.status_code}: {r.text}"
+    body = r.json()
+    assert "expense" in body and "income" in body
+    assert len(body["expense"]) > 0, "expense tree tidak boleh kosong"
+
+
+def test_ex1_ops_can_read_categories(client, ops_token):
+    """Ops juga bisa GET kategori."""
+    r = client.get("/api/finance/categories", headers=bearer(ops_token))
+    assert r.status_code == 200
+
+
+def test_ex1_categories_crud_still_admin_only(client, sales_token):
+    """POST kategori tetap admin-only -- sales dapat 403."""
+    r = client.post("/api/finance/categories",
+                    json={"name": "Test Cat", "group_type": "expense"},
+                    headers=bearer(sales_token))
+    assert r.status_code == 403, f"Expected 403, got {r.status_code}: {r.text}"
+
+
+def test_ex1_expense_report_category_required(client, sales_token, admin_token):
+    """POST /api/expense-reports tanpa category_id -> 400."""
+    pid = _ensure_project(client, admin_token)
+    r = client.post(
+        "/api/expense-reports",
+        json={"project_id": pid, "period_from": "2026-09-01",
+              "period_to": "2026-09-30", "note": "no category"},
+        headers=bearer(sales_token),
+    )
+    assert r.status_code == 400, f"Expected 400, got {r.status_code}: {r.text}"
+    body = r.json()
+    msg = (body.get("detail") or body.get("error") or "").lower()
+    assert "kategori" in msg, f"Message tidak mengandung 'kategori': {body}"
+
+
+def test_ex1_expense_report_category_valid_ok(client, sales_token, admin_token):
+    """POST /api/expense-reports dengan category_id valid -> 200."""
+    pid = _ensure_project(client, admin_token)
+    cid = _first_expense_category_id()
+    assert cid, "Perlu minimal 1 subkategori expense untuk test"
+    r = client.post(
+        "/api/expense-reports",
+        json={"project_id": pid, "category_id": cid,
+              "period_from": "2026-09-01", "period_to": "2026-09-30",
+              "note": "with category"},
+        headers=bearer(sales_token),
+    )
+    assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
+    assert "id" in r.json()
+
+
+def test_ex1_expense_report_invalid_category_id(client, sales_token, admin_token):
+    """category_id yang nonaktif/tidak ada -> 400."""
+    pid = _ensure_project(client, admin_token)
+    r = client.post(
+        "/api/expense-reports",
+        json={"project_id": pid, "category_id": 999999,
+              "period_from": "2026-09-01", "period_to": "2026-09-30"},
+        headers=bearer(sales_token),
+    )
+    assert r.status_code == 400

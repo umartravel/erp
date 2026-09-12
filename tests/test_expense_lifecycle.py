@@ -12,6 +12,7 @@ Yang di-cover:
 - RBAC review + pay
 """
 from tests.conftest import bearer
+import db as _db
 
 
 def _setup_project(client, admin_token, name="TEST Project"):
@@ -32,6 +33,16 @@ def _get_approver_id(client, admin_token):
     return manager["id"]
 
 
+def _default_category_id():
+    """Phase EX-1: kategori wajib -- pilih subkategori expense pertama yang aktif."""
+    row = _db.query_one(
+        "SELECT id FROM expense_categories "
+        "WHERE group_type = 'expense' AND parent_id IS NOT NULL AND is_active = 1 "
+        "ORDER BY id ASC LIMIT 1"
+    )
+    return row["id"] if row else None
+
+
 def test_expense_full_flow_draft_to_paid(
     client, admin_token, management_token, finance_token
 ):
@@ -43,6 +54,7 @@ def test_expense_full_flow_draft_to_paid(
     r = client.post("/api/expense-reports", json={
         "project_id": pid, "period_from": "2026-08-01", "period_to": "2026-08-31",
         "approver_id": aid, "note": "test expense",
+        "category_id": _default_category_id(),
     }, headers=hdr)
     assert r.status_code == 200, r.text
     rid = r.json()["id"]
@@ -82,6 +94,7 @@ def test_expense_submit_needs_line(client, admin_token):
     r = client.post("/api/expense-reports", json={
         "project_id": pid, "period_from": "2026-08-01", "period_to": "2026-08-31",
         "approver_id": aid,
+        "category_id": _default_category_id(),
     }, headers=hdr)
     rid = r.json()["id"]
 
@@ -97,6 +110,7 @@ def test_expense_submit_needs_approver(client, admin_token):
 
     r = client.post("/api/expense-reports", json={
         "project_id": pid, "period_from": "2026-08-01", "period_to": "2026-08-31",
+        "category_id": _default_category_id(),
     }, headers=hdr)
     rid = r.json()["id"]
 
@@ -116,6 +130,7 @@ def test_expense_reject_requires_note(client, admin_token, management_token):
     r = client.post("/api/expense-reports", json={
         "project_id": pid, "period_from": "2026-08-01", "period_to": "2026-08-31",
         "approver_id": aid,
+        "category_id": _default_category_id(),
     }, headers=hdr)
     rid = r.json()["id"]
     client.post(f"/api/expense-reports/{rid}/lines", json={
@@ -138,6 +153,7 @@ def test_expense_pay_needs_approve(client, admin_token, finance_token):
     r = client.post("/api/expense-reports", json={
         "project_id": pid, "period_from": "2026-08-01", "period_to": "2026-08-31",
         "approver_id": aid,
+        "category_id": _default_category_id(),
     }, headers=hdr)
     rid = r.json()["id"]
 

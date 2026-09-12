@@ -170,9 +170,14 @@ async def expense_reports_list(user=Depends(authenticate_token)):
     return result
 
 
-def _validate_expense_category(category_id):
-    """Phase F1b-2: pastikan category_id (kalau diisi) aktif + group_type='expense'."""
+def _validate_expense_category(category_id, required=False):
+    """Phase F1b-2 + EX-1: pastikan category_id aktif + group_type='expense'.
+    Set required=True untuk mewajibkan (POST expense-reports). Kalau None dan
+    required=True -> 400."""
     if not category_id:
+        if required:
+            raise HTTPException(status_code=400,
+                                detail="Kategori Pengeluaran wajib dipilih.")
         return None
     cat = db.query_one(
         "SELECT id, group_type FROM expense_categories WHERE id = ? AND is_active = 1",
@@ -198,7 +203,9 @@ async def expense_reports_create(body: dict = Depends(json_body), user=Depends(a
         raise HTTPException(status_code=404, detail="Project tidak ditemukan.")
     approver_id = g("approver_id")
     approver = db.query_one("SELECT name FROM users WHERE id = ?", (approver_id,)) if approver_id else None
-    category_id = _validate_expense_category(g("category_id"))
+    # Phase EX-1: kategori WAJIB (bukan opsional lagi). Kategori mengalir ke
+    # transactions.category_id saat Paid -> tampil di donut Analisis Keuangan.
+    category_id = _validate_expense_category(g("category_id"), required=True)
 
     ref = _generate_expense_ref()
     last_id, _ = db.execute(
