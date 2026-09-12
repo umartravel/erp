@@ -4621,8 +4621,8 @@
                 <div><label class="text-xs font-medium">Project <span class="text-red-500">*</span></label>
                     <select id="exp-new-project" class="w-full border p-2 rounded text-sm bg-gray-50" required><option value="">-- Pilih Project --</option></select>
                 </div>
-                <div><label class="text-xs font-medium">Kategori Pengeluaran <span class="text-gray-400 text-[10px]">(opsional, untuk Analisis Keuangan)</span></label>
-                    <select id="exp-new-category" class="w-full border p-2 rounded text-sm bg-gray-50"><option value="">-- Tanpa Kategori --</option></select>
+                <div><label class="text-xs font-medium">Kategori Pengeluaran <span class="text-red-500">*</span> <span class="text-gray-400 text-[10px]">(wajib &mdash; masuk donut Analisis Keuangan)</span></label>
+                    <select id="exp-new-category" class="w-full border p-2 rounded text-sm bg-gray-50" required><option value="">-- Pilih Kategori --</option></select>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div><label class="text-xs font-medium">Tanggal Mulai</label><input type="date" id="exp-new-from" class="w-full border p-2 rounded text-sm bg-gray-50" required></div>
@@ -4669,14 +4669,9 @@
                 <p class="text-xs font-bold text-gray-600 mb-2 flex items-center gap-1"><i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>Tambah Item Pengeluaran</p>
                 <div class="grid grid-cols-2 md:grid-cols-7 gap-2 items-end">
                     <div><label class="text-[10px] text-gray-500">Tanggal</label><input type="date" id="exl-date" class="w-full border p-1.5 rounded text-xs"></div>
-                    <div><label class="text-[10px] text-gray-500">Type</label>
-                        <select id="exl-category" class="w-full border p-1.5 rounded text-xs">
-                            <option value="Transportasi">Transportasi</option>
-                            <option value="Akomodasi">Akomodasi</option>
-                            <option value="Konsumsi">Konsumsi</option>
-                            <option value="Komunikasi">Komunikasi</option>
-                            <option value="ATK & Perlengkapan">ATK & Perlengkapan</option>
-                            <option value="Lainnya">Lainnya</option>
+                    <div><label class="text-[10px] text-gray-500">Kategori <span class="text-red-500">*</span></label>
+                        <select id="exl-category" class="w-full border p-1.5 rounded text-xs" required>
+                            <option value="">-- Pilih --</option>
                         </select>
                     </div>
                     <div class="col-span-2"><label class="text-[10px] text-gray-500">Deskripsi</label><input type="text" id="exl-description" class="w-full border p-1.5 rounded text-xs"></div>
@@ -7252,25 +7247,37 @@
         }
 
         // Phase F1b-2: dropdown kategori pengeluaran utk expense report modal.
-        // Endpoint /api/finance/categories return {income: [...], expense: [...]}
-        // dgn nested subcategories -- kita flatten ke option group parent->sub.
+        // Phase EX-3: cache tree kategori supaya bisa dipakai ulang tanpa fetch.
+        // Populate BOTH selector header (exp-new-category) DAN line (exl-category)
+        // dari master expense_categories yang sama. Kalau fetch gagal, banner
+        // error dgn showToast supaya user tahu (bukan silent fallback).
+        let _expenseCategoryTree = null;
+        function _buildCategoryOptions(tree, placeholder) {
+            const opts = [`<option value="">${placeholder}</option>`];
+            (tree || []).forEach(parent => {
+                const subs = parent.subcategories || [];
+                if (subs.length === 0) return;
+                opts.push(`<optgroup label="${parent.name}">`);
+                subs.forEach(s => opts.push(`<option value="${s.id}">${s.name}</option>`));
+                opts.push('</optgroup>');
+            });
+            return opts.join('');
+        }
         async function loadExpenseCategories() {
-            const sel = document.getElementById('exp-new-category');
-            if (!sel) return;
             try {
                 const res = await authFetch('/finance/categories');
                 const data = await res.json();
-                const opts = ['<option value="">-- Tanpa Kategori --</option>'];
-                (data.expense || []).forEach(parent => {
-                    const subs = parent.subcategories || [];
-                    if (subs.length === 0) return;
-                    opts.push(`<optgroup label="${parent.name}">`);
-                    subs.forEach(s => opts.push(`<option value="${s.id}">${s.name}</option>`));
-                    opts.push('</optgroup>');
-                });
-                sel.innerHTML = opts.join('');
+                _expenseCategoryTree = data.expense || [];
+                const header = document.getElementById('exp-new-category');
+                if (header) header.innerHTML = _buildCategoryOptions(_expenseCategoryTree, '-- Pilih Kategori --');
+                const line = document.getElementById('exl-category');
+                if (line) line.innerHTML = _buildCategoryOptions(_expenseCategoryTree, '-- Pilih --');
             } catch(e) {
-                sel.innerHTML = '<option value="">-- Tanpa Kategori --</option>';
+                showToast('Gagal load kategori pengeluaran &mdash; refresh halaman atau hubungi admin.', 'error');
+                const header = document.getElementById('exp-new-category');
+                if (header) header.innerHTML = '<option value="">-- Kategori tidak tersedia --</option>';
+                const line = document.getElementById('exl-category');
+                if (line) line.innerHTML = '<option value="">-- Kategori tidak tersedia --</option>';
             }
         }
 
@@ -7514,6 +7521,14 @@
             try {
                 const res = await authFetch(`/expense-reports/${id}`); const report = await res.json();
                 currentExpenseReportId = id;
+                // Phase EX-3: pastikan dropdown line kategori terisi dari master.
+                if (!_expenseCategoryTree) { await loadExpenseCategories(); }
+                else {
+                    const line = document.getElementById('exl-category');
+                    if (line && line.options.length <= 1) {
+                        line.innerHTML = _buildCategoryOptions(_expenseCategoryTree, '-- Pilih --');
+                    }
+                }
                 renderExpenseDetail(report);
                 openModal('modal-expense-detail');
             } catch(err) { showToast(err.message, 'error'); }
@@ -7597,9 +7612,16 @@
         }
 
         async function addExpenseLine() {
+            // Phase EX-3: line kategori pakai FK category_id (bukan text lagi).
+            // Text label diambil dari option.text supaya PDF/tampilan lama tetap OK.
+            const catSel = document.getElementById('exl-category');
+            const catId = catSel?.value ? parseInt(catSel.value, 10) : null;
+            if (!catId) { showToast('Pilih kategori dulu.', 'error'); return; }
+            const catText = catSel.options[catSel.selectedIndex]?.text || '';
             const payload = {
                 date: document.getElementById('exl-date').value || new Date().toISOString().slice(0, 10),
-                category: document.getElementById('exl-category').value,
+                category_id: catId,
+                category: catText,
                 description: document.getElementById('exl-description').value,
                 unit_price_net: parseCurrency(document.getElementById('exl-price').value),
                 tax_percent: parseFloat(document.getElementById('exl-tax').value) || 0,
