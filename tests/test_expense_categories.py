@@ -154,3 +154,109 @@ def test_ex1_expense_report_invalid_category_id(client, sales_token, admin_token
         headers=bearer(sales_token),
     )
     assert r.status_code == 400
+
+
+# ============================================================================
+# Phase EX-2: migration 014 expense_lines.category_id FK + backfill.
+# ============================================================================
+
+
+def test_ex2_expense_lines_category_id_column_exists(client):
+    """Migration 014 wajib menambah kolom category_id di expense_lines."""
+    cols = [r["name"] for r in db.query_all("PRAGMA table_info(expense_lines)")]
+    assert "category_id" in cols, f"expense_lines.category_id missing. Cols: {cols}"
+
+
+def test_ex2_expense_line_backfill_map_present(client):
+    """6 subkategori target backfill (Transport Operasional, Hotel Transit, dst)
+    harus ada di seed expense_categories."""
+    targets = [
+        "Transport Operasional", "Hotel Transit", "Konsumsi Karyawan",
+        "Internet & Telpon", "ATK", "Insidentil",
+    ]
+    for name in targets:
+        row = db.query_one(
+            "SELECT id FROM expense_categories WHERE name = ? AND is_active = 1",
+            (name,))
+        assert row is not None, f"Subkategori target backfill '{name}' tidak ada di seed"
+
+
+def test_ex2_line_create_with_category_id(client, sales_token, admin_token):
+    """POST /api/expense-reports/{rid}/lines terima category_id (FK) + tulis
+    ke kolom baru."""
+    pid = _ensure_project(client, admin_token)
+    cid_header = _first_expense_category_id()
+    # Create report
+    r = client.post(
+        "/api/expense-reports",
+        json={"project_id": pid, "category_id": cid_header,
+              "period_from": "2026-09-01", "period_to": "2026-09-30"},
+        headers=bearer(sales_token),
+    )
+    assert r.status_code == 200
+    rid = r.json()["id"]
+
+    # Cari kategori berbeda utk line
+    cid_line_row = db.query_one(
+        "SELECT id FROM expense_categories WHERE group_type = 'expense' "
+        "AND parent_id IS NOT NULL AND is_active = 1 AND id != ? LIMIT 1",
+        (cid_header,))
+    cid_line = cid_line_row["id"] if cid_line_row else cid_header
+
+    r = client.post(
+        f"/api/expense-reports/{rid}/lines",
+        json={"category_id": cid_line, "description": "test line",
+              "unit_price_net": 50000, "qty": 1, "tax_percent": 11.0,
+              "date": "2026-09-15"},
+        headers=bearer(sales_token),
+    )
+    assert r.status_code == 200, f"Line create failed: {r.text}"
+
+    line = db.query_one(
+        "SELECT category_id FROM expense_lines WHERE report_id = ? ORDER BY id DESC LIMIT 1",
+        (rid,))
+    assert line["category_id"] == cid_line
+
+
+def test_ex2_line_create_with_text_only_still_works(client, sales_token, admin_token):
+    """Backward-compat: line dengan text `category` (bukan category_id) tetap
+    accepted."""
+    pid = _ensure_project(client, admin_token)
+    cid_header = _first_expense_category_id()
+    r = client.post(
+        "/api/expense-reports",
+        json={"project_id": pid, "category_id": cid_header,
+              "period_from": "2026-09-01", "period_to": "2026-09-30"},
+        headers=bearer(sales_token),
+    )
+    rid = r.json()["id"]
+
+    r = client.post(
+        f"/api/expense-reports/{rid}/lines",
+        json={"category": "Transportasi", "description": "legacy line",
+              "unit_price_net": 10000, "qty": 1, "tax_percent": 0,
+              "date": "2026-09-15"},
+        headers=bearer(sales_token),
+    )
+    assert r.status_code == 200, f"Legacy line create should work: {r.text}"
+
+
+def test_ex2_line_create_no_category_at_all_rejected(client, sales_token, admin_token):
+    """Line tanpa category_id maupun text category -> 400."""
+    pid = _ensure_project(client, admin_token)
+    cid_header = _first_expense_category_id()
+    r = client.post(
+        "/api/expense-reports",
+        json={"project_id": pid, "category_id": cid_header,
+              "period_from": "2026-09-01", "period_to": "2026-09-30"},
+        headers=bearer(sales_token),
+    )
+    rid = r.json()["id"]
+
+    r = client.post(
+        f"/api/expense-reports/{rid}/lines",
+        json={"description": "empty cat", "unit_price_net": 10000,
+              "qty": 1, "tax_percent": 0, "date": "2026-09-15"},
+        headers=bearer(sales_token),
+    )
+    assert r.status_code == 400

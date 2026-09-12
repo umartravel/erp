@@ -289,8 +289,17 @@ async def expense_lines_create(rid: int, body: dict = Depends(json_body), user=D
     unit_price = parse_int(g("unit_price_net"), "harga satuan")
     qty = parse_int(g("qty") or 1, "qty")
     tax_percent = float(g("tax_percent")) if g("tax_percent") not in (None, "") else 11.0
-    if not g("category") or unit_price <= 0 or qty <= 0:
-        raise HTTPException(status_code=400, detail="Kategori, harga satuan, dan qty wajib diisi dengan benar.")
+    # Phase EX-2: category_id (FK) preferred; text `category` tetap accepted
+    # untuk backward-compat + PDF display. Kalau kedua kosong -> 400.
+    line_category_id = g("category_id")
+    if line_category_id:
+        line_category_id = _validate_expense_category(line_category_id)
+    line_category_text = g("category") or ""
+    if not line_category_id and not line_category_text:
+        raise HTTPException(status_code=400,
+                            detail="Kategori (category_id atau category text) wajib diisi.")
+    if unit_price <= 0 or qty <= 0:
+        raise HTTPException(status_code=400, detail="Harga satuan dan qty wajib > 0.")
 
     receipt_url = None
     file_base64 = g("receiptBase64")
@@ -307,10 +316,14 @@ async def expense_lines_create(rid: int, body: dict = Depends(json_body), user=D
             f.write(base64.b64decode(b64))
         receipt_url = f"/uploads/{file_name}"
 
+    # Phase EX-2: tulis category_id (FK) sekaligus text `category` supaya
+    # PDF/tampilan lama tetap jalan.
     db.execute(
-        "INSERT INTO expense_lines (report_id, date, category, description, unit_price_net, tax_percent, "
-        "qty, receipt_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        (rid, g("date") or datetime.date.today().isoformat(), g("category"), g("description") or "",
+        "INSERT INTO expense_lines (report_id, date, category, category_id, description, "
+        "unit_price_net, tax_percent, qty, receipt_url) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (rid, g("date") or datetime.date.today().isoformat(),
+         line_category_text, line_category_id, g("description") or "",
          unit_price, tax_percent, qty, receipt_url),
     )
     notify("data_updated", "expense_report")
