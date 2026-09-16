@@ -110,11 +110,23 @@ def build_balance_sheet(as_of_date: str) -> dict:
 
     retained_earnings = total_revenue - total_expense
 
-    total_current = sum(b["balance"] for b in assets_current)
-    total_fixed = sum(b["balance"] for b in assets_fixed)
+    # Contra-account handling: akun dengan normal_balance yg berlawanan dgn
+    # group-nya berkontribusi NEGATIF ke total group tsb.
+    #  - 1202 Akumulasi Penyusutan (ASSET, CREDIT-normal) -> contra-asset,
+    #    balance positif = pengurang Aset.
+    #  - 3102 Prive Pemilik (EQUITY, DEBIT-normal) -> contra-equity,
+    #    balance positif = pengurang Ekuitas.
+    def _contrib_to_asset(b):
+        return b["balance"] if b["normal_balance"] == "DEBIT" else -b["balance"]
+
+    def _contrib_to_credit_side(b):
+        return b["balance"] if b["normal_balance"] == "CREDIT" else -b["balance"]
+
+    total_current = sum(_contrib_to_asset(b) for b in assets_current)
+    total_fixed = sum(_contrib_to_asset(b) for b in assets_fixed)
     total_assets = total_current + total_fixed
-    total_liabilities = sum(b["balance"] for b in liabilities)
-    total_equity_direct = sum(b["balance"] for b in equity_direct)
+    total_liabilities = sum(_contrib_to_credit_side(b) for b in liabilities)
+    total_equity_direct = sum(_contrib_to_credit_side(b) for b in equity_direct)
     total_equity = total_equity_direct + retained_earnings
     total_liab_equity = total_liabilities + total_equity
 

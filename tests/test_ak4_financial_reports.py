@@ -48,6 +48,23 @@ def test_ak4_balance_sheet_unearned_revenue_visible(client):
     assert "2101" in codes
 
 
+def test_ak4_balance_sheet_prive_reduces_equity(client):
+    """Prive 3102 (DEBIT-normal EQUITY = contra-equity) harus mengurangi
+    Total Ekuitas, bukan menambah. Neraca tetap balanced setelah prive."""
+    tx_id, _ = db.execute(
+        "INSERT INTO transactions (type, category, amount, description, status) "
+        "VALUES ('cash_ops','prive',1000000,'AK4 test prive contra','POSTED')", (),
+    )
+    je.post_prive(tx_id, 1000000, "Test contra-equity")
+    bs = fr.build_balance_sheet(TODAY)
+    assert bs["balanced"] is True, \
+        f"Neraca break: Aset={bs['assets']['total']} vs L+E={bs['total_liab_equity']}, delta={bs['delta']}"
+    prive_line = next(l for l in bs["equity"]["items"] if l["account_code"] == "3102")
+    assert prive_line["balance"] >= 1000000
+    db.execute("DELETE FROM journal_lines WHERE transaction_id = ?", (tx_id,))
+    db.execute("DELETE FROM transactions WHERE id = ?", (tx_id,))
+
+
 def test_ak4_income_statement_structure(client):
     is_data = fr.build_income_statement(2026, 9)
     assert "revenue" in is_data
