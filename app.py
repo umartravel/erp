@@ -175,6 +175,7 @@ from routes.jamaah_payments import router as jamaah_payments_router  # noqa: E40
 from routes.finance_categories import router as finance_categories_router  # noqa: E402 -- Phase F2
 from routes.coa import router as coa_router  # noqa: E402 -- Sprint AK-1
 from routes.journal import router as journal_router  # noqa: E402 -- Sprint AK-1
+from routes.close_month import router as close_month_router  # noqa: E402 -- Sprint AK-3
 app.include_router(reconcile_router)
 app.include_router(finance_router)
 app.include_router(mgmt_home_router)
@@ -212,6 +213,7 @@ app.include_router(jamaah_payments_router)  # Phase 13a: /api/{jamaah|payment}-s
 app.include_router(finance_categories_router)  # Phase F2: /api/finance/categories + summary
 app.include_router(coa_router)       # Sprint AK-1: /api/coa/*
 app.include_router(journal_router)   # Sprint AK-1: /api/journal/*
+app.include_router(close_month_router)  # Sprint AK-3: /api/finance/close-month/*
 app.include_router(daily_reports_router)  # Phase DT-1a: /api/daily-reports/*
 
 
