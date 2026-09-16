@@ -173,6 +173,8 @@ from routes.reminders import router as reminders_router  # noqa: E402 -- Phase 9
 from routes.audit_trail import router as audit_trail_router  # noqa: E402 -- Phase 10a
 from routes.jamaah_payments import router as jamaah_payments_router  # noqa: E402 -- Phase 13a
 from routes.finance_categories import router as finance_categories_router  # noqa: E402 -- Phase F2
+from routes.coa import router as coa_router  # noqa: E402 -- Sprint AK-1
+from routes.journal import router as journal_router  # noqa: E402 -- Sprint AK-1
 app.include_router(reconcile_router)
 app.include_router(finance_router)
 app.include_router(mgmt_home_router)
@@ -208,6 +210,8 @@ app.include_router(reminders_router)  # Phase 9a: /api/reminders/departures*
 app.include_router(audit_trail_router)  # Phase 10a: /api/audit/{entity}/{id}
 app.include_router(jamaah_payments_router)  # Phase 13a: /api/{jamaah|payment}-submissions
 app.include_router(finance_categories_router)  # Phase F2: /api/finance/categories + summary
+app.include_router(coa_router)       # Sprint AK-1: /api/coa/*
+app.include_router(journal_router)   # Sprint AK-1: /api/journal/*
 app.include_router(daily_reports_router)  # Phase DT-1a: /api/daily-reports/*
 
 
