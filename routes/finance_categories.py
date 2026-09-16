@@ -168,6 +168,56 @@ def _by_category_breakdown(period_sql: str, params: tuple):
     return list(by_cat_map.values())
 
 
+def _by_project_breakdown(period_sql: str, params: tuple, top_n: int = 10):
+    """Phase EX-5: aggregate transactions per project (dari expense_reports).
+    Kembalikan top N project by total DESC + per-project category_breakdown.
+
+    Cara kerja: JOIN transactions -> expense_reports (via transaction_id) ->
+    expense_projects. Filter transactions.type='expense' (project cuma ada di
+    expense flow -- payment jamaah / procurement / payroll tidak punya project).
+    """
+    rows = db.query_all(
+        f"SELECT ep.id project_id, ep.name project_name, "
+        f"  COALESCE(SUM(t.amount), 0) total, "
+        f"  COUNT(DISTINCT t.id) count "
+        f"FROM expense_projects ep "
+        f"LEFT JOIN expense_reports er ON er.project_id = ep.id "
+        f"LEFT JOIN transactions t ON t.id = er.transaction_id "
+        f"  AND t.type = 'expense' "
+        f"  AND {period_sql} "
+        f"WHERE ep.is_active = 1 "
+        f"GROUP BY ep.id, ep.name "
+        f"HAVING total > 0 "
+        f"ORDER BY total DESC LIMIT ?", params + (top_n,),
+    )
+    result = []
+    for r in rows:
+        pid = r["project_id"]
+        cat_rows = db.query_all(
+            f"SELECT c.id cat_id, c.name cat_name, p.name parent_name, "
+            f"  COALESCE(SUM(t.amount), 0) total "
+            f"FROM transactions t "
+            f"JOIN expense_reports er ON er.transaction_id = t.id "
+            f"JOIN expense_categories c ON c.id = t.category_id "
+            f"LEFT JOIN expense_categories p ON p.id = c.parent_id "
+            f"WHERE er.project_id = ? AND t.type = 'expense' "
+            f"  AND {period_sql} "
+            f"GROUP BY c.id ORDER BY total DESC", (pid,) + params,
+        )
+        result.append({
+            "project_id": pid,
+            "project_name": r["project_name"],
+            "total": r["total"] or 0,
+            "count": r["count"] or 0,
+            "category_breakdown": [
+                {"cat_id": cr["cat_id"], "cat_name": cr["cat_name"],
+                 "parent_name": cr["parent_name"], "total": cr["total"] or 0}
+                for cr in cat_rows
+            ],
+        })
+    return result
+
+
 def _build_year_payload(year):
     """Phase F4: shared helper -- dipakai endpoint JSON + export PDF/Excel."""
     now = datetime.datetime.now()
@@ -206,6 +256,10 @@ def _build_year_payload(year):
     by_category = _by_category_breakdown(
         "strftime('%Y', t.created_at) = ?", (ys,))
 
+    # Phase EX-5: breakdown by project (top 10 expense-report projects)
+    by_project = _by_project_breakdown(
+        "strftime('%Y', t.created_at) = ?", (ys,))
+
     return {
         "year": year,
         "current_year": now.year,
@@ -214,6 +268,7 @@ def _build_year_payload(year):
         "net_saldo": total_income - total_expense,
         "monthly": monthly,
         "by_category": by_category,
+        "by_project": by_project,
     }
 
 
@@ -241,6 +296,10 @@ def _build_month_payload(year, month):
     by_category = _by_category_breakdown(
         "strftime('%Y-%m', t.created_at) = ?", (ym,))
 
+    # Phase EX-5: breakdown by project untuk bulan tsb.
+    by_project = _by_project_breakdown(
+        "strftime('%Y-%m', t.created_at) = ?", (ym,))
+
     transactions = db.query_all(
         "SELECT t.id, t.type, t.amount, t.description, t.created_at, "
         "  c.name AS category_name, p.name AS parent_name "
@@ -259,6 +318,7 @@ def _build_month_payload(year, month):
         "total_expense": total_expense,
         "net": total_income - total_expense,
         "by_category": by_category,
+        "by_project": by_project,
         "transactions": transactions,
     }
 
