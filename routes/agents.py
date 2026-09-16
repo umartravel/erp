@@ -7,6 +7,7 @@ Semua endpoint dulunya duduk di app.py. Pemindahan tidak mengubah kontrak API.
 from fastapi import APIRouter
 
 import db
+import journal_engine  # Sprint AK-2: post_commission double-entry
 from deps import (
     CAT_KOMISI_AGEN,
     Depends,
@@ -364,6 +365,16 @@ async def commission_claim_disburse(cid: int, user=Depends(authenticate_token)):
             resolve_cat_id(CAT_KOMISI_AGEN),
         ),
     )
+    # Sprint AK-2: Post double-entry -- Dr 6102 Beban Komisi, Cr Kas.
+    try:
+        journal_engine.post_commission(
+            last_id, c["amount"],
+            agent["name"] if agent else "-",
+            jamaah["name"] if jamaah else "-",
+        )
+    except Exception as exc:  # noqa: BLE001
+        log_action(user, "JOURNAL_POST_FAIL",
+                   f"tx #{last_id} commission #{cid}: {exc}")
     db.execute(
         "UPDATE commission_claims SET status = 'Dicairkan', disbursed_by = ?, "
         "disbursed_at = CURRENT_TIMESTAMP, transaction_id = ? WHERE id = ?",

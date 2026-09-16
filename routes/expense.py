@@ -17,6 +17,7 @@ from fastapi import APIRouter
 from fastapi.responses import Response
 
 import db
+import journal_engine  # Sprint AK-2: post_expense_paid double-entry
 from auth import authenticate_file_token
 from deps import (
     Depends,
@@ -451,6 +452,23 @@ async def expense_reports_pay(rid: int, user=Depends(authenticate_token)):
         ("expense", "expense_report", gross,
          f"Expense Report {r['ref']}: {r['user_name']}", rid, category_id_col),
     )
+    # Sprint AK-2: Post double-entry journal. Dr <default_account>, Cr Bank.
+    # Lookup default_account_id dari expense_categories via category_id.
+    default_acc_id = None
+    if category_id_col:
+        cat = db.query_one(
+            "SELECT default_account_id FROM expense_categories WHERE id = ?",
+            (category_id_col,))
+        if cat:
+            default_acc_id = cat["default_account_id"]
+    try:
+        journal_engine.post_expense_paid(
+            last_id, gross, default_acc_id,
+            f"Expense Report {r['ref']}: {r['user_name']}",
+        )
+    except Exception as exc:  # noqa: BLE001
+        log_action(user, "JOURNAL_POST_FAIL",
+                   f"tx #{last_id} expense_report #{rid}: {exc}")
     db.execute(
         "UPDATE expense_reports SET status = 'Paid', paid_by = ?, paid_at = CURRENT_TIMESTAMP, "
         "transaction_id = ? WHERE id = ?",

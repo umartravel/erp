@@ -10,6 +10,7 @@ Semua endpoint dulunya duduk di app.py. Pemindahan tidak mengubah kontrak API.
 from fastapi import APIRouter
 
 import db
+import journal_engine  # Sprint AK-2: payroll + generic income/expense journal
 from deps import (
     CAT_GAJI_TUNJANGAN,
     Depends,
@@ -143,12 +144,28 @@ async def transactions_expense(body: dict = Depends(json_body), user=Depends(aut
         if cat["group_type"] != "expense":
             raise HTTPException(status_code=400,
                                 detail="category_id harus group_type='expense'.")
-    db.execute(
+    tx_id, _ = db.execute(
         "INSERT INTO transactions (type, category, amount, description, package_name, category_id) "
         "VALUES (?, ?, ?, ?, ?, ?)",
         ("expense", g("category"), int(g("amount")), g("description"),
          g("package_name") or None, category_id),
     )
+    # Sprint AK-2: post double-entry -- Dr <default_account or 6201 fallback>, Cr Kas.
+    default_acc_id = None
+    if category_id:
+        cat_full = db.query_one(
+            "SELECT default_account_id FROM expense_categories WHERE id = ?",
+            (category_id,))
+        if cat_full:
+            default_acc_id = cat_full["default_account_id"]
+    try:
+        journal_engine.post_generic_expense(
+            tx_id, int(g("amount")), default_acc_id,
+            g("description") or f"Pengeluaran {g('category') or ''}",
+        )
+    except Exception as exc:  # noqa: BLE001
+        log_action(user, "JOURNAL_POST_FAIL",
+                   f"tx #{tx_id} expense manual: {exc}")
     log_action(user, "EXPENSE", f"Catat pengeluaran Rp {g('amount')} ({g('category')})")
     notify("data_updated", "transaction")
     return {"message": "Pengeluaran operasional berhasil dicatat."}
@@ -174,12 +191,28 @@ async def transactions_income(body: dict = Depends(json_body), user=Depends(auth
         if cat["group_type"] != "income":
             raise HTTPException(status_code=400,
                                 detail="category_id harus group_type='income'.")
-    db.execute(
+    tx_id, _ = db.execute(
         "INSERT INTO transactions (type, category, amount, description, category_id) "
         "VALUES (?, ?, ?, ?, ?)",
         ("income", g("category") or "other", amount,
          g("description") or "", category_id),
     )
+    # Sprint AK-2: post double-entry -- Dr Kas, Cr <default_account or 4104 fallback>.
+    credit_acc_id = None
+    if category_id:
+        cat_full = db.query_one(
+            "SELECT default_account_id FROM expense_categories WHERE id = ?",
+            (category_id,))
+        if cat_full:
+            credit_acc_id = cat_full["default_account_id"]
+    try:
+        journal_engine.post_generic_income(
+            tx_id, amount, credit_acc_id,
+            g("description") or f"Pemasukan {g('category') or ''}",
+        )
+    except Exception as exc:  # noqa: BLE001
+        log_action(user, "JOURNAL_POST_FAIL",
+                   f"tx #{tx_id} income manual: {exc}")
     log_action(user, "INCOME", f"Catat pemasukan Rp {amount}")
     notify("data_updated", "transaction")
     return {"message": "Pemasukan berhasil dicatat."}
@@ -205,12 +238,18 @@ async def payroll(body: dict = Depends(json_body), user=Depends(authenticate_tok
     users = db.query_all("SELECT id, name, base_salary FROM users WHERE base_salary > 0", ())
     processed = 0
     for u in users:
-        db.execute(
+        tx_id, _ = db.execute(
             "INSERT INTO transactions (type, category, amount, description, reference_id, category_id) "
             "VALUES (?, ?, ?, ?, ?, ?)",
             ("expense", "payroll", u["base_salary"], f"Gaji Karyawan: {u['name']}", u["id"],
              resolve_cat_id(CAT_GAJI_TUNJANGAN)),
         )
+        # Sprint AK-2: post double-entry -- Dr 6101 Beban Gaji, Cr Kas.
+        try:
+            journal_engine.post_payroll(tx_id, u["base_salary"], u["name"])
+        except Exception as exc:  # noqa: BLE001
+            log_action(user, "JOURNAL_POST_FAIL",
+                       f"tx #{tx_id} payroll user #{u['id']}: {exc}")
         processed += 1
     log_action(user, "PAYROLL", f"Memproses penggajian untuk {processed} karyawan")
     notify("data_updated", "transaction")

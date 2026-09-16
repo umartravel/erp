@@ -34,6 +34,7 @@ normal supaya audit trail rapi.
 from fastapi import APIRouter
 
 import db
+import journal_engine  # Sprint AK-2: double-entry journal after tx insert
 from deps import (
     CAT_PAYMENT_JAMAAH,
     Depends,
@@ -239,6 +240,17 @@ async def submission_review(sid: int, body: dict = Depends(json_body),
          f"Pembayaran Umroh: {jamaah['name']} ({sub['payment_kind']})",
          jamaah["id"], jamaah["package_type"], resolve_cat_id(CAT_PAYMENT_JAMAAH)),
     )
+    # Sprint AK-2: Double-entry journal. DP jamaah = Dr Bank, Cr Pendapatan
+    # Diterima Dimuka (2101). Bukan langsung ke Revenue 4101 -- itu baru
+    # direalisasi saat month-end closing (AK-3) berdasar tanggal keberangkatan.
+    try:
+        journal_engine.post_jamaah_dp(tx_id, amount, jamaah["name"])
+    except Exception as exc:  # noqa: BLE001
+        # Jurnal fail bukan alasan block transaksi user (invariant Sprint AK-2:
+        # legacy tx tetap tersimpan, journal_lines dapat di-backfill kalau perlu).
+        # Tapi TETAP log ke audit trail supaya finance bisa investigasi.
+        log_action(user, "JOURNAL_POST_FAIL",
+                   f"tx #{tx_id} payment jamaah #{jamaah['id']}: {exc}")
     db.execute(
         "UPDATE jamaah_payment_submissions SET status = 'Verified', "
         "reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP, transaction_id = ? "

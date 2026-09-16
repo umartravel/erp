@@ -7,9 +7,12 @@ Plus endpoint dummy VA (untuk testing frontend payment flow).
 
 Semua endpoint dulunya duduk di app.py. Pemindahan tidak mengubah kontrak API.
 """
+import datetime
+
 from fastapi import APIRouter
 
 import db
+import journal_engine  # Sprint AK-2: post_procurement_paid double-entry
 from deps import (
     Depends,
     HTTPException,
@@ -227,13 +230,28 @@ async def procurement_payment(pid: int, body: dict = Depends(json_body), user=De
     # Phase F1b-3: propagate procurement.category_id ke transactions.category_id.
     # Kalau tidak diisi saat create, tetap NULL (breakdown akan hitung 'Tanpa Kategori').
     category_id_col = row["category_id"] if "category_id" in row.keys() else None
-    db.execute(
+    tx_id, _ = db.execute(
         "INSERT INTO transactions (type, category, amount, description, reference_id, package_name, category_id) "
         "VALUES (?, ?, ?, ?, ?, ?, ?)",
         ("expense", "procurement_payment", amount,
          f"Pembayaran Vendor {row['service_type']}: {row['vendor_name']} (Blok {row['total_stock']} pax)",
          pid, row["package_name"], category_id_col),
     )
+    # Sprint AK-2: Post double-entry. Cek departure_date paket -> kalau masa
+    # depan, jadi Prepaid (1108). Kalau sudah berangkat / no departure_date,
+    # langsung COGS (5101). Split HPP per komponen dilakukan di Sprint AK-3.
+    dep_row = db.query_one(
+        "SELECT departure_date FROM packages WHERE name = ?",
+        (row["package_name"],)) if row["package_name"] else None
+    dep_date = dep_row["departure_date"] if dep_row else None
+    today_iso = datetime.date.today().isoformat()
+    try:
+        journal_engine.post_procurement_paid(
+            tx_id, amount, row["vendor_name"], dep_date, today_iso,
+        )
+    except Exception as exc:  # noqa: BLE001
+        log_action(user, "JOURNAL_POST_FAIL",
+                   f"tx #{tx_id} procurement #{pid}: {exc}")
     log_action(
         user, "PAY_PROCUREMENT",
         f"Mencatat pembayaran Rp {amount:,} ke vendor {row['vendor_name']}".replace(",", "."),

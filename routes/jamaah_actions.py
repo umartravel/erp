@@ -16,6 +16,7 @@ Router lain untuk jamaah (per split iterasi 7):
 from fastapi import APIRouter
 
 import db
+import journal_engine  # Sprint AK-2: double-entry post_jamaah_refund
 from deps.notifications import notify_role  # Phase 8c-3
 from deps import (
     CAT_REFUND_JAMAAH,
@@ -268,6 +269,14 @@ async def refund_request_disburse(rid: int, user=Depends(authenticate_token)):
         ("expense", "refund", r["amount"], f"Refund: {jamaah['name']}", jamaah["id"], jamaah["package_type"],
          resolve_cat_id(CAT_REFUND_JAMAAH)),
     )
+    # Sprint AK-2: Refund jamaah = Dr Pendapatan Diterima Dimuka (2101),
+    # Cr Kas Bank (1102). Karena DP awal masuk sbg Unearned Revenue, refund
+    # membalik Unearned Revenue tsb.
+    try:
+        journal_engine.post_jamaah_refund(last_id, r["amount"], jamaah["name"])
+    except Exception as exc:  # noqa: BLE001
+        log_action(user, "JOURNAL_POST_FAIL",
+                   f"tx #{last_id} refund jamaah #{jamaah['id']}: {exc}")
     db.execute(
         "UPDATE jamaah SET paid_amount = ?, payment_status = ? WHERE id = ?",
         (new_paid, new_payment, jamaah["id"]),
