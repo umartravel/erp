@@ -11,6 +11,7 @@ import datetime
 from fastapi import APIRouter
 
 import db
+import financial_reports as fr  # Sprint AK-5: accrual KPI
 from deps import Depends, authenticate_token, require_role
 from deps.notifications import notify_role  # Phase 9c
 
@@ -143,8 +144,42 @@ async def finance_home(user=Depends(authenticate_token)):
         "WHERE c.status = 'Disetujui' ORDER BY c.approved_at ASC LIMIT 8"
     )
 
+    # Sprint AK-5: accrual KPI dari journal_lines (double-entry ledger).
+    # Terpisah dari legacy `cash_saldo` di atas supaya UI existing tidak break.
+    today_iso = datetime.date.today().isoformat()
+    now = datetime.date.today()
+    try:
+        bs = fr.build_balance_sheet(today_iso)
+        is_data = fr.build_income_statement(now.year, now.month)
+        saldo_kas_bank = sum(
+            b["balance"] for b in bs["assets"]["current"]
+            if b["account_code"] in ("1101", "1102", "1103")
+        )
+        unearned_liab = next(
+            (l["balance"] for l in bs["liabilities"]["items"]
+             if l["account_code"] == "2101"), 0)
+        prepaid_umrah = next(
+            (a["balance"] for a in bs["assets"]["current"]
+             if a["account_code"] == "1108"), 0)
+        accrual_kpi = {
+            "saldo_kas_bank": saldo_kas_bank,
+            "unearned_liab": unearned_liab,
+            "prepaid_umrah": prepaid_umrah,
+            "revenue_mtd": is_data["revenue"]["total"],
+            "cogs_mtd": is_data["cogs"]["total"],
+            "gross_profit_mtd": is_data["gross_profit"],
+            "operating_profit_mtd": is_data["operating_profit"],
+            "net_profit_mtd": is_data["net_profit_before_tax"],
+            "balance_sheet_balanced": bs["balanced"],
+            "total_assets": bs["assets"]["total"],
+            "total_liab_equity": bs["total_liab_equity"],
+        }
+    except Exception:  # noqa: BLE001 -- KPI akrual best-effort, jangan block dashboard
+        accrual_kpi = None
+
     return {
         "kpi": kpi,
+        "accrual_kpi": accrual_kpi,
         "attention": attention,
         "vendor_due_soon": vendor_due_soon,
         "piutang_jamaah": piutang_jamaah,

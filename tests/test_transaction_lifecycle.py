@@ -85,7 +85,8 @@ def test_delete_partial_payment_downgrades_lunas_to_dp(client, admin_token, fina
 
 
 def test_delete_non_payment_tx_no_error(client, admin_token, finance_token):
-    """Hapus tx expense (bukan payment) -> tidak sentuh jamaah manapun."""
+    """Sprint AK-5: DELETE tx POSTED ditolak (immutable); harus pakai
+    POST /api/finance/reverse/{id} sebagai gantinya."""
     r = client.post("/api/transactions/expense", json={
         "category": "lainnya", "amount": 50000,
         "description": "TEST expense manual", "package_name": None,
@@ -96,6 +97,12 @@ def test_delete_non_payment_tx_no_error(client, admin_token, finance_token):
     my_tx = next(t for t in txs if t["description"] == "TEST expense manual")
 
     r = client.delete(f"/api/transactions/{my_tx['id']}", headers=bearer(admin_token))
+    assert r.status_code == 400
+    assert "immutable" in r.json()["error"].lower()
+
+    r = client.post(f"/api/finance/reverse/{my_tx['id']}",
+                    headers=bearer(finance_token),
+                    json={"reason": "Test cleanup"})
     assert r.status_code == 200
 
 

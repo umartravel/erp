@@ -260,13 +260,30 @@ async def payroll(body: dict = Depends(json_body), user=Depends(authenticate_tok
 async def transactions_delete(tid: int, user=Depends(authenticate_token)):
     require_role(user, "admin")
 
-    # FIX (integritas): bila yang dihapus adalah transaksi pembayaran jamaah,
-    # kembalikan paid_amount jamaah & hitung ulang statusnya. Tanpa ini, koreksi
-    # buku kas membuat saldo jamaah tetap 'Lunas' padahal dananya sudah ditarik.
-    tx = db.query_one("SELECT type, category, amount, reference_id FROM transactions WHERE id = ?", (tid,))
+    tx = db.query_one(
+        "SELECT type, category, amount, reference_id, status "
+        "FROM transactions WHERE id = ?", (tid,))
     if not tx:
         raise HTTPException(status_code=404, detail="Transaksi tidak ditemukan")
 
+    # Sprint AK-5: Immutable posting -- transaksi POSTED tidak boleh
+    # dihapus (akan bikin journal_lines hantu di ledger). Wajib pakai
+    # POST /api/finance/reverse/{tid} yang menghasilkan reversing entry.
+    if tx["status"] == "POSTED":
+        raise HTTPException(
+            status_code=400,
+            detail="Transaksi POSTED tidak boleh dihapus (immutable). "
+                   "Gunakan POST /api/finance/reverse/{id} untuk membalikkan.",
+        )
+    if tx["status"] == "REVERSED":
+        raise HTTPException(
+            status_code=400,
+            detail="Transaksi sudah REVERSED, tidak perlu dihapus.",
+        )
+
+    # Legacy path: hanya tx status=DRAFT/NULL yang boleh true-delete
+    # (mis. tx pre-AK1 belum ke-set status, atau flow lama yg tidak melalui
+    # journal_engine).
     db.execute("DELETE FROM transactions WHERE id = ?", (tid,))
 
     if tx["category"] == "payment" and tx["reference_id"]:
@@ -292,3 +309,72 @@ async def transactions_delete(tid: int, user=Depends(authenticate_token)):
     log_action(user, "DELETE_TX", f"Koreksi Admin: Hapus transaksi Buku Kas ID {tid}")
     notify("data_updated", "transaction")
     return {"message": "Transaksi berhasil dihapus (Koreksi Admin)."}
+
+
+# ===========================================================================
+# Sprint AK-5: Reversal endpoint + Recent Ledger Entries
+# ===========================================================================
+
+
+@router.post("/api/finance/reverse/{tid}")
+async def transactions_reverse(tid: int, body: dict = Depends(json_body),
+                               user=Depends(authenticate_token)):
+    """Reverse tx POSTED lewat journal_engine (bikin new tx REVERSED + swap
+    journal_lines). Ini pengganti sah utk DELETE tx POSTED -- audit trail utuh,
+    Neraca+LR tetap balanced.
+
+    Body: {reason: str}. Admin+finance only.
+    """
+    require_role(user, "admin", "finance")
+    reason = (body.get("reason") or "").strip()
+    if len(reason) < 5:
+        raise HTTPException(
+            status_code=400,
+            detail="Alasan reversal wajib diisi (min 5 karakter).",
+        )
+    try:
+        new_tx = journal_engine.reverse_journal(tid, reason, user_name=user["name"])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    log_action(user, "REVERSE_TX",
+               f"Reverse tx #{tid} -> new tx #{new_tx}. Alasan: {reason}")
+    notify("data_updated", "transaction")
+    return {
+        "message": f"Transaksi #{tid} berhasil di-reverse. Reversing entry: #{new_tx}.",
+        "original_tx_id": tid,
+        "reversing_tx_id": new_tx,
+    }
+
+
+@router.get("/api/finance/ledger/recent")
+async def ledger_recent(limit: int = 20, user=Depends(authenticate_token)):
+    """List tx terakhir + journal_lines pair-nya. Untuk section Recent Ledger
+    Entries di dashboard finance."""
+    require_role(user, "admin", "finance", "management")
+    if limit < 1 or limit > 100:
+        limit = 20
+    tx_rows = db.query_all(
+        "SELECT id, type, category, amount, description, reference_id, "
+        "  package_name, status, transaction_no, reversal_of, created_at "
+        "FROM transactions "
+        "WHERE status != 'REVERSED' "
+        "ORDER BY id DESC LIMIT ?", (limit,),
+    )
+    tx_ids = [t["id"] for t in tx_rows]
+    lines_by_tx: dict[int, list[dict]] = {tid: [] for tid in tx_ids}
+    if tx_ids:
+        placeholders = ",".join("?" for _ in tx_ids)
+        lines = db.query_all(
+            f"SELECT jl.transaction_id, jl.debit, jl.credit, jl.memo, "
+            f"  ca.account_code, ca.account_name, ca.account_group "
+            f"FROM journal_lines jl "
+            f"JOIN chart_of_accounts ca ON ca.id = jl.account_id "
+            f"WHERE jl.transaction_id IN ({placeholders}) "
+            f"ORDER BY jl.id",
+            tuple(tx_ids),
+        )
+        for ln in lines:
+            lines_by_tx.setdefault(ln["transaction_id"], []).append(ln)
+    for t in tx_rows:
+        t["journal_lines"] = lines_by_tx.get(t["id"], [])
+    return {"entries": tx_rows}
