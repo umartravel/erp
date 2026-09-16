@@ -92,3 +92,42 @@ def test_export_month_clamps_out_of_range(client, admin_token):
     r = client.get(
         f"/api/finance/export/month.pdf?year=2026&month=99&token={admin_token}")
     _assert_pdf(r)
+
+
+# ============================================================================
+# Phase EX-6: Project Breakdown section muncul di PDF + XLSX export.
+# ============================================================================
+
+
+def test_ex6_xlsx_month_has_project_breakdown_sheet(client, admin_token):
+    r = client.get(
+        f"/api/finance/export/month.xlsx?year=2026&month=9&token={admin_token}")
+    _assert_xlsx(r)
+    import io
+    from openpyxl import load_workbook
+    wb = load_workbook(io.BytesIO(r.content), read_only=True)
+    assert "Project Breakdown" in wb.sheetnames, \
+        f"Sheet 'Project Breakdown' tidak ada. Ada: {wb.sheetnames}"
+
+
+def test_ex6_xlsx_year_has_project_breakdown_sheet(client, admin_token):
+    r = client.get(
+        f"/api/finance/export/year.xlsx?year=2026&token={admin_token}")
+    _assert_xlsx(r)
+    import io
+    from openpyxl import load_workbook
+    wb = load_workbook(io.BytesIO(r.content), read_only=True)
+    assert "Project Breakdown" in wb.sheetnames
+
+
+def test_ex6_pdf_month_still_valid(client, admin_token):
+    """Regression: PDF Bulan valid setelah tambahan section Project."""
+    r = client.get(
+        f"/api/finance/export/month.pdf?year=2026&month=9&token={admin_token}")
+    _assert_pdf(r)
+
+
+def test_ex6_pdf_year_still_valid(client, admin_token):
+    r = client.get(
+        f"/api/finance/export/year.pdf?year=2026&token={admin_token}")
+    _assert_pdf(r)
