@@ -716,6 +716,9 @@
                 <a href="#" id="nav-reconcile" onclick="showPage('reconcile')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
                     <i data-lucide="git-merge" class="w-4 h-4"></i> Rekonsiliasi Bank
                 </a>
+                <a href="#" id="nav-finance-categories" onclick="showPage('finance-categories')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
+                    <i data-lucide="folder-tree" class="w-4 h-4"></i> Kelola Kategori
+                </a>
             </div>
 
             <button type="button" id="navgrouphdr-ops" onclick="toggleNavGroup('ops')" class="w-full flex items-center gap-1.5 px-2 mt-6 mb-2 text-xs font-bold text-emerald-400 uppercase tracking-widest hover:text-emerald-200 transition-colors">
@@ -2536,6 +2539,71 @@
                         </div>
                         <div id="rr-list-compliance" class="space-y-2"></div>
                     </div>
+                </div>
+            </div>
+
+            <!-- PAGE: KELOLA KATEGORI (Phase EX-4) — admin CRUD Chart of Accounts subkategori -->
+            <div id="page-finance-categories" class="page-content hidden space-y-6">
+                <div class="umar-module-hero">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="folder-tree" class="w-6 h-6" style="color: var(--umar-gold);"></i>
+                        <div>
+                            <div class="umar-module-hero-title">Kelola Kategori Kas</div>
+                            <div class="umar-module-hero-subtitle">Master kategori pemasukan &amp; pengeluaran yang muncul di form Expense Report, Procurement, dan donut Analisis Keuangan bulanan.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm border p-5">
+                    <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
+                        <div class="flex gap-2" id="fc-tabs">
+                            <button type="button" data-group="expense" class="fc-tab px-4 py-2 text-sm font-bold rounded-lg" style="background:var(--umar-gold);color:white;">Pengeluaran</button>
+                            <button type="button" data-group="income" class="fc-tab px-4 py-2 text-sm font-bold rounded-lg bg-gray-100 text-gray-600">Pemasukan</button>
+                        </div>
+                        <button type="button" id="btn-fc-add" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold shadow-sm flex items-center gap-2">
+                            <i data-lucide="plus" class="w-4 h-4"></i> Tambah Kategori
+                        </button>
+                    </div>
+                    <div id="fc-tree" class="space-y-1"></div>
+                    <p id="fc-empty" class="hidden text-center text-sm text-gray-500 py-8">Belum ada kategori. Klik &ldquo;Tambah Kategori&rdquo; untuk mulai.</p>
+                </div>
+            </div>
+
+            <!-- MODAL: Tambah/Edit Kategori (Phase EX-4) -->
+            <div id="modal-fc-edit" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center p-4">
+                <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+                    <div class="flex items-center justify-between border-b pb-3 mb-4">
+                        <h3 class="font-bold text-lg flex items-center gap-2"><i data-lucide="folder-plus" class="w-5 h-5 text-emerald-600"></i><span id="fc-modal-title">Tambah Kategori</span></h3>
+                        <button onclick="closeModal('modal-fc-edit')" class="text-gray-400 hover:text-gray-700"><i data-lucide="x" class="w-5 h-5"></i></button>
+                    </div>
+                    <form id="form-fc-edit" class="space-y-4">
+                        <input type="hidden" id="fc-edit-id">
+                        <div>
+                            <label class="text-xs font-medium">Group <span class="text-red-500">*</span></label>
+                            <select id="fc-edit-group" class="w-full border p-2 rounded text-sm bg-gray-50" required>
+                                <option value="expense">Pengeluaran</option>
+                                <option value="income">Pemasukan</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium">Parent (opsional &mdash; kosong = jadi kategori parent baru)</label>
+                            <select id="fc-edit-parent" class="w-full border p-2 rounded text-sm bg-gray-50">
+                                <option value="">-- Tidak ada (parent baru) --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium">Nama Kategori <span class="text-red-500">*</span></label>
+                            <input type="text" id="fc-edit-name" class="w-full border p-2 rounded text-sm bg-gray-50" required placeholder="mis. Konsumsi Karyawan">
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium">Urutan Tampil (sort order)</label>
+                            <input type="number" id="fc-edit-sort" class="w-full border p-2 rounded text-sm bg-gray-50" value="0" min="0">
+                        </div>
+                        <div class="flex justify-end gap-2 mt-4">
+                            <button type="button" onclick="closeModal('modal-fc-edit')" class="px-4 py-2 border rounded-lg text-sm font-medium">Batal</button>
+                            <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold shadow-sm">Simpan</button>
+                        </div>
+                    </form>
                 </div>
             </div>
 
@@ -6753,6 +6821,7 @@
                 document.getElementById('nav-mgmt-targets').classList.remove('hidden');
                 document.getElementById('nav-finance-analytics').classList.remove('hidden'); // Phase F3
                 document.getElementById('nav-daily-team').classList.remove('hidden'); // Phase DT-3b
+                document.getElementById('nav-finance-categories').classList.remove('hidden'); // Phase EX-4
             } else if (currentUser.role === 'sales') {
                 document.getElementById('nav-finance').classList.add('hidden');
                 document.getElementById('nav-operasional').classList.add('hidden');
@@ -6867,14 +6936,14 @@
             return false;
         }
 
-        const pageTitles = { 'dashboard': 'Dashboard', 'pendaftaran': 'Pendaftaran Baru', 'jamaah': 'Master Data Jamaah', 'finance': 'Keuangan & P&L', 'operasional': 'Operasional & Logistik', 'whatsapp': 'Manajemen WA', 'users': 'Master Data Karyawan', 'packages': 'Master Paket Umroh', 'agents': 'Manajemen Keagenan', 'tactical': 'Kesiapan Operasional & Audit', 'procurement': 'Manajemen Vendor / Procurement', 'settings': 'Pengaturan Aplikasi', 'followup': 'Follow-up Lead (CRM Sales)', 'expense': 'Expense Report', 'inbox': 'Kotak Masuk Pendaftaran Publik', 'leave': 'Ajukan Izin', 'marketing': 'Marketing Analytics', 'sales-home': 'Home Sales', 'ops-home': 'Home Operasional', 'incidents': 'Insiden Lapangan', 'finance-home': 'Home Finance', 'mgmt-home': 'Home Management', 'mgmt-targets': 'Target Perusahaan & Sales', 'aged-receivable': 'Aged Receivable', 'reconcile': 'Rekonsiliasi Bank', 'risk-register': 'Risk Register', 'boq': 'Simulasi Paket (BOQ)', 'finance-analytics': 'Analisis Keuangan', 'daily-mine': 'Laporan Harian', 'daily-team': 'Laporan Tim' };
+        const pageTitles = { 'dashboard': 'Dashboard', 'pendaftaran': 'Pendaftaran Baru', 'jamaah': 'Master Data Jamaah', 'finance': 'Keuangan & P&L', 'operasional': 'Operasional & Logistik', 'whatsapp': 'Manajemen WA', 'users': 'Master Data Karyawan', 'packages': 'Master Paket Umroh', 'agents': 'Manajemen Keagenan', 'tactical': 'Kesiapan Operasional & Audit', 'procurement': 'Manajemen Vendor / Procurement', 'settings': 'Pengaturan Aplikasi', 'followup': 'Follow-up Lead (CRM Sales)', 'expense': 'Expense Report', 'inbox': 'Kotak Masuk Pendaftaran Publik', 'leave': 'Ajukan Izin', 'marketing': 'Marketing Analytics', 'sales-home': 'Home Sales', 'ops-home': 'Home Operasional', 'incidents': 'Insiden Lapangan', 'finance-home': 'Home Finance', 'mgmt-home': 'Home Management', 'mgmt-targets': 'Target Perusahaan & Sales', 'aged-receivable': 'Aged Receivable', 'reconcile': 'Rekonsiliasi Bank', 'risk-register': 'Risk Register', 'boq': 'Simulasi Paket (BOQ)', 'finance-analytics': 'Analisis Keuangan', 'finance-categories': 'Kelola Kategori Kas', 'daily-mine': 'Laporan Harian', 'daily-team': 'Laporan Tim' };
 
         // --- SIDEBAR: kategori yang bisa dilipat (accordion), status tersimpan per browser ---
         const NAV_GROUPS = ['crm', 'finance', 'ops', 'tools'];
         const PAGE_TO_NAV_GROUP = {
             pendaftaran: 'crm', inbox: 'crm', jamaah: 'crm', followup: 'crm', agents: 'crm', marketing: 'crm',
             'sales-home': 'crm',
-            'finance-home': 'finance', 'mgmt-home': 'finance', 'mgmt-targets': 'finance', finance: 'finance', expense: 'finance', reconcile: 'finance', 'aged-receivable': 'finance', 'risk-register': 'finance',
+            'finance-home': 'finance', 'mgmt-home': 'finance', 'mgmt-targets': 'finance', finance: 'finance', expense: 'finance', reconcile: 'finance', 'aged-receivable': 'finance', 'risk-register': 'finance', 'finance-categories': 'finance',
             operasional: 'ops', procurement: 'ops', 'ops-home': 'ops', incidents: 'ops',
             leave: 'tools', tactical: 'tools', whatsapp: 'tools', packages: 'tools', boq: 'tools', users: 'tools', settings: 'tools',
         };
@@ -6980,6 +7049,7 @@
             if(id === 'sales-home' && typeof initSalesHome === 'function') initSalesHome();
             if(id === 'finance-home' && typeof initFinanceHome === 'function') initFinanceHome();
             if(id === 'finance-analytics' && typeof initFinanceAnalytics === 'function') initFinanceAnalytics();  // Phase F3
+            if(id === 'finance-categories' && typeof fcInit === 'function') fcInit();  // Phase EX-4
             if(id === 'daily-mine' && typeof initDailyMine === 'function') initDailyMine();  // Phase DT-2a
             if(id === 'daily-team' && typeof initDailyTeam === 'function') initDailyTeam();  // Phase DT-3b
             // Phase DT-2b: mini panel di 5 home page (sales/ops/finance/mgmt/dashboard).
@@ -11489,6 +11559,7 @@
     <script src="js/ops-home.js?v=20260827e"></script>
     <script src="js/finance-home.js?v=20260827e"></script>
     <script src="js/finance-analytics.js?v=20260910-f4"></script>
+    <script src="js/finance-categories.js?v=20260916-ex4"></script>
     <script src="js/daily-reports.js?v=20260911-dt5"></script>
     <script src="js/mgmt-home.js?v=20260910-xss"></script>
     <script src="js/boq.js?v=20260907-6j"></script>
