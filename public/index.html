@@ -2038,9 +2038,22 @@
                         <div style="position:relative;height:280px;"><canvas id="fa-trend-chart"></canvas></div>
                     </div>
                     <div class="rounded-xl border shadow-sm p-4" style="background:white;border-color:#F4F1EA;">
-                        <h3 class="font-bold text-sm mb-2" style="color:#1D1D1B;">Pengeluaran per Kategori (bulan terpilih)</h3>
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="font-bold text-sm" style="color:#1D1D1B;">Pengeluaran per Kategori <span id="fa-cat-scope" class="text-[10px] font-normal" style="color:#6B7280;">(bulan terpilih)</span></h3>
+                            <button type="button" id="fa-cat-reset" onclick="faResetProjectFilter()" class="text-[10px] px-2 py-1 rounded hidden" style="background:#F5E9C8;color:#B8860B;">&larr; Reset filter project</button>
+                        </div>
                         <div style="position:relative;height:280px;"><canvas id="fa-cat-chart"></canvas></div>
                     </div>
+                </div>
+
+                <!-- Phase EX-6: By Project bar chart + drill-down klik utk filter donut kategori -->
+                <div class="rounded-xl border shadow-sm p-4" style="background:white;border-color:#F4F1EA;">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="font-bold text-sm" style="color:#1D1D1B;">Pengeluaran per Project (bulan terpilih)</h3>
+                        <span class="text-[10px]" style="color:#6B7280;">Top 10 &bull; klik bar untuk filter donut kategori di atas</span>
+                    </div>
+                    <div style="position:relative;height:300px;"><canvas id="fa-project-chart"></canvas></div>
+                    <p id="fa-project-empty" class="hidden text-center text-xs py-4" style="color:#6B7280;">Belum ada expense per project bulan ini.</p>
                 </div>
 
                 <!-- Table drill-down -->
@@ -11558,7 +11571,7 @@
     <script src="js/sales-home.js?v=20260910-xss"></script>
     <script src="js/ops-home.js?v=20260827e"></script>
     <script src="js/finance-home.js?v=20260827e"></script>
-    <script src="js/finance-analytics.js?v=20260910-f4"></script>
+    <script src="js/finance-analytics.js?v=20260916-ex6"></script>
     <script src="js/finance-categories.js?v=20260916-ex4"></script>
     <script src="js/daily-reports.js?v=20260911-dt5"></script>
     <script src="js/mgmt-home.js?v=20260910-xss"></script>

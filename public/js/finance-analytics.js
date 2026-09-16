@@ -16,7 +16,12 @@
   let faTree = null;
   let faTrendChart = null;
   let faCatChart = null;
+  let faProjectChart = null;
   let faModalType = 'expense';
+  // Phase EX-6: state drill-down. Ketika user klik bar project, donut Kategori
+  // di-refilter ke category_breakdown project itu.
+  let faSelectedProjectId = null;
+  let faLastMonthData = null;
 
   function faFetch(url, opts) { return (window.authFetch || fetch)(url, opts); }
 
@@ -113,7 +118,27 @@
   function faRenderCategoryDonut(monthData) {
     const el = document.getElementById('fa-cat-chart');
     if (!el || typeof Chart === 'undefined') return;
-    const expenseCats = (monthData.by_category || []).filter(c => c.group === 'expense' && c.total > 0);
+    // Phase EX-6: kalau ada project selected, filter donut ke category_breakdown
+    // project itu; else tampilkan semua kategori bulan.
+    let expenseCats;
+    const scopeEl = document.getElementById('fa-cat-scope');
+    const resetBtn = document.getElementById('fa-cat-reset');
+    if (faSelectedProjectId) {
+      const proj = (monthData.by_project || []).find(p => p.project_id === faSelectedProjectId);
+      if (proj) {
+        expenseCats = (proj.category_breakdown || []).map(c => ({
+          name: c.cat_name, total: c.total, group: 'expense',
+        }));
+        if (scopeEl) scopeEl.textContent = `(project: ${proj.project_name})`;
+        if (resetBtn) resetBtn.classList.remove('hidden');
+      } else {
+        expenseCats = [];
+      }
+    } else {
+      expenseCats = (monthData.by_category || []).filter(c => c.group === 'expense' && c.total > 0);
+      if (scopeEl) scopeEl.textContent = '(bulan terpilih)';
+      if (resetBtn) resetBtn.classList.add('hidden');
+    }
     if (faCatChart) faCatChart.destroy();
     if (!expenseCats.length) {
       const ctx = el.getContext('2d');
@@ -139,6 +164,66 @@
       },
     });
   }
+
+  function faRenderProjectBar(monthData) {
+    const el = document.getElementById('fa-project-chart');
+    const empty = document.getElementById('fa-project-empty');
+    if (!el || typeof Chart === 'undefined') return;
+    const projects = (monthData.by_project || []).filter(p => p.total > 0);
+    if (faProjectChart) faProjectChart.destroy();
+    if (!projects.length) {
+      el.style.display = 'none';
+      if (empty) empty.classList.remove('hidden');
+      return;
+    }
+    el.style.display = '';
+    if (empty) empty.classList.add('hidden');
+    faProjectChart = new Chart(el.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: projects.map(p => p.project_name),
+        datasets: [{
+          data: projects.map(p => p.total),
+          backgroundColor: projects.map((p, i) =>
+            p.project_id === faSelectedProjectId ? FA_COLORS.gold : FA_COLORS.palette[i % FA_COLORS.palette.length]),
+          borderRadius: 4,
+        }],
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => faFmtRp(ctx.parsed.x) + ' (' + (projects[ctx.dataIndex].count || 0) + ' expense)',
+            },
+          },
+        },
+        scales: {
+          x: { ticks: { callback: v => faFmtRpShort(v), font: { size: 9 } } },
+          y: { ticks: { font: { size: 10 } } },
+        },
+        onClick: (evt, elements) => {
+          if (!elements.length) return;
+          const idx = elements[0].index;
+          const pid = projects[idx].project_id;
+          // Toggle: klik lagi bar yg sama = reset
+          faSelectedProjectId = (faSelectedProjectId === pid) ? null : pid;
+          faRenderProjectBar(faLastMonthData);
+          faRenderCategoryDonut(faLastMonthData);
+        },
+      },
+    });
+  }
+
+  window.faResetProjectFilter = function() {
+    faSelectedProjectId = null;
+    if (faLastMonthData) {
+      faRenderProjectBar(faLastMonthData);
+      faRenderCategoryDonut(faLastMonthData);
+    }
+  };
 
   function faRenderTable(monthData) {
     const body = document.getElementById('fa-tx-body');
@@ -168,8 +253,12 @@
     try {
       const [y, m] = await Promise.all([faLoadSummaryYear(), faLoadSummaryMonth()]);
       if (!y || !m) return;
+      // Phase EX-6: reset drill-down state saat reload period (year/month baru).
+      faSelectedProjectId = null;
+      faLastMonthData = m;
       faRenderKPI(y, m);
       faRenderTrend(y);
+      faRenderProjectBar(m);
       faRenderCategoryDonut(m);
       faRenderTable(m);
     } catch (e) { console.error('[fa] reload', e); }

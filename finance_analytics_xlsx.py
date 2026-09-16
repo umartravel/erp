@@ -114,6 +114,44 @@ def _write_category_sheet(wb, sheet_name, cats, group_filter):
     _autosize(ws, [42, 22, 16])
 
 
+def _write_project_sheet(wb, projects):
+    """Phase EX-6: sheet Project Breakdown -- 4 kolom Project|Count|Nominal|%."""
+    ws = wb.create_sheet("Project Breakdown")
+    _write_meta_block(ws, "Project Breakdown",
+                      "Breakdown pengeluaran per project (dari Expense Report).")
+    _write_header_row(ws, 4, ["Project", "Jumlah Expense", "Nominal", "% Kontribusi"])
+
+    filtered = [p for p in (projects or []) if p.get("total", 0) > 0]
+    if not filtered:
+        ws.cell(row=5, column=1, value="Tidak ada expense project tercatat.").font = _SUB_FONT
+        _autosize(ws, [42, 18, 22, 16])
+        return
+
+    r = 5
+    grand = sum(p["total"] for p in filtered) or 1
+    for p in filtered:
+        ws.cell(row=r, column=1, value=p["project_name"]).font = Font(bold=True, color="1F1F1D")
+        ws.cell(row=r, column=2, value=int(p.get("count", 0)))
+        cell_total = ws.cell(row=r, column=3, value=int(p["total"]))
+        cell_total.number_format = _IDR_FMT
+        cell_total.font = Font(bold=True, color="1F1F1D")
+        pct_cell = ws.cell(row=r, column=4, value=p["total"] / grand)
+        pct_cell.number_format = _PCT_FMT
+        for col in range(1, 5):
+            ws.cell(row=r, column=col).border = _BORDER
+        r += 1
+    ws.cell(row=r, column=1, value="TOTAL")
+    ws.cell(row=r, column=2, value=sum(int(p.get("count", 0)) for p in filtered))
+    ws.cell(row=r, column=3, value=int(grand)).number_format = _IDR_FMT
+    ws.cell(row=r, column=4, value=1.0).number_format = _PCT_FMT
+    for col in range(1, 5):
+        cell = ws.cell(row=r, column=col)
+        cell.fill = _TOTAL_FILL
+        cell.font = _TOTAL_FONT
+        cell.border = _BORDER
+    _autosize(ws, [42, 18, 22, 16])
+
+
 def build_year_report_xlsx(payload) -> bytes:
     """payload: hasil summary_year + {'generated_by', 'generated_at'}."""
     wb = Workbook()
@@ -162,6 +200,7 @@ def build_year_report_xlsx(payload) -> bytes:
 
     _write_category_sheet(wb, "Pemasukan Kategori", payload.get("by_category"), "income")
     _write_category_sheet(wb, "Pengeluaran Kategori", payload.get("by_category"), "expense")
+    _write_project_sheet(wb, payload.get("by_project"))  # Phase EX-6
 
     buf = io.BytesIO()
     wb.save(buf)
@@ -192,6 +231,7 @@ def build_month_report_xlsx(payload) -> bytes:
 
     _write_category_sheet(wb, "Pemasukan Kategori", payload.get("by_category"), "income")
     _write_category_sheet(wb, "Pengeluaran Kategori", payload.get("by_category"), "expense")
+    _write_project_sheet(wb, payload.get("by_project"))  # Phase EX-6
 
     ws4 = wb.create_sheet("Transaksi")
     _write_meta_block(ws4, f"Detail Transaksi -- {month_label}",

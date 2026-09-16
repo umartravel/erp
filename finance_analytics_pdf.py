@@ -237,6 +237,44 @@ def _category_table(story, title, cats, st, group_filter):
     story.append(t)
 
 
+def _project_table(story, projects, st, title="Pengeluaran per Project"):
+    """Phase EX-6: tabel Project x Count x Total x % dari list `by_project`."""
+    filtered = [p for p in (projects or []) if p.get("total", 0) > 0]
+    story.append(Paragraph(title, st["section"]))
+    if not filtered:
+        story.append(Paragraph(
+            "<i>Tidak ada expense project pada periode ini.</i>", st["body_soft"]))
+        return
+    header = [
+        Paragraph("Project", st["th"]),
+        Paragraph("Jumlah Expense", st["th_r"]),
+        Paragraph("Nominal", st["th_r"]),
+        Paragraph("% Kontribusi", st["th_r"]),
+    ]
+    rows = [header]
+    grand = sum(p["total"] for p in filtered) or 1
+    for p in filtered:
+        pct = round(p["total"] * 100.0 / grand, 1)
+        rows.append([
+            Paragraph(f"<b>{p['project_name']}</b>", st["td_b"]),
+            Paragraph(str(p.get("count", 0)), st["td_r"]),
+            Paragraph(_fmt_rp(p["total"]), st["td_r_b"]),
+            Paragraph(f"{pct}%", st["td_r"]),
+        ])
+    rows.append([
+        Paragraph("<b>TOTAL</b>", st["td_b"]),
+        Paragraph(str(sum(p.get("count", 0) for p in filtered)), st["td_r_b"]),
+        Paragraph(_fmt_rp(grand), st["td_r_b"]),
+        Paragraph("100.0%", st["td_r_b"]),
+    ])
+    t = Table(rows, colWidths=[85 * mm, 30 * mm, 40 * mm, 25 * mm])
+    styleset = _base_table_style(len(rows))
+    styleset.append(("LINEABOVE", (0, -1), (-1, -1), 0.6, BRAND_CHARCOAL))
+    styleset.append(("BACKGROUND", (0, -1), (-1, -1), BRAND_CREAM))
+    t.setStyle(TableStyle(styleset))
+    story.append(t)
+
+
 def _footer(story, generated_by, generated_at, st):
     story.append(Spacer(1, 8 * mm))
     footer_rule = Table([[""]], colWidths=[USABLE_W], rowHeights=[0.4])
@@ -325,6 +363,10 @@ def build_year_report_pdf(payload) -> bytes:
     _category_table(story, "Pemasukan per Kategori", payload.get("by_category"), st, "income")
     _category_table(story, "Pengeluaran per Kategori", payload.get("by_category"), st, "expense")
 
+    # Phase EX-6: breakdown per project (top 10 tahunan).
+    _project_table(story, payload.get("by_project"), st,
+                   "Pengeluaran per Project (Top 10 Tahun)")
+
     _footer(story, payload.get("generated_by", "-"), payload.get("generated_at", "-"), st)
 
     doc.build(story)
@@ -370,6 +412,10 @@ def build_month_report_pdf(payload) -> bytes:
 
     _category_table(story, "Pemasukan per Kategori", payload.get("by_category"), st, "income")
     _category_table(story, "Pengeluaran per Kategori", payload.get("by_category"), st, "expense")
+
+    # Phase EX-6: breakdown per project (top 10 bulan).
+    _project_table(story, payload.get("by_project"), st,
+                   "Pengeluaran per Project (Top 10)")
 
     story.append(Paragraph("Detail Transaksi (50 terakhir)", st["section"]))
     txs = payload.get("transactions") or []
