@@ -63,6 +63,28 @@
         document.getElementById('fh-kpi-queue').textContent = queue;
     }
 
+    // Sprint AK-5 UI: Ringkasan akrual PSAK dari journal_lines + balance sheet.
+    function renderAccrualKPI(akpi) {
+        const wrap = document.getElementById('fh-accrual-wrap');
+        if (!wrap) return;
+        if (!akpi) { wrap.classList.add('hidden'); return; }
+        wrap.classList.remove('hidden');
+        const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+        setText('fh-akpi-kas-bank', fhFmtShort(akpi.saldo_kas_bank));
+        setText('fh-akpi-unearned', fhFmtShort(akpi.unearned_liab));
+        setText('fh-akpi-net-mtd', fhFmtShort(akpi.net_profit_mtd));
+        setText('fh-akpi-rev-mtd', fhFmtShort(akpi.revenue_mtd));
+        setText('fh-akpi-cogs-mtd', fhFmtShort(akpi.cogs_mtd));
+        setText('fh-akpi-gross-mtd', fhFmtShort(akpi.gross_profit_mtd));
+        setText('fh-akpi-op-mtd', fhFmtShort(akpi.operating_profit_mtd));
+        const balEl = document.getElementById('fh-akpi-balance');
+        if (balEl) {
+            balEl.innerHTML = akpi.balance_sheet_balanced
+                ? '<span class="text-emerald-700 font-bold">Balanced</span>'
+                : '<span class="text-red-700 font-bold">Off Rp ' + Math.abs(akpi.total_assets - akpi.total_liab_equity).toLocaleString('id-ID') + '</span>';
+        }
+    }
+
     function renderPiutang(list) {
         const el = document.getElementById('fh-piutang-list');
         if (!el) return;
@@ -469,6 +491,7 @@
                 umarRenderWelcomeHero('fh-hero-mount', (typeof currentUser !== 'undefined' && currentUser?.name) || 'Tim Finance');
             }
             renderKPI(data.kpi || {});
+            renderAccrualKPI(data.accrual_kpi);  // Sprint AK-5 UI
             renderAttention(data.attention || []);
             renderPiutang(data.piutang_jamaah || []);
             renderVendorDue(data.vendor_due_soon || []);

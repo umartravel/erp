@@ -719,6 +719,9 @@
                 <a href="#" id="nav-finance-categories" onclick="showPage('finance-categories')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
                     <i data-lucide="folder-tree" class="w-4 h-4"></i> Kelola Kategori
                 </a>
+                <a href="#" id="nav-laporan-keuangan" onclick="showPage('laporan-keuangan')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
+                    <i data-lucide="scale-3d" class="w-4 h-4"></i> Laporan Keuangan
+                </a>
             </div>
 
             <button type="button" id="navgrouphdr-ops" onclick="toggleNavGroup('ops')" class="w-full flex items-center gap-1.5 px-2 mt-6 mb-2 text-xs font-bold text-emerald-400 uppercase tracking-widest hover:text-emerald-200 transition-colors">
@@ -1794,6 +1797,51 @@
                     </div>
                 </div>
 
+                <!-- Sprint AK-5 UI: Ringkasan Akrual PSAK -->
+                <div id="fh-accrual-wrap" class="hidden bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl shadow-sm p-5 space-y-3">
+                    <div class="flex items-center justify-between gap-2 flex-wrap">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="scale-3d" class="w-4 h-4 text-indigo-700"></i>
+                            <h3 class="font-bold text-sm text-indigo-900">Ringkasan Akuntansi Akrual (PSAK)</h3>
+                            <span id="fh-akpi-balance" class="text-[10px] px-2 py-0.5 rounded-full bg-white border border-indigo-200">-</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="showPage('laporan-keuangan')" class="text-[10px] font-medium bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded flex items-center gap-1">
+                                <i data-lucide="file-bar-chart" class="w-3 h-3"></i> Neraca &amp; Laba Rugi
+                            </button>
+                            <button onclick="fhOpenCashOps()" class="text-[10px] font-medium bg-white border border-indigo-300 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded flex items-center gap-1">
+                                <i data-lucide="wallet" class="w-3 h-3"></i> Kas &amp; Prive
+                            </button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div class="bg-white/80 rounded-lg p-3 border border-indigo-100">
+                            <div class="text-[10px] uppercase tracking-wider text-indigo-700 mb-1">Kas &amp; Bank</div>
+                            <div id="fh-akpi-kas-bank" class="text-lg font-bold text-indigo-900">Rp 0</div>
+                            <div class="text-[10px] text-indigo-500 mt-0.5">Ledger 1101+1102+1103</div>
+                        </div>
+                        <div class="bg-white/80 rounded-lg p-3 border border-amber-200">
+                            <div class="text-[10px] uppercase tracking-wider text-amber-700 mb-1">Unearned Rev</div>
+                            <div id="fh-akpi-unearned" class="text-lg font-bold text-amber-800">Rp 0</div>
+                            <div class="text-[10px] text-amber-600 mt-0.5">Pendapatan diterima di muka (2101)</div>
+                        </div>
+                        <div class="bg-white/80 rounded-lg p-3 border border-emerald-200">
+                            <div class="text-[10px] uppercase tracking-wider text-emerald-700 mb-1">Net Profit MTD</div>
+                            <div id="fh-akpi-net-mtd" class="text-lg font-bold text-emerald-800">Rp 0</div>
+                            <div class="text-[10px] text-emerald-600 mt-0.5">Laba bersih bulan berjalan</div>
+                        </div>
+                        <div class="bg-white/80 rounded-lg p-3 border border-purple-200">
+                            <div class="text-[10px] uppercase tracking-wider text-purple-700 mb-1">Ringkasan LR</div>
+                            <div class="grid grid-cols-2 gap-x-2 text-[10px] text-purple-900">
+                                <div>Rev</div><div id="fh-akpi-rev-mtd" class="text-right font-semibold">Rp 0</div>
+                                <div>COGS</div><div id="fh-akpi-cogs-mtd" class="text-right font-semibold">Rp 0</div>
+                                <div>Gross</div><div id="fh-akpi-gross-mtd" class="text-right font-semibold">Rp 0</div>
+                                <div>OpProfit</div><div id="fh-akpi-op-mtd" class="text-right font-semibold">Rp 0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Phase 13a-2: Antrian Pembayaran menunggu ACC finance -->
                 <div class="bg-white rounded-xl shadow-sm border overflow-hidden" style="border-color:#10B981;">
                     <div class="px-4 py-3 border-b flex items-center justify-between" style="background:#ECFDF5;border-color:#A7F3D0;">
@@ -2579,6 +2627,142 @@
                     </div>
                     <div id="fc-tree" class="space-y-1"></div>
                     <p id="fc-empty" class="hidden text-center text-sm text-gray-500 py-8">Belum ada kategori. Klik &ldquo;Tambah Kategori&rdquo; untuk mulai.</p>
+                </div>
+            </div>
+
+            <!-- PAGE: LAPORAN KEUANGAN (Sprint AK-UI) — Neraca + LR Multi-Step + Recent Ledger -->
+            <div id="page-laporan-keuangan" class="page-content hidden space-y-6">
+                <div class="umar-module-hero">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="scale-3d" class="w-6 h-6" style="color: var(--umar-gold);"></i>
+                        <div>
+                            <div class="umar-module-hero-title">Laporan Keuangan</div>
+                            <div class="umar-module-hero-subtitle">Neraca (Balance Sheet) &amp; Laba Rugi Multi-Step berdasar akuntansi akrual PSAK dari <code>journal_lines</code>. Setiap transaksi POSTED menghasilkan pasangan Debit/Kredit yang jumlahnya harus zero-sum.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Neraca -->
+                <div class="bg-white rounded-xl shadow-sm border border-indigo-200 overflow-hidden">
+                    <div class="px-4 py-3 border-b bg-indigo-50 flex items-center justify-between gap-3 flex-wrap">
+                        <h3 class="font-bold text-indigo-900 flex items-center gap-2">
+                            <i data-lucide="scale" class="w-4 h-4"></i>Neraca (Balance Sheet)
+                        </h3>
+                        <div class="flex items-center gap-2 text-xs">
+                            <label class="text-gray-600">Per tanggal:</label>
+                            <input id="lk-bs-date" type="date" class="border border-indigo-200 rounded px-2 py-1 text-xs">
+                            <button onclick="lkReloadBalanceSheet()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-1 rounded flex items-center gap-1">
+                                <i data-lucide="refresh-cw" class="w-3 h-3"></i> Muat
+                            </button>
+                        </div>
+                    </div>
+                    <div id="lk-bs-body"><div class="p-8 text-center text-xs text-gray-400">Memuat Neraca...</div></div>
+                </div>
+
+                <!-- Laba Rugi -->
+                <div class="bg-white rounded-xl shadow-sm border border-emerald-200 overflow-hidden">
+                    <div class="px-4 py-3 border-b bg-emerald-50 flex items-center justify-between gap-3 flex-wrap">
+                        <h3 class="font-bold text-emerald-900 flex items-center gap-2">
+                            <i data-lucide="trending-up" class="w-4 h-4"></i>Laba Rugi (Income Statement Multi-Step)
+                        </h3>
+                        <div class="flex items-center gap-2 text-xs">
+                            <label class="text-gray-600">Periode:</label>
+                            <select id="lk-is-year" class="border border-emerald-200 rounded px-2 py-1 text-xs"></select>
+                            <select id="lk-is-month" class="border border-emerald-200 rounded px-2 py-1 text-xs"></select>
+                            <button onclick="lkReloadIncomeStatement()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1 rounded flex items-center gap-1">
+                                <i data-lucide="refresh-cw" class="w-3 h-3"></i> Muat
+                            </button>
+                        </div>
+                    </div>
+                    <div id="lk-is-body"><div class="p-8 text-center text-xs text-gray-400">Memuat Laba Rugi...</div></div>
+                </div>
+
+                <!-- Recent Ledger Entries -->
+                <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+                    <div class="px-4 py-3 border-b bg-gray-50 flex items-center justify-between">
+                        <h3 class="font-bold text-gray-800 flex items-center gap-2">
+                            <i data-lucide="list" class="w-4 h-4"></i>Recent Ledger Entries (20 terakhir)
+                        </h3>
+                        <button onclick="lkReloadLedger()" class="text-xs text-indigo-600 hover:underline flex items-center gap-1">
+                            <i data-lucide="refresh-cw" class="w-3 h-3"></i> Refresh
+                        </button>
+                    </div>
+                    <div id="lk-ledger-body" class="max-h-[500px] overflow-y-auto custom-scrollbar"></div>
+                </div>
+            </div>
+
+            <!-- MODAL: Kas &amp; Prive (Sprint AK-UI) — form Setor Tunai + form Prive + history -->
+            <div id="modal-cash-ops" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center p-4">
+                <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+                    <div class="flex items-center justify-between border-b p-4 sticky top-0 bg-white z-10">
+                        <h3 class="font-bold text-lg flex items-center gap-2">
+                            <i data-lucide="wallet" class="w-5 h-5 text-indigo-600"></i>Kas &amp; Prive
+                        </h3>
+                        <button onclick="fhCloseCashOps()" class="text-gray-400 hover:text-gray-700"><i data-lucide="x" class="w-5 h-5"></i></button>
+                    </div>
+                    <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="border border-amber-200 rounded-lg p-3 bg-amber-50/40">
+                            <h4 class="text-sm font-bold text-amber-900 mb-2 flex items-center gap-1.5">
+                                <i data-lucide="banknote" class="w-4 h-4"></i>Setor Tunai (Kas Kecil → Bank)
+                            </h4>
+                            <div class="text-[10px] text-amber-700 mb-2">Leg 1: Dr 1109 Kliring / Cr 1101 Kas Kecil. Konfirmasi bank di leg 2.</div>
+                            <form onsubmit="fhSubmitSetor(event)" class="space-y-2">
+                                <div>
+                                    <label class="text-[10px] text-gray-600">Nominal (Rp)</label>
+                                    <input name="amount" type="number" min="1" required class="w-full border border-amber-200 rounded px-2 py-1 text-xs">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] text-gray-600">Ke bank</label>
+                                    <select name="to_bank" class="w-full border border-amber-200 rounded px-2 py-1 text-xs">
+                                        <option value="1102">1102 Bank Mandiri</option>
+                                        <option value="1103">1103 Bank BSI</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="text-[10px] text-gray-600">Catatan (opsional)</label>
+                                    <input name="note" type="text" class="w-full border border-amber-200 rounded px-2 py-1 text-xs" placeholder="No. slip setoran, dsb">
+                                </div>
+                                <button type="submit" class="w-full bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium px-3 py-1.5 rounded">Catat Setor</button>
+                            </form>
+                            <div class="mt-3 border-t border-amber-200 pt-2">
+                                <div class="text-[10px] font-bold text-amber-800 mb-1">Menunggu konfirmasi bank:</div>
+                                <div id="setor-pending-body" class="max-h-40 overflow-y-auto custom-scrollbar"></div>
+                            </div>
+                        </div>
+
+                        <div id="form-prive" class="border border-purple-200 rounded-lg p-3 bg-purple-50/40 hidden">
+                            <h4 class="text-sm font-bold text-purple-900 mb-2 flex items-center gap-1.5">
+                                <i data-lucide="user-minus" class="w-4 h-4"></i>Prive Pemilik (Owner Draw)
+                            </h4>
+                            <div class="text-[10px] text-purple-700 mb-2">Dr 3102 Prive / Cr Kas. Mengurangi Ekuitas. Admin/Management only.</div>
+                            <form onsubmit="fhSubmitPrive(event)" class="space-y-2">
+                                <div>
+                                    <label class="text-[10px] text-gray-600">Nominal (Rp)</label>
+                                    <input name="amount" type="number" min="1" required class="w-full border border-purple-200 rounded px-2 py-1 text-xs">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] text-gray-600">Dari kas/bank</label>
+                                    <select name="from_bank" class="w-full border border-purple-200 rounded px-2 py-1 text-xs">
+                                        <option value="1102">1102 Bank Mandiri</option>
+                                        <option value="1103">1103 Bank BSI</option>
+                                        <option value="1101">1101 Kas Kecil</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="text-[10px] text-gray-600">Catatan (wajib)</label>
+                                    <input name="note" type="text" required class="w-full border border-purple-200 rounded px-2 py-1 text-xs" placeholder="mis. Prive bulanan Sep">
+                                </div>
+                                <button type="submit" class="w-full bg-purple-700 hover:bg-purple-800 text-white text-xs font-medium px-3 py-1.5 rounded">Catat Prive</button>
+                            </form>
+                            <div class="mt-3 border-t border-purple-200 pt-2">
+                                <div class="text-[10px] font-bold text-purple-800 mb-1 flex justify-between">
+                                    <span>Riwayat prive:</span>
+                                    <span>Total: <span id="prive-total">Rp 0</span></span>
+                                </div>
+                                <div id="prive-history-body" class="max-h-40 overflow-y-auto custom-scrollbar"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -6835,6 +7019,7 @@
                 document.getElementById('nav-finance-analytics').classList.remove('hidden'); // Phase F3
                 document.getElementById('nav-daily-team').classList.remove('hidden'); // Phase DT-3b
                 document.getElementById('nav-finance-categories').classList.remove('hidden'); // Phase EX-4
+                document.getElementById('nav-laporan-keuangan').classList.remove('hidden'); // Sprint AK-UI
             } else if (currentUser.role === 'sales') {
                 document.getElementById('nav-finance').classList.add('hidden');
                 document.getElementById('nav-operasional').classList.add('hidden');
@@ -6862,6 +7047,7 @@
                 document.getElementById('nav-finance-home').classList.remove('hidden');
                 document.getElementById('nav-reconcile').classList.remove('hidden');
                 document.getElementById('nav-finance-analytics').classList.remove('hidden'); // Phase F3
+                document.getElementById('nav-laporan-keuangan').classList.remove('hidden'); // Sprint AK-UI
                 document.getElementById('nav-dashboard').classList.add('hidden');
             } else if (currentUser.role === 'ops') {
                 document.getElementById('nav-pendaftaran').classList.add('hidden');
@@ -6902,6 +7088,7 @@
                 document.getElementById('nav-risk-register').classList.remove('hidden');
                 document.getElementById('nav-finance-analytics').classList.remove('hidden'); // Phase F3
                 document.getElementById('nav-daily-team').classList.remove('hidden'); // Phase DT-3b
+                document.getElementById('nav-laporan-keuangan').classList.remove('hidden'); // Sprint AK-UI
                 document.getElementById('nav-dashboard').classList.add('hidden');
             }
 
@@ -6949,14 +7136,14 @@
             return false;
         }
 
-        const pageTitles = { 'dashboard': 'Dashboard', 'pendaftaran': 'Pendaftaran Baru', 'jamaah': 'Master Data Jamaah', 'finance': 'Keuangan & P&L', 'operasional': 'Operasional & Logistik', 'whatsapp': 'Manajemen WA', 'users': 'Master Data Karyawan', 'packages': 'Master Paket Umroh', 'agents': 'Manajemen Keagenan', 'tactical': 'Kesiapan Operasional & Audit', 'procurement': 'Manajemen Vendor / Procurement', 'settings': 'Pengaturan Aplikasi', 'followup': 'Follow-up Lead (CRM Sales)', 'expense': 'Expense Report', 'inbox': 'Kotak Masuk Pendaftaran Publik', 'leave': 'Ajukan Izin', 'marketing': 'Marketing Analytics', 'sales-home': 'Home Sales', 'ops-home': 'Home Operasional', 'incidents': 'Insiden Lapangan', 'finance-home': 'Home Finance', 'mgmt-home': 'Home Management', 'mgmt-targets': 'Target Perusahaan & Sales', 'aged-receivable': 'Aged Receivable', 'reconcile': 'Rekonsiliasi Bank', 'risk-register': 'Risk Register', 'boq': 'Simulasi Paket (BOQ)', 'finance-analytics': 'Analisis Keuangan', 'finance-categories': 'Kelola Kategori Kas', 'daily-mine': 'Laporan Harian', 'daily-team': 'Laporan Tim' };
+        const pageTitles = { 'dashboard': 'Dashboard', 'pendaftaran': 'Pendaftaran Baru', 'jamaah': 'Master Data Jamaah', 'finance': 'Keuangan & P&L', 'operasional': 'Operasional & Logistik', 'whatsapp': 'Manajemen WA', 'users': 'Master Data Karyawan', 'packages': 'Master Paket Umroh', 'agents': 'Manajemen Keagenan', 'tactical': 'Kesiapan Operasional & Audit', 'procurement': 'Manajemen Vendor / Procurement', 'settings': 'Pengaturan Aplikasi', 'followup': 'Follow-up Lead (CRM Sales)', 'expense': 'Expense Report', 'inbox': 'Kotak Masuk Pendaftaran Publik', 'leave': 'Ajukan Izin', 'marketing': 'Marketing Analytics', 'sales-home': 'Home Sales', 'ops-home': 'Home Operasional', 'incidents': 'Insiden Lapangan', 'finance-home': 'Home Finance', 'mgmt-home': 'Home Management', 'mgmt-targets': 'Target Perusahaan & Sales', 'aged-receivable': 'Aged Receivable', 'reconcile': 'Rekonsiliasi Bank', 'risk-register': 'Risk Register', 'boq': 'Simulasi Paket (BOQ)', 'finance-analytics': 'Analisis Keuangan', 'finance-categories': 'Kelola Kategori Kas', 'laporan-keuangan': 'Laporan Keuangan', 'daily-mine': 'Laporan Harian', 'daily-team': 'Laporan Tim' };
 
         // --- SIDEBAR: kategori yang bisa dilipat (accordion), status tersimpan per browser ---
         const NAV_GROUPS = ['crm', 'finance', 'ops', 'tools'];
         const PAGE_TO_NAV_GROUP = {
             pendaftaran: 'crm', inbox: 'crm', jamaah: 'crm', followup: 'crm', agents: 'crm', marketing: 'crm',
             'sales-home': 'crm',
-            'finance-home': 'finance', 'mgmt-home': 'finance', 'mgmt-targets': 'finance', finance: 'finance', expense: 'finance', reconcile: 'finance', 'aged-receivable': 'finance', 'risk-register': 'finance', 'finance-categories': 'finance',
+            'finance-home': 'finance', 'mgmt-home': 'finance', 'mgmt-targets': 'finance', finance: 'finance', expense: 'finance', reconcile: 'finance', 'aged-receivable': 'finance', 'risk-register': 'finance', 'finance-categories': 'finance', 'laporan-keuangan': 'finance',
             operasional: 'ops', procurement: 'ops', 'ops-home': 'ops', incidents: 'ops',
             leave: 'tools', tactical: 'tools', whatsapp: 'tools', packages: 'tools', boq: 'tools', users: 'tools', settings: 'tools',
         };
@@ -7063,6 +7250,7 @@
             if(id === 'finance-home' && typeof initFinanceHome === 'function') initFinanceHome();
             if(id === 'finance-analytics' && typeof initFinanceAnalytics === 'function') initFinanceAnalytics();  // Phase F3
             if(id === 'finance-categories' && typeof fcInit === 'function') fcInit();  // Phase EX-4
+            if(id === 'laporan-keuangan' && typeof initLaporanKeuangan === 'function') initLaporanKeuangan();  // Sprint AK-UI
             if(id === 'daily-mine' && typeof initDailyMine === 'function') initDailyMine();  // Phase DT-2a
             if(id === 'daily-team' && typeof initDailyTeam === 'function') initDailyTeam();  // Phase DT-3b
             // Phase DT-2b: mini panel di 5 home page (sales/ops/finance/mgmt/dashboard).
@@ -11570,7 +11758,8 @@
     <script src="js/marketing.js?v=20260910-xss"></script>
     <script src="js/sales-home.js?v=20260910-xss"></script>
     <script src="js/ops-home.js?v=20260827e"></script>
-    <script src="js/finance-home.js?v=20260827e"></script>
+    <script src="js/finance-home.js?v=20260916-ak5"></script>
+    <script src="js/finance-accrual.js?v=20260916-ak6"></script>
     <script src="js/finance-analytics.js?v=20260916-ex6"></script>
     <script src="js/finance-categories.js?v=20260916-ex4"></script>
     <script src="js/daily-reports.js?v=20260911-dt5"></script>
