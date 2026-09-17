@@ -254,6 +254,18 @@ async def refund_request_disburse(rid: int, user=Depends(authenticate_token)):
     if not jamaah:
         raise HTTPException(status_code=404, detail="Jamaah tidak ditemukan")
 
+    # Optimistic-lock: CLAIM refund atomik Disetujui -> Dicairkan sekarang.
+    # rowcount=0 = paralel duluan -> tolak (cegah double-debit + double journal).
+    _, claim_rc = db.execute(
+        "UPDATE refund_requests SET status = 'Dicairkan', disbursed_by = ?, "
+        "disbursed_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'Disetujui'",
+        (user["name"], rid),
+    )
+    if claim_rc == 0:
+        raise HTTPException(
+            status_code=409,
+            detail="Refund sudah dicairkan request lain -- refresh halaman.")
+
     new_paid = (jamaah["paid_amount"] or 0) - r["amount"]
     total = jamaah["total_price"] or 0
     if total > 0 and new_paid >= total:
@@ -290,10 +302,10 @@ async def refund_request_disburse(rid: int, user=Depends(authenticate_token)):
             (r["reason"], jamaah["id"]),
         )
     sync_status_mirror(jamaah["id"])
+    # Status sudah 'Dicairkan' via atomic claim di atas; link transaction_id.
     db.execute(
-        "UPDATE refund_requests SET status = 'Dicairkan', disbursed_by = ?, disbursed_at = CURRENT_TIMESTAMP, "
-        "transaction_id = ? WHERE id = ?",
-        (user["name"], last_id, rid),
+        "UPDATE refund_requests SET transaction_id = ? WHERE id = ?",
+        (last_id, rid),
     )
     log_action(
         user, "DISBURSE_REFUND",

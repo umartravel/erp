@@ -174,8 +174,14 @@ async def finance_home(user=Depends(authenticate_token)):
             "total_assets": bs["assets"]["total"],
             "total_liab_equity": bs["total_liab_equity"],
         }
-    except Exception:  # noqa: BLE001 -- KPI akrual best-effort, jangan block dashboard
-        accrual_kpi = None
+    except Exception as e:  # noqa: BLE001 -- best-effort, jangan block dashboard
+        # Bukan silent: log ke stdout supaya finance/admin bisa tracking bug
+        # balance sheet lewat filter log request_id di production.
+        import logging
+        logging.getLogger("app").warning(
+            "accrual_kpi generation failed for user=%s: %r",
+            user.get("username"), e, exc_info=True)
+        accrual_kpi = {"error": "Gagal generate KPI akrual -- cek log server."}
 
     return {
         "kpi": kpi,

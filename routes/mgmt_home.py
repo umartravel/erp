@@ -108,32 +108,38 @@ async def mgmt_home(year: int | None = None, month: int | None = None,
         "closing_pct": closing_pct,
     }
 
-    sales_users = db.query_all("SELECT id, name FROM users WHERE role = 'sales' ORDER BY name")
+    # Fix N+1: single LEFT JOIN dgn agregasi jamaah + sales_targets.
+    # Sebelumnya 1 + 2N query (1 SELECT users + 2 query_one per sales).
+    sales_rows = db.query_all(
+        "SELECT u.id AS user_id, u.name, "
+        "  COALESCE(COUNT(j.id), 0) AS actual_closing, "
+        "  COALESCE(SUM(j.total_price), 0) AS actual_omzet, "
+        "  COALESCE(st.target_closing, 0) AS target_closing, "
+        "  COALESCE(st.target_omzet, 0) AS target_omzet "
+        "FROM users u "
+        "LEFT JOIN jamaah j ON j.sales_id = u.id "
+        "  AND strftime('%Y-%m', COALESCE(j.order_date, j.created_at)) = ? "
+        "  AND j.status NOT IN ('Cancelled', 'Lead - Follow Up')"
+        + (" AND j.package_type = ?" if package else "") + " "
+        "LEFT JOIN sales_targets st ON st.user_id = u.id AND st.month = ? "
+        "WHERE u.role = 'sales' "
+        "GROUP BY u.id "
+        "ORDER BY actual_omzet DESC",
+        (ym_now,) + pkg_params + (ym_now,),
+    )
     sales_perf = []
-    for s in sales_users:
-        actual = db.query_one(
-            "SELECT COUNT(*) c, COALESCE(SUM(total_price),0) omzet FROM jamaah "
-            "WHERE sales_id = ? AND strftime('%Y-%m', COALESCE(order_date, created_at)) = ? "
-            "AND status NOT IN ('Cancelled', 'Lead - Follow Up')"
-            + pkg_where,
-            (s["id"], ym_now) + pkg_params,
-        )
-        target = db.query_one(
-            "SELECT target_closing, target_omzet FROM sales_targets WHERE user_id = ? AND month = ?",
-            (s["id"], ym_now),
-        ) or {"target_closing": 0, "target_omzet": 0}
-        c_a = actual["c"] or 0
-        o_a = actual["omzet"] or 0
-        tc = target["target_closing"] or 0
-        to = target["target_omzet"] or 0
+    for s in sales_rows:
+        c_a = s["actual_closing"] or 0
+        o_a = s["actual_omzet"] or 0
+        tc = s["target_closing"] or 0
+        to = s["target_omzet"] or 0
         sales_perf.append({
-            "user_id": s["id"], "name": s["name"],
+            "user_id": s["user_id"], "name": s["name"],
             "actual_closing": c_a, "actual_omzet": o_a,
             "target_closing": tc, "target_omzet": to,
             "closing_pct": round((c_a / tc) * 100) if tc else None,
             "omzet_pct": round((o_a / to) * 100) if to else None,
         })
-    sales_perf.sort(key=lambda x: (x["actual_omzet"] or 0), reverse=True)
 
     ta_pkg_clause = " AND j.package_type = ?" if package else ""
     top_agents = db.query_all(

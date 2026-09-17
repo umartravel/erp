@@ -196,12 +196,18 @@ async def submission_review(sid: int, body: dict = Depends(json_body),
         if not reason:
             raise HTTPException(status_code=400,
                                 detail="Alasan tolak wajib diisi.")
-        db.execute(
+        # Optimistic-lock: UPDATE only if status still 'Pending'. rowcount=0 =
+        # request paralel sudah keburu process -> tolak ganda-verify.
+        _, rc = db.execute(
             "UPDATE jamaah_payment_submissions SET status = 'Rejected', "
             "reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP, reject_reason = ? "
-            "WHERE id = ?",
+            "WHERE id = ? AND status = 'Pending'",
             (user["name"], reason, sid),
         )
+        if rc == 0:
+            raise HTTPException(
+                status_code=409,
+                detail="Submission sudah diproses request lain -- refresh halaman.")
         log_action(user, "PAYMENT_REJECT",
                    f"Tolak pembayaran jamaah {jamaah['name']}: {reason}")
         notify("data_updated", "payment_submission")
@@ -214,6 +220,20 @@ async def submission_review(sid: int, body: dict = Depends(json_body),
         return {"message": "Pembayaran ditolak."}
 
     # === action == 'verify' ===
+    # Optimistic-lock: CLAIM submission via atomic status flip Pending -> Verified.
+    # Kalau rowcount=0, request paralel sudah verify duluan -> tolak.
+    # Ini mencegah double-credit paid_amount + double journal_lines.
+    _, claim_rc = db.execute(
+        "UPDATE jamaah_payment_submissions SET status = 'Verified', "
+        "reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP "
+        "WHERE id = ? AND status = 'Pending'",
+        (user["name"], sid),
+    )
+    if claim_rc == 0:
+        raise HTTPException(
+            status_code=409,
+            detail="Submission sudah diverifikasi request lain -- refresh halaman.")
+
     amount = sub["amount"] or 0
     new_paid = (jamaah["paid_amount"] or 0) + amount
     total = jamaah["total_price"] or 0
@@ -251,11 +271,11 @@ async def submission_review(sid: int, body: dict = Depends(json_body),
         # Tapi TETAP log ke audit trail supaya finance bisa investigasi.
         log_action(user, "JOURNAL_POST_FAIL",
                    f"tx #{tx_id} payment jamaah #{jamaah['id']}: {exc}")
+    # Status sudah 'Verified' via atomic claim di atas; sekarang tinggal
+    # sambungkan transaction_id supaya submission -> tx ter-link utk audit.
     db.execute(
-        "UPDATE jamaah_payment_submissions SET status = 'Verified', "
-        "reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP, transaction_id = ? "
-        "WHERE id = ?",
-        (user["name"], tx_id, sid),
+        "UPDATE jamaah_payment_submissions SET transaction_id = ? WHERE id = ?",
+        (tx_id, sid),
     )
     log_action(user, "PAYMENT_VERIFY",
                f"ACC pembayaran jamaah {jamaah['name']} Rp {amount:,}".replace(",", "."))
