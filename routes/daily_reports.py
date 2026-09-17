@@ -715,6 +715,85 @@ async def daily_reports_submit(rid: int, user=Depends(authenticate_token)):
             "id": rid, "status": "Submitted"}
 
 
+# Window (jam) di mana owner boleh reopen laporannya sendiri (proteksi misclick).
+# Setelah lewat window ini, hanya admin/management yang boleh reopen.
+_OWNER_REOPEN_WINDOW_HOURS = 2
+
+
+@router.post("/api/daily-reports/{rid}/reopen")
+async def daily_reports_reopen(rid: int, body: dict = Depends(json_body),
+                               user=Depends(authenticate_token)):
+    """Reopen laporan Submitted -> kembali ke Draft supaya bisa di-edit.
+
+    RBAC:
+    - Admin + management: kapan saja (alat resolusi mgmt kalau owner minta).
+    - Owner: dalam _OWNER_REOPEN_WINDOW_HOURS (default 2 jam) setelah submit,
+      proteksi misclick.
+
+    Body wajib: {reason: str, min 5 karakter}.
+    """
+    report = _get_report_or_404(rid)
+
+    if report["status"] != "Submitted":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Laporan status '{report['status']}' -- hanya yg Submitted yg bisa dibuka.")
+
+    reason = (body.get("reason") or "").strip()
+    if len(reason) < 5:
+        raise HTTPException(status_code=400,
+                            detail="Alasan buka kembali wajib diisi (min 5 karakter).")
+
+    is_owner = report["user_id"] == user["id"]
+    is_mgmt = _is_privileged(user)
+
+    if not (is_owner or is_mgmt):
+        raise HTTPException(status_code=403, detail="Akses ditolak.")
+
+    if is_owner and not is_mgmt:
+        submitted_at = report.get("submitted_at")
+        if submitted_at:
+            try:
+                dt_submitted = datetime.datetime.fromisoformat(
+                    submitted_at.replace(" ", "T"))
+                diff = datetime.datetime.utcnow() - dt_submitted
+                if diff.total_seconds() > _OWNER_REOPEN_WINDOW_HOURS * 3600:
+                    raise HTTPException(
+                        status_code=403,
+                        detail=f"Window buka kembali sendiri sudah lewat "
+                               f"({_OWNER_REOPEN_WINDOW_HOURS} jam setelah submit). "
+                               f"Minta admin/management.")
+            except (ValueError, AttributeError):
+                pass
+
+    db.execute(
+        "UPDATE daily_reports SET status = 'Draft', submitted_at = NULL, "
+        "updated_at = CURRENT_TIMESTAMP WHERE id = ?", (rid,))
+    log_action(user, "REOPEN_DAILY_REPORT",
+               f"Laporan #{rid} ({report['report_date']}) -- {reason}")
+    notify("data_updated", "daily_report")
+
+    label = user.get("name") or user.get("username") or "Seseorang"
+    if is_mgmt and not is_owner:
+        notify_user(
+            report["user_id"], "daily_report_reopened",
+            f"Laporan {report['report_date']} dibuka kembali oleh {label}",
+            body=f"Alasan: {reason}. Silakan revisi lalu submit ulang.",
+            link=f"#page-daily-mine?rid={rid}")
+    else:
+        title = f"{label} membuka kembali laporannya"
+        body_note = (f"Tanggal {report['report_date']}. Alasan: {reason}. "
+                     f"Akan re-submit setelah revisi.")
+        link = f"#page-daily-team?date={report['report_date']}"
+        notify_role("management", "daily_report_reopened",
+                    title, body=body_note, link=link)
+        notify_role("admin", "daily_report_reopened",
+                    title, body=body_note, link=link)
+
+    return {"message": "Laporan berhasil dibuka kembali (status Draft).",
+            "id": rid, "status": "Draft"}
+
+
 @router.post("/api/daily-reports/{rid}/feedback")
 async def daily_reports_feedback(rid: int, body: dict = Depends(json_body),
                                  user=Depends(authenticate_token)):

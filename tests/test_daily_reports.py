@@ -778,6 +778,100 @@ def test_export_reject_invalid_date_range(client, management_token):
     assert r.status_code == 400
 
 
+def test_reopen_by_admin_ok(client, sales_token, admin_token):
+    sales1_id = _user_id_by_username("sales1")
+    _wipe_today_report(sales1_id)
+    r = _create_today(client, sales_token, summary="AK reopen test")
+    rid = r["id"]
+    r = client.post(f"/api/daily-reports/{rid}/submit", headers=bearer(sales_token))
+    assert r.status_code == 200
+
+    r = client.post(f"/api/daily-reports/{rid}/reopen",
+                    headers=bearer(admin_token),
+                    json={"reason": "Salah task, minta revisi"})
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "Draft"
+
+    row = db.query_one("SELECT status FROM daily_reports WHERE id = ?", (rid,))
+    assert row["status"] == "Draft"
+    _wipe_today_report(sales1_id)
+
+
+def test_reopen_reason_required(client, sales_token, admin_token):
+    sales1_id = _user_id_by_username("sales1")
+    _wipe_today_report(sales1_id)
+    r = _create_today(client, sales_token, summary="reason req")
+    rid = r["id"]
+    client.post(f"/api/daily-reports/{rid}/submit", headers=bearer(sales_token))
+
+    r = client.post(f"/api/daily-reports/{rid}/reopen",
+                    headers=bearer(admin_token),
+                    json={"reason": "abc"})
+    assert r.status_code == 400
+    assert "5 karakter" in r.json()["error"]
+    _wipe_today_report(sales1_id)
+
+
+def test_reopen_status_wrong(client, sales_token, admin_token):
+    sales1_id = _user_id_by_username("sales1")
+    _wipe_today_report(sales1_id)
+    r = _create_today(client, sales_token, summary="not submitted yet")
+    rid = r["id"]
+
+    r = client.post(f"/api/daily-reports/{rid}/reopen",
+                    headers=bearer(admin_token),
+                    json={"reason": "test wrong status"})
+    assert r.status_code == 400
+    _wipe_today_report(sales1_id)
+
+
+def test_reopen_owner_within_window_ok(client, sales_token):
+    sales1_id = _user_id_by_username("sales1")
+    _wipe_today_report(sales1_id)
+    r = _create_today(client, sales_token, summary="owner window test")
+    rid = r["id"]
+    client.post(f"/api/daily-reports/{rid}/submit", headers=bearer(sales_token))
+
+    r = client.post(f"/api/daily-reports/{rid}/reopen",
+                    headers=bearer(sales_token),
+                    json={"reason": "misklik submit"})
+    assert r.status_code == 200, r.text
+    _wipe_today_report(sales1_id)
+
+
+def test_reopen_owner_past_window_denied(client, sales_token):
+    sales1_id = _user_id_by_username("sales1")
+    _wipe_today_report(sales1_id)
+    r = _create_today(client, sales_token, summary="past window")
+    rid = r["id"]
+    client.post(f"/api/daily-reports/{rid}/submit", headers=bearer(sales_token))
+    past = (datetime.datetime.utcnow() - datetime.timedelta(hours=3)).strftime(
+        "%Y-%m-%d %H:%M:%S")
+    db.execute("UPDATE daily_reports SET submitted_at = ? WHERE id = ?",
+               (past, rid))
+
+    r = client.post(f"/api/daily-reports/{rid}/reopen",
+                    headers=bearer(sales_token),
+                    json={"reason": "coba past window"})
+    assert r.status_code == 403
+    assert "window" in r.json()["error"].lower()
+    _wipe_today_report(sales1_id)
+
+
+def test_reopen_stranger_denied(client, sales_token, finance_token):
+    sales1_id = _user_id_by_username("sales1")
+    _wipe_today_report(sales1_id)
+    r = _create_today(client, sales_token, summary="stranger test")
+    rid = r["id"]
+    client.post(f"/api/daily-reports/{rid}/submit", headers=bearer(sales_token))
+
+    r = client.post(f"/api/daily-reports/{rid}/reopen",
+                    headers=bearer(finance_token),
+                    json={"reason": "coba akses"})
+    assert r.status_code == 403
+    _wipe_today_report(sales1_id)
+
+
 def test_mgmt_home_attention_daily_report_overdue(client, management_token):
     """Chip 'daily_report_overdue' muncul kalau ada user sales/ops/finance
     yg tidak submit dalam 3 hari terakhir. Kita clear submitted history sales1
