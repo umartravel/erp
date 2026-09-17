@@ -88,8 +88,9 @@ async def jamaah_bulk_ops(body: dict = Depends(json_body), user=Depends(authenti
             if changes:
                 changed_count += 1
                 log_action(user, "UPDATE_OPS", f"Update Ops (Simpan Semua) {row['name']}: " + "; ".join(changes))
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001 -- bulk-ops, jangan halangi row lain
+            log_action(user, "UPDATE_OPS_SKIP",
+                       f"Row {row.get('name', '?')}: {exc}")
     notify("data_updated", "jamaah")
     return {"message": f"Berhasil menyimpan data untuk {success} jamaah sekaligus ({changed_count} ada perubahan)."}
 
@@ -409,8 +410,9 @@ async def jamaah_payment(jid: int, body: dict = Depends(json_body), user=Depends
                 body=f"Agen untuk jamaah {jamaah['name']} (paket {jamaah['package_type']})",
                 link="#page-agents",
             )
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001 -- notif gagal, tapi komisi TETAP dicatat
+            log_action(user, "NOTIF_COMMISSION_FAIL",
+                       f"Jamaah #{jamaah['id']} agen fee Rp {fee}: {exc}")
 
     sisa = jamaah["total_price"] - new_paid
     status_bayar = "LUNAS SEPENUHNYA" if new_payment == "Lunas" else f"BELUM LUNAS (Sisa: Rp {fmt_id(sisa)})"

@@ -107,7 +107,9 @@ async def close_undo(closing_id: int, user=Depends(authenticate_token)):
                 user_name=user["name"],
             )
             reversed_count += 1
-        except Exception:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001 -- 1 gagal ≠ block seluruh undo
+            log_action(user, "UNDO_CLOSING_TX_FAIL",
+                       f"Closing #{closing_id} tx #{tx['id']}: {exc}")
             continue
 
     db.execute("DELETE FROM month_end_closings WHERE id = ?", (closing_id,))
