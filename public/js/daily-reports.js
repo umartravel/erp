@@ -164,9 +164,51 @@
     document.getElementById('dr-btn-submit').style.opacity = locked ? '0.5' : '1';
     document.getElementById('dr-btn-add-task').style.opacity = locked ? '0.5' : '1';
 
+    // Tombol "Buka Kembali" saat Submitted (owner atau admin/mgmt).
+    const slot = document.getElementById('dr-btn-reopen-slot');
+    if (slot) {
+      if (locked) {
+        const role = (window.currentUser && window.currentUser.role) || '';
+        const isPriv = role === 'admin' || role === 'management';
+        slot.innerHTML = `<button type="button" onclick="drReopen(${DR.report.id})"
+          class="text-xs font-bold px-3 py-1.5 rounded"
+          style="background:#FDE68A;color:#92400E;border:1px solid #D97706;">
+          <span style="margin-right:4px;">&#8635;</span>Buka Kembali${isPriv ? ' (Admin)' : ''}
+        </button>`;
+      } else {
+        slot.innerHTML = '';
+      }
+    }
+
     drRenderTasks();
     drRenderFeedback();
   }
+
+  window.drReopen = async function(rid) {
+    const reason = prompt(
+      'Alasan buka kembali (min 5 karakter):\n\n'
+      + 'Owner boleh reopen sendiri dalam 2 jam setelah submit.\n'
+      + 'Setelah 2 jam, hanya admin/management yg boleh.');
+    if (reason === null) return;
+    const clean = (reason || '').trim();
+    if (clean.length < 5) {
+      alert('Alasan minimal 5 karakter.');
+      return;
+    }
+    try {
+      const res = await (window.authFetch || fetch)(
+        `/api/daily-reports/${rid}/reopen`,
+        {method: 'POST', headers: {'Content-Type': 'application/json'},
+         body: JSON.stringify({reason: clean})});
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || 'Gagal reopen');
+      alert(d.message || 'Laporan berhasil dibuka kembali.');
+      if (typeof initDailyMine === 'function') initDailyMine();
+      if (typeof initDailyTeam === 'function') initDailyTeam();
+    } catch (err) {
+      alert('Gagal: ' + err.message);
+    }
+  };
 
   function drRenderTasks() {
     const el = document.getElementById('dr-task-list');
