@@ -167,6 +167,7 @@ from routes.jamaah_write import router as jamaah_write_router  # noqa: E402
 from routes.daily_reports import router as daily_reports_router  # noqa: E402
 from routes.static_pages import router as static_pages_router  # noqa: E402
 from routes.boq import router as boq_router  # noqa: E402
+from routes.boq_templates import router as boq_templates_router  # noqa: E402 -- Phase 6-refit: templates dipecah dari boq.py
 from routes.exports import router as exports_router  # noqa: E402 -- Phase 8a
 from routes.notifications import router as notifications_router  # noqa: E402 -- Phase 8c
 from routes.reminders import router as reminders_router  # noqa: E402 -- Phase 9a
@@ -206,6 +207,7 @@ app.include_router(dashboard_router)
 app.include_router(jamaah_read_router)
 app.include_router(jamaah_write_router)
 app.include_router(static_pages_router)
+app.include_router(boq_templates_router)  # WAJIB SEBELUM boq_router: /api/boq/templates* biar tidak di-match /api/boq/{bid}
 app.include_router(boq_router)
 app.include_router(exports_router)  # Phase 8a: /api/exports/*.xlsx
 app.include_router(notifications_router)  # Phase 8c: /api/notifications/*
