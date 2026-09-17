@@ -110,11 +110,19 @@ async def pendaftaran_publik_list(user=Depends(authenticate_token)):
         "SELECT p.*, u.name as preferred_cs_name FROM pendaftaran_publik p "
         "LEFT JOIN users u ON p.preferred_cs_id = u.id ORDER BY p.created_at DESC", ()
     )
+    # Fix N+1: batch cek NIK via 1 IN query, bukan per-row query_one.
+    existing_niks = set()
+    niks = [r["nik"] for r in rows if r.get("nik")]
+    if niks:
+        placeholders = ",".join("?" for _ in niks)
+        existing_rows = db.query_all(
+            f"SELECT DISTINCT nik FROM jamaah WHERE nik IN ({placeholders})",
+            tuple(niks))
+        existing_niks = {row["nik"] for row in existing_rows}
     result = []
     for r in rows:
         r = dict(r)
-        existing = db.query_one("SELECT id FROM jamaah WHERE nik = ?", (r["nik"],)) if r["nik"] else None
-        r["nik_exists"] = bool(existing)
+        r["nik_exists"] = bool(r.get("nik")) and r["nik"] in existing_niks
         result.append(r)
     return result
 

@@ -48,35 +48,32 @@ async def followups(user=Depends(authenticate_token)):
 # PERFORMANCE / LEADERBOARD SALES
 # ===========================================================================
 def _sales_stats(sales_id):
-    base = " FROM jamaah WHERE sales_id = ?"
-    p = (sales_id,)
-    total = db.query_one("SELECT COUNT(*) c" + base, p)["c"]
-    converted = db.query_one(
-        "SELECT COUNT(*) c" + base + " AND status IN ('Lunas', 'Visa Approved', 'On Trip')", p
-    )["c"]
-    active = db.query_one(
-        "SELECT COUNT(*) c" + base + " AND status NOT IN ('Cancelled', 'Lunas', 'Visa Approved', 'On Trip')", p
-    )["c"]
-    paid = db.query_one("SELECT COALESCE(SUM(paid_amount), 0) s" + base, p)["s"]
-    this_month = db.query_one(
-        "SELECT COUNT(*) c" + base + " AND strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now')", p
-    )["c"]
-    due = db.query_one(
-        "SELECT COUNT(*) c" + base + " AND next_follow_up IS NOT NULL AND next_follow_up != '' "
-        "AND date(next_follow_up) <= date('now') AND status NOT IN ('Cancelled', 'On Trip')", p
-    )["c"]
-    agents_recruited = db.query_one(
-        "SELECT COUNT(*) c FROM agents WHERE handler_cs_id = ?", (sales_id,)
-    )["c"]
+    # Fold 7 query jadi 1 pakai CASE WHEN + correlated subquery utk agents.
+    row = db.query_one(
+        "SELECT "
+        "  COUNT(*) AS total, "
+        "  COUNT(CASE WHEN status IN ('Lunas','Visa Approved','On Trip') THEN 1 END) AS converted, "
+        "  COUNT(CASE WHEN status NOT IN ('Cancelled','Lunas','Visa Approved','On Trip') THEN 1 END) AS active, "
+        "  COALESCE(SUM(paid_amount), 0) AS paid, "
+        "  COUNT(CASE WHEN strftime('%Y-%m', created_at) = strftime('%Y-%m','now') THEN 1 END) AS this_month, "
+        "  COUNT(CASE WHEN next_follow_up IS NOT NULL AND next_follow_up != '' "
+        "             AND date(next_follow_up) <= date('now') "
+        "             AND status NOT IN ('Cancelled','On Trip') THEN 1 END) AS due, "
+        "  (SELECT COUNT(*) FROM agents WHERE handler_cs_id = ?) AS agents "
+        "FROM jamaah WHERE sales_id = ?",
+        (sales_id, sales_id),
+    )
+    total = row["total"] or 0
+    converted = row["converted"] or 0
     return {
         "total_leads": total,
         "converted": converted,
-        "active": active,
-        "total_paid": paid or 0,
-        "this_month": this_month,
-        "due_followups": due,
+        "active": row["active"] or 0,
+        "total_paid": row["paid"] or 0,
+        "this_month": row["this_month"] or 0,
+        "due_followups": row["due"] or 0,
         "conversion_rate": round(converted * 100.0 / total, 1) if total else 0,
-        "agents_recruited": agents_recruited,
+        "agents_recruited": row["agents"] or 0,
     }
 
 

@@ -57,11 +57,21 @@ async def packages_list(user=Depends(authenticate_token)):
         elif st == "rejected":
             agg["rejected"] += n
 
-    for p in packages:
-        p["extras"] = db.query_all(
-            "SELECT id, category, label as value FROM package_extras WHERE package_id = ? ORDER BY id ASC",
-            (p["id"],),
+    # Fix N+1: batch fetch semua package_extras dgn IN clause, group by pid.
+    extras_by_pkg = {}
+    if packages:
+        pids = [p["id"] for p in packages]
+        placeholders = ",".join("?" for _ in pids)
+        all_extras = db.query_all(
+            f"SELECT package_id, id, category, label as value FROM package_extras "
+            f"WHERE package_id IN ({placeholders}) ORDER BY package_id, id ASC",
+            tuple(pids),
         )
+        for e in all_extras:
+            extras_by_pkg.setdefault(e["package_id"], []).append(
+                {"id": e["id"], "category": e["category"], "value": e["value"]})
+    for p in packages:
+        p["extras"] = extras_by_pkg.get(p["id"], [])
         p["boq_summary"] = boq_by_pkg.get(p["id"], {"total": 0, "approved": 0, "draft": 0, "pending": 0, "rejected": 0})
     return packages
 

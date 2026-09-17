@@ -131,7 +131,12 @@ async def jamaah_create(body: dict = Depends(json_body), user=Depends(authentica
         elif room_type == "DOUBLE" and row["price_double"]:
             server_price = row["price_double"]
 
-    if server_price != int(total_price):
+    try:
+        client_price = int(total_price or 0)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400,
+                            detail="Field 'total_price' harus berupa angka.")
+    if server_price != client_price:
         raise HTTPException(
             status_code=400,
             detail=f"Harga tidak cocok! Harga {room_type or 'paket'} untuk paket ini "
