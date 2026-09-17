@@ -5336,6 +5336,34 @@
         </div>
     </div>
 
+    <!-- Modal Konfirmasi ACC Pembayaran (ganti native confirm() yg tidak reliable di beberapa browser) -->
+    <div id="modal-payment-acc" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+            <div class="flex items-center gap-3 border-b pb-3 mb-4">
+                <div class="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+                    <i data-lucide="check-circle" class="w-5 h-5 text-emerald-700"></i>
+                </div>
+                <div class="flex-1">
+                    <h3 class="font-bold text-lg text-gray-800">ACC Pembayaran</h3>
+                    <p class="text-xs text-gray-500" id="pa-info">-</p>
+                </div>
+            </div>
+            <div class="text-sm text-gray-700 space-y-2 mb-4">
+                <p>Pastikan uang <b>sudah masuk di rekening perusahaan</b>. Setelah ACC:</p>
+                <ul class="list-disc pl-5 text-xs text-gray-600 space-y-1">
+                    <li>Buku Kas tercatat + jurnal ganda (Dr Bank / Cr 2101 Pendapatan Diterima Dimuka).</li>
+                    <li>Saldo jamaah otomatis diperbarui (DP / Lunas).</li>
+                    <li>Kalau baru Lunas + ada agen, klaim komisi otomatis dibuat.</li>
+                </ul>
+            </div>
+            <input type="hidden" id="pa-sid">
+            <div class="flex justify-end gap-2 pt-2 border-t">
+                <button type="button" onclick="closeModal('modal-payment-acc')" class="px-4 py-2 border rounded-lg text-sm font-medium">Batal</button>
+                <button type="button" id="pa-confirm-btn" onclick="submitPaymentAcc()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold">ACC Sekarang</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Phase 10a: Audit Trail modal (Riwayat Perubahan) -->
     <div id="modal-audit-trail" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col p-6">
@@ -8876,17 +8904,34 @@
         });
 
         // Verify submission (finance ACC).
-        window.verifyPaymentSubmission = async function(sid) {
-            if (!confirm('ACC pembayaran ini? Uang benar sudah masuk rekening?')) return;
+        // ACC pembayaran -- pakai modal proper (native confirm() tidak reliable di
+        // beberapa browser/webview). Klik ACC di list -> buka modal-payment-acc,
+        // klik "ACC Sekarang" -> submit.
+        window.verifyPaymentSubmission = function(sid, jamaahName, amount) {
+            document.getElementById('pa-sid').value = sid;
+            document.getElementById('pa-info').textContent =
+                `${jamaahName || '-'} - Rp ${(amount || 0).toLocaleString('id-ID')}`;
+            openModal('modal-payment-acc');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        };
+        window.submitPaymentAcc = async function() {
+            const sid = parseInt(document.getElementById('pa-sid').value, 10);
+            const btn = document.getElementById('pa-confirm-btn');
+            if (!sid) return;
+            btn.disabled = true; btn.textContent = 'Memproses...';
             try {
                 const res = await authFetch(`/payment-submissions/${sid}/review`, {
                     method: 'PUT', body: JSON.stringify({action: 'verify'}),
                 });
                 const d = await res.json();
+                closeModal('modal-payment-acc');
                 showToast(d.message || 'Pembayaran di-ACC.', 'success');
                 if (typeof loadPaymentQueue === 'function') loadPaymentQueue();
+                if (typeof initFinanceHome === 'function') initFinanceHome();  // Refresh accrual KPI
             } catch (err) {
                 showToast(err.message || 'Gagal ACC.', 'error');
+            } finally {
+                btn.disabled = false; btn.textContent = 'ACC Sekarang';
             }
         };
         // Open reject modal (finance).
@@ -8950,8 +8995,8 @@
                             <div class="text-right shrink-0">
                                 <p class="text-sm font-black" style="color:#059669;">${formatRp(x.amount)}</p>
                                 <div class="flex gap-1 mt-2 justify-end">
-                                    <button onclick="verifyPaymentSubmission(${x.id})" class="text-[10px] px-2 py-1 rounded font-bold" style="background:#10B981;color:white;">ACC</button>
-                                    <button onclick="openPaymentRejectModal(${x.id}, '${(x.jamaah_name || '').replace(/'/g, "\\'")}', ${x.amount})" class="text-[10px] px-2 py-1 rounded font-bold" style="background:#DC2626;color:white;">Tolak</button>
+                                    <button type="button" onclick="verifyPaymentSubmission(${x.id}, ${JSON.stringify(x.jamaah_name || '').replace(/"/g, '&quot;')}, ${x.amount || 0})" class="text-[10px] px-2 py-1 rounded font-bold" style="background:#10B981;color:white;">ACC</button>
+                                    <button type="button" onclick="openPaymentRejectModal(${x.id}, ${JSON.stringify(x.jamaah_name || '').replace(/"/g, '&quot;')}, ${x.amount || 0})" class="text-[10px] px-2 py-1 rounded font-bold" style="background:#DC2626;color:white;">Tolak</button>
                                 </div>
                             </div>
                         </div>
