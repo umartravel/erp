@@ -858,6 +858,26 @@ def test_reopen_owner_past_window_denied(client, sales_token):
     _wipe_today_report(sales1_id)
 
 
+def test_reopen_owner_corrupt_submitted_at_denied(client, sales_token):
+    """Fail-closed: kalau submitted_at DB corrupt/tidak parseable, owner
+    HARUS ditolak (bukan silent bypass window guard)."""
+    sales1_id = _user_id_by_username("sales1")
+    _wipe_today_report(sales1_id)
+    r = _create_today(client, sales_token, summary="corrupt at test")
+    rid = r["id"]
+    client.post(f"/api/daily-reports/{rid}/submit", headers=bearer(sales_token))
+    # Corrupt the submitted_at value to simulate DB data issue.
+    db.execute("UPDATE daily_reports SET submitted_at = ? WHERE id = ?",
+               ("not-a-valid-datetime", rid))
+
+    r = client.post(f"/api/daily-reports/{rid}/reopen",
+                    headers=bearer(sales_token),
+                    json={"reason": "coba dgn submitted_at corrupt"})
+    assert r.status_code == 403, r.text
+    assert "tidak dapat divalidasi" in r.json()["error"].lower()
+    _wipe_today_report(sales1_id)
+
+
 def test_reopen_stranger_denied(client, sales_token, finance_token):
     sales1_id = _user_id_by_username("sales1")
     _wipe_today_report(sales1_id)

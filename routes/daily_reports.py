@@ -756,15 +756,23 @@ async def daily_reports_reopen(rid: int, body: dict = Depends(json_body),
             try:
                 dt_submitted = datetime.datetime.fromisoformat(
                     submitted_at.replace(" ", "T"))
-                diff = datetime.datetime.utcnow() - dt_submitted
-                if diff.total_seconds() > _OWNER_REOPEN_WINDOW_HOURS * 3600:
-                    raise HTTPException(
-                        status_code=403,
-                        detail=f"Window buka kembali sendiri sudah lewat "
-                               f"({_OWNER_REOPEN_WINDOW_HOURS} jam setelah submit). "
-                               f"Minta admin/management.")
             except (ValueError, AttributeError):
-                pass
+                # Fail-closed: kalau submitted_at format corrupt/tidak parseable,
+                # jangan biarkan owner bypass window guard secara silent.
+                # Deny + audit log supaya admin bisa cek data & fix.
+                log_action(user, "REOPEN_DAILY_REPORT_PARSE_FAIL",
+                           f"Laporan #{rid}: submitted_at={submitted_at!r} tidak parseable")
+                raise HTTPException(
+                    status_code=403,
+                    detail="Waktu submit laporan ini tidak dapat divalidasi -- "
+                           "minta admin/management untuk buka kembali.")
+            diff = datetime.datetime.utcnow() - dt_submitted
+            if diff.total_seconds() > _OWNER_REOPEN_WINDOW_HOURS * 3600:
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Window buka kembali sendiri sudah lewat "
+                           f"({_OWNER_REOPEN_WINDOW_HOURS} jam setelah submit). "
+                           f"Minta admin/management.")
 
     db.execute(
         "UPDATE daily_reports SET status = 'Draft', submitted_at = NULL, "
