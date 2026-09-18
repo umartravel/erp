@@ -28,7 +28,7 @@
   function faFmtRp(n) { return 'Rp ' + Number(n || 0).toLocaleString('id-ID'); }
   function faFmtRpShort(n) {
     n = Number(n || 0);
-    if (n >= 1e9) return 'Rp ' + (n / 1e9).toFixed(1).replace('.0', '') + 'M';
+    if (n >= 1e9) return 'Rp ' + (n / 1e9).toFixed(1).replace('.0', '') + ' mlr';
     if (n >= 1e6) return 'Rp ' + (n / 1e6).toFixed(1).replace('.0', '') + 'jt';
     if (n >= 1e3) return 'Rp ' + Math.round(n / 1e3) + 'rb';
     return 'Rp ' + n;

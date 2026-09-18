@@ -7,7 +7,7 @@
     }
     function mhFmtShort(n) {
         n = Math.round(n || 0);
-        if (n >= 1_000_000_000) return 'Rp ' + (n/1_000_000_000).toFixed(1).replace('.0','') + 'M';
+        if (n >= 1_000_000_000) return 'Rp ' + (n/1_000_000_000).toFixed(1).replace('.0','') + ' mlr';
         if (n >= 1_000_000) return 'Rp ' + (n/1_000_000).toFixed(1).replace('.0','') + 'jt';
         if (n >= 1_000) return 'Rp ' + (n/1_000).toFixed(0) + 'rb';
         return 'Rp ' + n.toLocaleString('id-ID');
