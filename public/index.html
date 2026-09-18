@@ -9853,30 +9853,69 @@
         }
 
         // --- WA LOGIC ---
+        // Kalau bot service down/lambat, state 'connecting' bisa stuck selamanya + button disabled.
+        // Track kapan mulai 'connecting'; setelah threshold, tampil timeout state + tombol Reconnect.
+        const _WA_CONNECTING_TIMEOUT_MS = 30000;
+        let _waConnectingStartedAt = null;
+        const _waHint = () => document.querySelector('#wa-action-connect p');
+
         async function checkWaStatus() {
             try {
                 const res = await authFetch('/wa/status'); const data = await res.json();
                 const b = document.getElementById('wa-status-badge'), action = document.getElementById('wa-action-connect'), qr = document.getElementById('wa-qr-container'), img = document.getElementById('wa-qr-image'), conn = document.getElementById('wa-connected-container');
                 const btn = document.getElementById('btn-wa-connect');
+                const now = Date.now();
 
-                if (data.status === 'connected') { 
-                    b.className='px-4 py-1 rounded-full text-sm font-bold bg-green-100 text-green-700'; b.innerText='TERHUBUNG'; action.classList.add('hidden'); qr.classList.add('hidden'); conn.classList.remove('hidden'); 
+                if (data.status === 'connected') {
+                    _waConnectingStartedAt = null;
+                    b.className='px-4 py-1 rounded-full text-sm font-bold bg-green-100 text-green-700'; b.innerText='TERHUBUNG'; action.classList.add('hidden'); qr.classList.add('hidden'); conn.classList.remove('hidden');
                 }
                 else if (data.status === 'connecting') {
-                    b.className='px-4 py-1 rounded-full text-sm font-bold bg-blue-100 text-blue-700'; b.innerText='MENGHUBUNGKAN...'; action.classList.remove('hidden'); qr.classList.add('hidden'); conn.classList.add('hidden');
-                    if(btn) { btn.disabled = true; btn.innerHTML = 'Memproses Koneksi...'; }
+                    if (_waConnectingStartedAt === null) _waConnectingStartedAt = now;
+                    const elapsedMs = now - _waConnectingStartedAt;
+                    action.classList.remove('hidden'); qr.classList.add('hidden'); conn.classList.add('hidden');
+
+                    if (elapsedMs > _WA_CONNECTING_TIMEOUT_MS) {
+                        // Bot service tidak merespon dalam window -> tampil timeout + izinkan retry.
+                        b.className='px-4 py-1 rounded-full text-sm font-bold bg-orange-100 text-orange-700';
+                        b.innerText='TIMEOUT - Bot Tidak Merespon';
+                        if(btn) {
+                            btn.disabled = false;
+                            btn.innerHTML = '<i data-lucide="rotate-cw" class="inline w-4 h-4 mr-2"></i> Coba Reconnect';
+                            if (typeof lucide !== 'undefined') lucide.createIcons();
+                        }
+                        const hint = _waHint();
+                        if (hint) hint.innerHTML = `<span class="text-orange-600 font-bold">Bot service tidak merespon >${Math.floor(_WA_CONNECTING_TIMEOUT_MS/1000)} detik.</span> Pastikan service WA bot aktif, atau hubungi teknisi.`;
+                    } else {
+                        b.className='px-4 py-1 rounded-full text-sm font-bold bg-blue-100 text-blue-700';
+                        b.innerText='MENGHUBUNGKAN...';
+                        if(btn) { btn.disabled = true; btn.innerHTML = `Memproses Koneksi... (${Math.floor(elapsedMs/1000)}s)`; }
+                    }
                 }
-                else if (data.status === 'qr' && data.qr) { b.className='px-4 py-1 rounded-full text-sm font-bold bg-yellow-100 text-yellow-700'; b.innerText='SCAN QR SEKARANG'; img.src = data.qr; action.classList.add('hidden'); qr.classList.remove('hidden'); conn.classList.add('hidden'); }
-                else { 
-                    b.className='px-4 py-1 rounded-full text-sm font-bold bg-red-100 text-red-700'; b.innerText='TERPUTUS'; action.classList.remove('hidden'); qr.classList.add('hidden'); conn.classList.add('hidden'); 
+                else if (data.status === 'qr' && data.qr) {
+                    _waConnectingStartedAt = null;
+                    b.className='px-4 py-1 rounded-full text-sm font-bold bg-yellow-100 text-yellow-700'; b.innerText='SCAN QR SEKARANG'; img.src = data.qr; action.classList.add('hidden'); qr.classList.remove('hidden'); conn.classList.add('hidden');
+                }
+                else {
+                    _waConnectingStartedAt = null;
+                    b.className='px-4 py-1 rounded-full text-sm font-bold bg-red-100 text-red-700'; b.innerText='TERPUTUS'; action.classList.remove('hidden'); qr.classList.add('hidden'); conn.classList.add('hidden');
                     if(btn) { btn.disabled = false; btn.innerHTML = '<i data-lucide="qr-code" class="inline w-4 h-4 mr-2"></i> Tampilkan QR Code WA'; if (typeof lucide !== 'undefined') lucide.createIcons(); }
+                    const hint = _waHint();
+                    if (hint) hint.textContent = 'Klik tombol di atas untuk menghubungkan nomor WA.';
                 }
             } catch (err) {
+                _waConnectingStartedAt = null;
                 const b = document.getElementById('wa-status-badge');
                 if(b) { b.className='px-4 py-1 rounded-full text-sm font-bold bg-red-100 text-red-700'; b.innerText='SERVER TERPUTUS (Koneksi API Gagal)'; }
             }
         }
-        async function waConnect() { const btn = document.getElementById('btn-wa-connect'); if(btn) { btn.disabled = true; btn.innerHTML = 'Memproses Koneksi...'; } await authFetch('/wa/connect', { method: 'POST' }); setTimeout(checkWaStatus, 1500); }
+        async function waConnect() {
+            _waConnectingStartedAt = null;  // Reset timer di setiap attempt (retry) supaya tidak carry-over.
+            const btn = document.getElementById('btn-wa-connect');
+            if(btn) { btn.disabled = true; btn.innerHTML = 'Memproses Koneksi...'; }
+            await authFetch('/wa/connect', { method: 'POST' });
+            setTimeout(checkWaStatus, 1500);
+        }
         async function waLogout() { 
             const res = await showDialog({title:'Putuskan WA?', message:'Anda yakin ingin memutus koneksi WhatsApp?', okText:'Putuskan', okClass:'bg-red-600 hover:bg-red-700', icon:'<i data-lucide="log-out" class="h-6 w-6 text-red-600"></i>', iconBg:'bg-red-100'});
             if(res) { await authFetch('/wa/logout', { method: 'POST' }); showToast('Koneksi WA Diputus.'); setTimeout(checkWaStatus, 1000); } 
