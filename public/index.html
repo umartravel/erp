@@ -3206,8 +3206,7 @@
                                     <input type="text" id="search-ops" placeholder="Cari jamaah di tabel..." class="text-sm border rounded px-3 py-1.5 bg-white shadow-sm w-48 focus:ring-blue-500" onkeyup="filterTable('table-ops', this.value)">
                                     <select id="manifest-package" class="text-sm border rounded px-2 py-1.5 bg-white shadow-sm"></select>
                                     <button id="btn-save-ops" onclick="saveAllOps()" class="bg-blue-600 text-white text-xs px-3 py-1.5 rounded-md hover:bg-blue-700 shadow-sm flex items-center gap-1 hidden"><i data-lucide="save-all" class="w-3 h-3"></i>Simpan Semua</button>
-                                    <button onclick="exportManifest()" class="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-md hover:bg-emerald-700 shadow-sm flex items-center gap-1"><i data-lucide="printer" class="w-3 h-3"></i>Cetak Manifest</button>
-                                    <button onclick="printPackageDoc('manifest-pdf')" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-md hover:bg-slate-800 shadow-sm flex items-center gap-1"><i data-lucide="file-text" class="w-3 h-3"></i>Manifest PDF</button>
+                                    <button onclick="smartPrintManifest()" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-md hover:bg-slate-800 shadow-sm flex items-center gap-1" title="Paket specific → PDF resmi (kop + logo perusahaan). Semua Paket → manifest gabungan client-side (multi-paket)."><i data-lucide="file-text" class="w-3 h-3"></i>Cetak Manifest</button>
                                     <button onclick="openRoomGroupsModal()" class="bg-indigo-600 text-white text-xs px-3 py-1.5 rounded-md hover:bg-indigo-700 shadow-sm flex items-center gap-1"><i data-lucide="bed-double" class="w-3 h-3"></i>Atur Kelompok Kamar</button>
                                     <button onclick="printPackageDoc('absensi-pdf')" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-md hover:bg-slate-800 shadow-sm flex items-center gap-1"><i data-lucide="clipboard-check" class="w-3 h-3"></i>Absensi PDF</button>
                                 </div>
@@ -9689,6 +9688,19 @@
                 fetchInventory(); fetchData(); e.target.reset(); 
             } catch(e) { showToast(e.message, 'error'); }
         });
+
+        // Smart router: paket specific → server PDF resmi (kop + logo). Paket "all" → client-side HTML print utk manifest gabungan multi-paket.
+        // Hasil konsolidasi 2 tombol "Cetak Manifest" + "Manifest PDF" jadi 1 tombol.
+        async function smartPrintManifest() {
+            const pkgSel = document.getElementById('manifest-package');
+            const pkgName = pkgSel ? pkgSel.value : 'all';
+            if (pkgName && pkgName !== 'all') {
+                // Paket tertentu → PDF server-side dgn kop resmi.
+                return printPackageDoc('manifest-pdf');
+            }
+            // "Semua Paket" → HTML client-side supaya bisa gabung lintas paket.
+            return exportManifest();
+        }
 
         async function exportManifest() {
             const pkgName = document.getElementById('manifest-package').value;
