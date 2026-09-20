@@ -798,7 +798,6 @@ def _migrate():
     import hashlib
     import importlib.util
     import pathlib
-    import re
 
     with _lock:
         _conn.execute(

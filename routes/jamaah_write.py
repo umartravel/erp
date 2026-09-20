@@ -376,7 +376,7 @@ async def jamaah_payment(jid: int, body: dict = Depends(json_body), user=Depends
         "UPDATE jamaah SET paid_amount = ?, payment_status = ?, pipeline_stage = ? WHERE id = ?",
         (new_paid, new_payment, new_pipeline, jid),
     )
-    new_status = sync_status_mirror(jid)
+    sync_status_mirror(jid)  # sync kolom `status` legacy; return value tidak dipakai di sini
     db.execute(
         "INSERT INTO transactions (type, category, amount, description, reference_id, package_name, category_id) "
         "VALUES (?, ?, ?, ?, ?, ?, ?)",

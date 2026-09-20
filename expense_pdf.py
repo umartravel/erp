@@ -54,7 +54,6 @@ def build_expense_pdf(report, lines, company=None, logo_path=None) -> bytes:
     )
     styles = getSampleStyleSheet()
     p_small = ParagraphStyle("Small", parent=styles["Normal"], fontSize=8.5, leading=11)
-    p_small_gray = ParagraphStyle("SmallGray", parent=p_small, textColor=GRAY)
     p_bold = ParagraphStyle("Bold", parent=p_small, fontName="Helvetica-Bold")
     p_label = ParagraphStyle("Label", parent=p_small, fontName="Helvetica-Bold", fontSize=8.5)
     p_title = ParagraphStyle("Title", parent=styles["Heading1"], fontSize=17, textColor=NAVY, alignment=2, spaceAfter=0)

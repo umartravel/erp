@@ -85,7 +85,6 @@ import json  # noqa: E402
 
 from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
 from starlette.responses import JSONResponse  # noqa: E402
-from starlette.types import ASGIApp  # noqa: E402
 
 
 def _extract_user_id_from_bearer(auth_header: str | None) -> str | None:

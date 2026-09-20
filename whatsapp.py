@@ -26,7 +26,6 @@ import threading
 import time
 from datetime import datetime, timezone
 
-import db
 import realtime
 
 # Status: disconnected, connecting, qr, connected
@@ -190,7 +189,6 @@ class NeonizeBackend:
         info = getattr(message, "Info", None)
         source = getattr(info, "MessageSource", None) if info else None
         remote_jid = ""
-        is_from_me = False
         if source is not None:
             chat = getattr(source, "Chat", None)
             remote_jid = getattr(chat, "User", "") or str(chat) if chat else ""
@@ -198,15 +196,12 @@ class NeonizeBackend:
             server = getattr(chat, "Server", "s.whatsapp.net") if chat else "s.whatsapp.net"
             if remote_jid and "@" not in remote_jid:
                 remote_jid = f"{remote_jid}@{server}"
-            is_from_me = bool(getattr(source, "IsFromMe", False))
 
         if not remote_jid or "status" in remote_jid or "g.us" in remote_jid:
             return
 
         msg = getattr(message, "Message", None)
         text = ""
-        media_url = None
-        media_type = None
         if msg is not None:
             text = getattr(msg, "conversation", "") or ""
             ext_text = getattr(msg, "extendedTextMessage", None)
@@ -227,8 +222,6 @@ class NeonizeBackend:
                         os.makedirs(UPLOAD_DIR, exist_ok=True)
                         with open(os.path.join(UPLOAD_DIR, fname), "wb") as f:
                             f.write(data)
-                        media_url = f"/uploads/{fname}"
-                        media_type = mtype
                         cap = getattr(getattr(msg, attr), "caption", "")
                         text = cap or text or f"[Lampiran {mtype}]"
                     except Exception as e:  # noqa: BLE001

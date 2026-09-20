@@ -20,7 +20,7 @@ async def check_visa_status(nik: str, jamaah_name: str) -> str:
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
             context = await browser.new_context()
-            page = await context.new_page()
+            await context.new_page()  # buka tab dummy utk simulasi visit portal
 
             # Simulasi mengunjungi portal kedutaan/siskopatuh.
             # Di dunia nyata, ganti dengan URL & selector asli:

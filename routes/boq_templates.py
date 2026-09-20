@@ -307,7 +307,7 @@ async def boq_template_apply(tid: int, bid: int, body: dict = Depends(json_body)
     from routes.boq import _boq_or_404, _assert_editable, _calc_subtotal
     boq = _boq_or_404(bid)
     _assert_editable(boq, user)
-    t = _template_or_404(tid)
+    _template_or_404(tid)  # raises 404 kalau template tidak ada
 
     items = db.query_all(
         "SELECT * FROM boq_template_items WHERE template_id = ? ORDER BY sort_order, id",
