@@ -24,4 +24,7 @@ public/branding/
 
 # ===== Variabel rahasia =====
 .env
+# JWT signing key: auto-generated per-install (auth.py:_load_or_create_secret).
+# Bocornya file ini = attacker bisa forge token siapapun. WAJIB gitignored.
+.jwt_secret
 migrations/__pycache__/
