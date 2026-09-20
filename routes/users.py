@@ -13,7 +13,7 @@ import os
 from fastapi import APIRouter
 
 import db
-from auth import hash_password, verify_password
+from auth import hash_password, validate_password_strength, verify_password
 from deps import (
     Depends,
     HTTPException,
@@ -56,7 +56,8 @@ async def users_directory(user=Depends(authenticate_token)):
 async def users_me(user=Depends(authenticate_token)):
     row = db.query_one(
         "SELECT id, username, name, role, phone, personal_email, address, nik, birth_date, "
-        "photo_url, last_education, education_major, education_institution FROM users WHERE id = ?",
+        "photo_url, last_education, education_major, education_institution, "
+        "must_change_password FROM users WHERE id = ?",
         (user["id"],),
     )
     if not row:
@@ -107,14 +108,23 @@ async def users_me_photo_upload(body: dict = Depends(json_body), user=Depends(au
 async def users_me_password_change(body: dict = Depends(json_body), user=Depends(authenticate_token)):
     old_password = body.get("old_password") or ""
     new_password = body.get("new_password") or ""
-    if not new_password or len(new_password) < 6:
-        raise HTTPException(status_code=400, detail="Password baru minimal 6 karakter.")
+    # KRITIS #2 (2026-09-20): min 8 char via helper (naik dari 6). Extra
+    # guard: password baru tidak boleh sama dgn lama -- kalau iya, force-
+    # change nggak ada gunanya (user cuma re-set 'password123' lagi).
+    validate_password_strength(new_password)
 
     row = db.query_one("SELECT password FROM users WHERE id = ?", (user["id"],))
     if not row or not verify_password(old_password, row["password"]):
         raise HTTPException(status_code=400, detail="Password lama salah.")
+    if verify_password(new_password, row["password"]):
+        raise HTTPException(status_code=400,
+                            detail="Password baru tidak boleh sama dengan yang lama.")
 
-    db.execute("UPDATE users SET password = ? WHERE id = ?", (hash_password(new_password), user["id"]))
+    # Sekaligus clear must_change_password -- user sudah rotate.
+    db.execute(
+        "UPDATE users SET password = ?, must_change_password = 0 WHERE id = ?",
+        (hash_password(new_password), user["id"]),
+    )
     log_action(user, "CHANGE_OWN_PASSWORD", "Mengganti password akun sendiri")
     return {"message": "Password berhasil diganti."}
 
@@ -123,26 +133,37 @@ async def users_me_password_change(body: dict = Depends(json_body), user=Depends
 async def users_reset_password(uid: int, body: dict = Depends(json_body), user=Depends(authenticate_token)):
     require_role(user, "admin")
     new_password = body.get("new_password") or ""
-    if not new_password or len(new_password) < 6:
-        raise HTTPException(status_code=400, detail="Password baru minimal 6 karakter.")
+    validate_password_strength(new_password)
 
     target = db.query_one("SELECT username FROM users WHERE id = ?", (uid,))
     if not target:
         raise HTTPException(status_code=404, detail="User tidak ditemukan")
 
-    db.execute("UPDATE users SET password = ? WHERE id = ?", (hash_password(new_password), uid))
+    # KRITIS #2 (2026-09-20): force user rotate saat first login setelah reset.
+    # Kalau admin reset ke 'temporary1234', user harus ganti sendiri jadi
+    # password rahasianya sebelum kerja normal.
+    db.execute(
+        "UPDATE users SET password = ?, must_change_password = 1 WHERE id = ?",
+        (hash_password(new_password), uid),
+    )
     log_action(user, "RESET_USER_PASSWORD", f"Reset password untuk akun: {target['username']}")
-    return {"message": "Password berhasil direset."}
+    return {"message": "Password berhasil direset. User wajib ganti password saat login berikutnya."}
 
 
 @router.post("/api/users")
 async def users_create(body: dict = Depends(json_body), user=Depends(authenticate_token)):
     require_role(user, "admin")
     g = body.get
+    raw_pw = g("password") or ""
+    validate_password_strength(raw_pw)
     try:
-        hashed = hash_password(g("password") or "")
+        hashed = hash_password(raw_pw)
+        # KRITIS #2 (2026-09-20): karyawan baru WAJIB ganti password saat login
+        # pertama. Admin biasanya set password sementara (mis. tanggal lahir),
+        # user harus rotate dulu.
         db.execute(
-            "INSERT INTO users (username, password, name, role, base_salary) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO users (username, password, name, role, base_salary, "
+            "must_change_password) VALUES (?, ?, ?, ?, ?, 1)",
             (g("username"), hashed, g("name"), g("role"), g("base_salary") or 0),
         )
     except Exception as e:  # noqa: BLE001
@@ -151,7 +172,7 @@ async def users_create(body: dict = Depends(json_body), user=Depends(authenticat
         raise HTTPException(status_code=500, detail=str(e))
     log_action(user, "CREATE_USER", f"Membuat akun karyawan baru: {g('username')} (role: {g('role')})")
     notify("data_updated", "user")
-    return {"message": "User berhasil ditambahkan."}
+    return {"message": "User berhasil ditambahkan. Password sementara -- user wajib ganti saat login pertama."}
 
 
 @router.put("/api/users/{uid}")

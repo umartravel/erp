@@ -4577,8 +4577,8 @@
             <form id="form-my-password" class="space-y-3">
                 <div><label class="text-xs font-medium">Password Lama</label><input type="password" id="my-pw-old" class="w-full border p-2 rounded text-sm bg-gray-50" required></div>
                 <div class="grid grid-cols-2 gap-3">
-                    <div><label class="text-xs font-medium">Password Baru</label><input type="password" id="my-pw-new" class="w-full border p-2 rounded text-sm bg-gray-50" required minlength="6"></div>
-                    <div><label class="text-xs font-medium">Konfirmasi Password Baru</label><input type="password" id="my-pw-confirm" class="w-full border p-2 rounded text-sm bg-gray-50" required minlength="6"></div>
+                    <div><label class="text-xs font-medium">Password Baru <span class="text-gray-400 text-[10px]">(min 8 karakter)</span></label><input type="password" id="my-pw-new" class="w-full border p-2 rounded text-sm bg-gray-50" required minlength="8"></div>
+                    <div><label class="text-xs font-medium">Konfirmasi Password Baru</label><input type="password" id="my-pw-confirm" class="w-full border p-2 rounded text-sm bg-gray-50" required minlength="8"></div>
                 </div>
                 <div class="flex justify-end mt-2">
                     <button type="submit" class="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium shadow-sm">Ganti Password</button>
@@ -4594,10 +4594,50 @@
             <p class="text-sm text-gray-500 mb-3">Reset password untuk <b id="reset-pw-username">-</b>. Karyawan tidak perlu tahu password lama.</p>
             <form id="form-reset-password" class="space-y-3">
                 <input type="hidden" id="reset-pw-uid">
-                <div><label class="text-xs font-medium">Password Baru</label><input type="password" id="reset-pw-new" class="w-full border p-2 rounded text-sm bg-gray-50" required minlength="6"></div>
+                <div><label class="text-xs font-medium">Password Baru <span class="text-gray-400 text-[10px]">(min 8 karakter)</span></label><input type="password" id="reset-pw-new" class="w-full border p-2 rounded text-sm bg-gray-50" required minlength="8"></div>
+                <p class="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1"><i data-lucide="info" class="w-3 h-3 inline"></i> Karyawan wajib ganti sendiri password ini saat login berikutnya.</p>
                 <div class="flex justify-end gap-2 mt-4">
                     <button type="button" onclick="closeModal('modal-reset-password')" class="px-4 py-2 border rounded-lg text-sm font-medium">Batal</button>
                     <button type="submit" class="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium shadow-sm">Reset Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL FORCE CHANGE PASSWORD (KRITIS #2 2026-09-20): blocking modal, muncul
+         setelah login sukses kalau users.must_change_password = 1. Tidak ada tombol
+         batal/tutup -- user WAJIB rotate atau logout. z-index 60 supaya menutupi
+         login-screen (z-50). -->
+    <div id="modal-force-change-password" class="fixed inset-0 modal-bg z-[60] hidden items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
+            <div class="flex items-center gap-2 border-b pb-3 mb-4">
+                <i data-lucide="shield-alert" class="w-6 h-6 text-amber-600"></i>
+                <div>
+                    <h3 class="font-bold text-lg">Ganti Password Wajib</h3>
+                    <p class="text-xs text-gray-500">Demi keamanan akun, silakan ganti password default sebelum lanjut.</p>
+                </div>
+            </div>
+            <div class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-4">
+                <b>Kenapa?</b> Password Anda saat ini adalah password sementara atau default sistem.
+                Setelah rotate sekali, popup ini tidak akan muncul lagi.
+            </div>
+            <form id="form-force-change-password" class="space-y-3">
+                <div>
+                    <label class="text-xs font-medium">Password Lama (Password Sekarang)</label>
+                    <input type="password" id="fcp-old" class="w-full border p-2 rounded text-sm bg-gray-50" required autocomplete="current-password">
+                </div>
+                <div>
+                    <label class="text-xs font-medium">Password Baru <span class="text-gray-400 text-[10px]">(min 8 karakter)</span></label>
+                    <input type="password" id="fcp-new" class="w-full border p-2 rounded text-sm bg-gray-50" required minlength="8" autocomplete="new-password">
+                </div>
+                <div>
+                    <label class="text-xs font-medium">Konfirmasi Password Baru</label>
+                    <input type="password" id="fcp-confirm" class="w-full border p-2 rounded text-sm bg-gray-50" required minlength="8" autocomplete="new-password">
+                </div>
+                <div id="fcp-error" class="text-red-600 text-xs px-2 py-1 rounded hidden" style="background:#FEE2E2;"></div>
+                <div class="flex justify-between items-center gap-2 mt-4 pt-3 border-t">
+                    <button type="button" onclick="logout()" class="text-xs text-gray-500 hover:underline">Batal &amp; Logout</button>
+                    <button type="submit" id="fcp-submit" class="px-5 py-2 bg-amber-600 text-white rounded-lg text-sm font-bold shadow-sm hover:bg-amber-700">Ganti Password &amp; Lanjut</button>
                 </div>
             </form>
         </div>
@@ -6941,7 +6981,15 @@
                         localStorage.removeItem('umar-last-username');
                     }
                 } catch (e) {}
-                currentUser = data.user; setupWorkspace();
+                currentUser = data.user;
+                // KRITIS #2 (2026-09-20): kalau backend flag must_change_password=1
+                // (user pakai default 'password123' atau baru di-reset admin), gate ke
+                // modal force-change dulu -- setupWorkspace() dipanggil AFTER rotate.
+                if (data.user && data.user.must_change_password === 1) {
+                    _umarShowForceChangePassword();
+                } else {
+                    setupWorkspace();
+                }
             } catch (err) {
                 const errMsg = err.message === 'Failed to fetch' || err.message.includes('NetworkError') ? 'Koneksi ke server terputus. Pastikan backend berjalan.' : err.message;
                 if (errEl) { errEl.textContent = errMsg; errEl.classList.remove('hidden'); }
@@ -6953,6 +7001,75 @@
                 }
                 if (btnLabel) btnLabel.textContent = 'Masuk Sistem';
                 if (btnSpinner) btnSpinner.classList.add('hidden');
+            }
+        });
+
+        // KRITIS #2 (2026-09-20): force-change-password modal, ditampilkan setelah
+        // login sukses kalau backend echo must_change_password=1. Modal ini blocking
+        // (satu-satunya exit = submit dgn password baru atau tombol Logout).
+        function _umarShowForceChangePassword() {
+            const modal = document.getElementById('modal-force-change-password');
+            const login = document.getElementById('login-screen');
+            if (!modal) { setupWorkspace(); return; }  // fallback fail-open bug UI
+            // Sembunyikan login-screen supaya modal fokus (tapi tetap di DOM utk logout).
+            if (login) login.style.display = 'none';
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            // Refresh icon Lucide (shield-alert) di modal yg baru muncul.
+            if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+            // Auto-focus input password lama.
+            setTimeout(() => {
+                const el = document.getElementById('fcp-old');
+                if (el) el.focus();
+            }, 60);
+        }
+
+        // Handler submit form force-change: PUT /api/users/me/password. Sukses ->
+        // clear modal + panggil setupWorkspace() (baru user boleh navigate).
+        document.getElementById('form-force-change-password').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const oldEl = document.getElementById('fcp-old');
+            const newEl = document.getElementById('fcp-new');
+            const confEl = document.getElementById('fcp-confirm');
+            const errEl = document.getElementById('fcp-error');
+            const btn = document.getElementById('fcp-submit');
+            const newPw = newEl.value || '';
+            if (newPw !== confEl.value) {
+                errEl.textContent = 'Konfirmasi password baru tidak sama.';
+                errEl.classList.remove('hidden');
+                return;
+            }
+            if (newPw.length < 8) {
+                errEl.textContent = 'Password baru minimal 8 karakter.';
+                errEl.classList.remove('hidden');
+                return;
+            }
+            errEl.classList.add('hidden');
+            btn.disabled = true;
+            btn.textContent = 'Menyimpan...';
+            try {
+                const res = await authFetch('/users/me/password', { method: 'PUT', body: JSON.stringify({
+                    old_password: oldEl.value,
+                    new_password: newPw,
+                }) });
+                await res.json();
+                // Update flag di sessionStorage supaya reload berikutnya tidak trigger lagi.
+                try {
+                    const u = JSON.parse(sessionStorage.getItem('user') || '{}');
+                    u.must_change_password = 0;
+                    sessionStorage.setItem('user', JSON.stringify(u));
+                    if (currentUser) currentUser.must_change_password = 0;
+                } catch (_) {}
+                // Close modal + lanjut ke workspace.
+                const modal = document.getElementById('modal-force-change-password');
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                setupWorkspace();
+            } catch (err) {
+                errEl.textContent = err.message || 'Gagal menyimpan password.';
+                errEl.classList.remove('hidden');
+                btn.disabled = false;
+                btn.textContent = 'Ganti Password & Lanjut';
             }
         });
 

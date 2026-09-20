@@ -63,6 +63,24 @@ JWT_ALGO = "HS256"
 TOKEN_TTL_HOURS = 8
 
 
+# KRITIS #2 (2026-09-20): password minimum 8 karakter. Naik dari 6 sebelumnya.
+# Aman untuk enterprise minimum + sesuai NIST 800-63B. Dipakai bersama oleh
+# routes/users.py di 3 tempat (self-change, admin reset, create user).
+PASSWORD_MIN_LEN = 8
+
+
+def validate_password_strength(plain: str) -> None:
+    """Raise HTTPException 400 kalau password tidak memenuhi kekuatan minimum.
+    Sengaja tidak enforce complexity (upper/digit/symbol) supaya tidak
+    frustrating -- panjang cukup lebih tahan brute-force daripada aturan
+    kompleks yg dibuka gampang lewat variasi 'Password1!' cliché."""
+    if not plain or len(plain) < PASSWORD_MIN_LEN:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Password minimal {PASSWORD_MIN_LEN} karakter.",
+        )
+
+
 def hash_password(plain: str) -> str:
     return bcrypt.hashpw(plain.encode(), bcrypt.gensalt(10)).decode()
 

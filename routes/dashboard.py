@@ -52,7 +52,17 @@ async def login(request: Request, body: dict = Depends(json_body)):
     # Catat login sukses -- dipakai admin untuk audit user aktif.
     db.execute("UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?", (user["id"],))
     token = create_token(user["id"], user["role"], user["name"])
-    return {"token": token, "user": {"id": user["id"], "name": user["name"], "role": user["role"], "photo_url": user["photo_url"]}}
+    # KRITIS #2 (2026-09-20): echo must_change_password ke FE. FE gate: kalau
+    # flag = 1, block ke halaman lain sampai user rotate password. Field null-safe
+    # utk DB legacy (kolom baru migration 020).
+    must_change = int(user["must_change_password"] or 0) if "must_change_password" in user.keys() else 0
+    return {
+        "token": token,
+        "user": {
+            "id": user["id"], "name": user["name"], "role": user["role"],
+            "photo_url": user["photo_url"], "must_change_password": must_change,
+        },
+    }
 
 
 # ===========================================================================
