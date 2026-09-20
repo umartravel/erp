@@ -11,12 +11,38 @@ def _cleanup_tx(tx_ids):
         db.execute("DELETE FROM transactions WHERE id = ?", (t,))
 
 
+def _seed_kas_kecil(amount):
+    """Seed opening balance 1101 Kas Kecil dgn contra 3101 Modal Awal.
+    Diperlukan sejak audit 2026-09-20: setor_tunai_create sekarang cek
+    saldo sufficient sebelum accept. Return tx_id utk cleanup.
+    """
+    tx_id, _ = db.execute(
+        "INSERT INTO transactions (type, category, amount, description, status) "
+        "VALUES ('opening','seed_kas_kecil',?,'Test seed opening balance','POSTED')",
+        (amount,),
+    )
+    kas = db.query_one("SELECT id FROM chart_of_accounts WHERE account_code = '1101'")
+    equity = db.query_one("SELECT id FROM chart_of_accounts WHERE account_code = '3101'")
+    db.execute(
+        "INSERT INTO journal_lines (transaction_id, account_id, debit, credit, memo) "
+        "VALUES (?, ?, ?, 0, 'Seed opening Kas Kecil')",
+        (tx_id, kas["id"], amount),
+    )
+    db.execute(
+        "INSERT INTO journal_lines (transaction_id, account_id, debit, credit, memo) "
+        "VALUES (?, ?, 0, ?, 'Contra Modal Awal')",
+        (tx_id, equity["id"], amount),
+    )
+    return tx_id
+
+
 def test_ak6_setor_tunai_leg1_ok(client, finance_token):
+    seed_id = _seed_kas_kecil(5000000)
     r = client.post("/api/finance/setor-tunai",
                     headers=bearer(finance_token),
                     json={"amount": 5000000, "to_bank": "1102",
                           "note": "AK6 test setor"})
-    assert r.status_code == 200
+    assert r.status_code == 200, r.text
     data = r.json()
     tx_id = data["tx_id"]
     assert data["amount"] == 5000000
@@ -28,7 +54,19 @@ def test_ak6_setor_tunai_leg1_ok(client, finance_token):
     codes = {l["account_code"]: l for l in lines}
     assert codes["1109"]["debit"] == 5000000
     assert codes["1101"]["credit"] == 5000000
-    _cleanup_tx([tx_id])
+    _cleanup_tx([tx_id, seed_id])
+
+
+def test_ak6_setor_tunai_insufficient_kas_kecil(client, finance_token):
+    """Audit 2026-09-20: setor tunai HARUS ditolak kalau saldo Kas Kecil
+    (1101) tidak cukup -- prevent negative cash (physically impossible)."""
+    seed_id = _seed_kas_kecil(1000000)
+    r = client.post("/api/finance/setor-tunai",
+                    headers=bearer(finance_token),
+                    json={"amount": 5000000, "to_bank": "1102"})
+    assert r.status_code == 400, r.text
+    assert "kas kecil" in r.json()["error"].lower()
+    _cleanup_tx([seed_id])
 
 
 def test_ak6_setor_tunai_leg1_sales_denied(client, sales_token):
@@ -53,6 +91,7 @@ def test_ak6_setor_tunai_zero_amount(client, finance_token):
 
 
 def test_ak6_setor_tunai_confirm_ok(client, finance_token):
+    seed_id = _seed_kas_kecil(3000000)
     r = client.post("/api/finance/setor-tunai",
                     headers=bearer(finance_token),
                     json={"amount": 3000000, "to_bank": "1102"})
@@ -71,10 +110,11 @@ def test_ak6_setor_tunai_confirm_ok(client, finance_token):
     codes = {l["account_code"]: l for l in lines}
     assert codes["1102"]["debit"] == 3000000
     assert codes["1109"]["credit"] == 3000000
-    _cleanup_tx([leg1_id, leg2_id])
+    _cleanup_tx([leg1_id, leg2_id, seed_id])
 
 
 def test_ak6_setor_tunai_confirm_double_rejected(client, finance_token):
+    seed_id = _seed_kas_kecil(500000)
     r = client.post("/api/finance/setor-tunai",
                     headers=bearer(finance_token),
                     json={"amount": 500000, "to_bank": "1102"})
@@ -90,7 +130,7 @@ def test_ak6_setor_tunai_confirm_double_rejected(client, finance_token):
                     json={"to_bank": "1102"})
     assert r.status_code == 400
     assert "sudah dikonfirmasi" in r.json()["error"].lower()
-    _cleanup_tx([leg1_id, leg2_id])
+    _cleanup_tx([leg1_id, leg2_id, seed_id])
 
 
 def test_ak6_setor_tunai_confirm_wrong_category(client, finance_token):
@@ -106,6 +146,7 @@ def test_ak6_setor_tunai_confirm_wrong_category(client, finance_token):
 
 
 def test_ak6_setor_tunai_pending_list(client, finance_token):
+    seed_id = _seed_kas_kecil(1500000)
     r = client.post("/api/finance/setor-tunai",
                     headers=bearer(finance_token),
                     json={"amount": 1500000, "to_bank": "1102",
@@ -118,7 +159,7 @@ def test_ak6_setor_tunai_pending_list(client, finance_token):
     data = r.json()
     pending_ids = [p["id"] for p in data["pending"]]
     assert leg1_id in pending_ids
-    _cleanup_tx([leg1_id])
+    _cleanup_tx([leg1_id, seed_id])
 
 
 def test_ak6_prive_ok(client, admin_token):
@@ -190,6 +231,7 @@ def test_ak6_setor_tunai_full_flow_balance_ok(client, finance_token):
     import financial_reports as fr
     today = datetime.date.today().isoformat()
 
+    seed_id = _seed_kas_kecil(999000)
     bs_before = fr.build_balance_sheet(today)
     assert bs_before["balanced"] is True
 
@@ -207,4 +249,4 @@ def test_ak6_setor_tunai_full_flow_balance_ok(client, finance_token):
     bs_after = fr.build_balance_sheet(today)
     assert bs_after["balanced"] is True
 
-    _cleanup_tx([leg1_id, leg2_id])
+    _cleanup_tx([leg1_id, leg2_id, seed_id])

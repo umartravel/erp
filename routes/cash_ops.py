@@ -51,6 +51,26 @@ async def setor_tunai_create(body: dict = Depends(json_body),
     if to_bank not in ("1102", "1103"):
         raise HTTPException(status_code=400,
                             detail="to_bank harus '1102' (Mandiri) atau '1103' (BSI).")
+
+    # 2026-09-20 audit fix: validasi saldo Kas Kecil (1101) cukup sebelum
+    # accept setor. Tanpa cek ini, endpoint accept apapun -> saldo 1101 bisa
+    # jadi negatif (physically impossible: uang tunai di kantor tidak bisa
+    # kurang dari 0). Journal tetap balanced tapi accounting anomali.
+    kas_kecil_row = db.query_one(
+        "SELECT COALESCE(SUM(jl.debit - jl.credit), 0) AS balance "
+        "FROM journal_lines jl "
+        "JOIN chart_of_accounts coa ON coa.id = jl.account_id "
+        "JOIN transactions t ON t.id = jl.transaction_id "
+        "WHERE coa.account_code = '1101' AND t.status = 'POSTED'"
+    )
+    kas_kecil_balance = int(kas_kecil_row["balance"] or 0) if kas_kecil_row else 0
+    if amount > kas_kecil_balance:
+        raise HTTPException(
+            status_code=400,
+            detail=(f"Saldo Kas Kecil (1101) hanya Rp {kas_kecil_balance:,}. "
+                    f"Tidak cukup untuk setor Rp {amount:,}. "
+                    f"Cek Buku Kas / catat pemasukan tunai dulu.").replace(",", "."))
+
     note = (body.get("note") or "").strip()
     memo = f"Setor tunai Kas Kecil -> Bank {to_bank}" + (f": {note}" if note else "")
 
