@@ -1,9 +1,14 @@
 """
 Router Halaman Statis & Media:
-- 4 halaman HTML publik (panduan, form pendaftaran jamaah/agen, dokumentasi).
+- 2 form HTML publik pendaftaran jamaah + agen.
 - /uploads/{filename}: penyajian file PII/media WA dengan authenticate_file_token.
   Wajib DIDAFTARKAN SEBELUM StaticFiles mount di app.py supaya /uploads/* tidak
   pernah dilayani publik (file fisik tersimpan di folder privat di luar public/).
+
+Catatan cleanup 2026-09-20: route /panduan (Panduan.html) + /dokumentasi-teknis
+(Dokumentasi-Teknis.html) di-hapus. Kedua HTML tsb Jun 2026 pakai palet lama
+(hijau-biru), tidak sesuai standar Luxury UMAR sekarang, dan tidak ada link
+dari UI. Panduan modern per-role sekarang di-publish sebagai Artifact.
 """
 import os
 
@@ -21,11 +26,6 @@ from deps import (
 router = APIRouter(tags=["static-pages"])
 
 
-@router.get("/panduan")
-async def panduan():
-    return FileResponse(os.path.join(BASE_DIR, "Panduan.html"))
-
-
 @router.get("/daftar")
 async def daftar_publik():
     return FileResponse(os.path.join(BASE_DIR, "Pendaftaran-Publik.html"))
@@ -34,11 +34,6 @@ async def daftar_publik():
 @router.get("/daftar-agen")
 async def daftar_agen_publik():
     return FileResponse(os.path.join(BASE_DIR, "Pendaftaran-Agen-Publik.html"))
-
-
-@router.get("/dokumentasi-teknis")
-async def dokumentasi_teknis():
-    return FileResponse(os.path.join(BASE_DIR, "Dokumentasi-Teknis.html"))
 
 
 # Penyajian file PII/media WA dengan autentikasi (token via header atau ?token=).

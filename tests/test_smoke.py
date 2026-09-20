@@ -130,8 +130,10 @@ def test_uploads_gated(client):
 
 
 def test_static_html_pages(client):
-    """Halaman HTML publik dilayani sebagai FileResponse."""
-    for url in ["/panduan", "/daftar", "/daftar-agen", "/dokumentasi-teknis"]:
+    """2 form publik pendaftaran dilayani sebagai FileResponse.
+    Cleanup 2026-09-20: /panduan + /dokumentasi-teknis di-hapus (palette lama,
+    orphan dari UI). Kalau restore, tambah URL-nya kembali di sini."""
+    for url in ["/daftar", "/daftar-agen"]:
         r = client.get(url)
         assert r.status_code == 200, f"{url} -> {r.status_code}"
         assert "<html" in r.text.lower() or "<!doctype" in r.text.lower(), f"{url} bukan HTML"
