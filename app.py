@@ -182,6 +182,7 @@ from routes.journal import router as journal_router  # noqa: E402 -- Sprint AK-1
 from routes.close_month import router as close_month_router  # noqa: E402 -- Sprint AK-3
 from routes.financial_reports import router as financial_reports_router  # noqa: E402 -- Sprint AK-4
 from routes.cash_ops import router as cash_ops_router  # noqa: E402 -- Sprint AK-6
+from routes.supabase_sync import router as supabase_sync_router  # noqa: E402 -- Phase SS-1.5
 app.include_router(reconcile_router)
 app.include_router(finance_router)
 app.include_router(mgmt_home_router)
@@ -223,6 +224,7 @@ app.include_router(journal_router)   # Sprint AK-1: /api/journal/*
 app.include_router(close_month_router)  # Sprint AK-3: /api/finance/close-month/*
 app.include_router(financial_reports_router)  # Sprint AK-4: /api/finance/reports/*
 app.include_router(cash_ops_router)  # Sprint AK-6: /api/finance/setor-tunai/* + /api/finance/prive/*
+app.include_router(supabase_sync_router)  # Phase SS-1.5: /api/supabase/sync/* + /api/supabase/restore/*
 app.include_router(daily_reports_router)  # Phase DT-1a: /api/daily-reports/*
 
 
