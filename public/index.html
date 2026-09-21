@@ -704,6 +704,9 @@
                 <a href="#" id="nav-risk-register" onclick="showPage('risk-register')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
                     <i data-lucide="alert-triangle" class="w-4 h-4"></i> Risk Register
                 </a>
+                <a href="#" id="nav-supabase-sync" onclick="showPage('supabase-sync')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i> Sync Supabase
+                </a>
                 <a href="#" id="nav-finance" onclick="showPage('finance')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150">
                     <i data-lucide="wallet" class="w-4 h-4"></i> Keuangan & Ledger
                 </a>
@@ -2600,6 +2603,83 @@
                             <span id="rr-count-comp" class="ml-auto text-xs font-bold px-2 py-0.5 bg-gray-100 rounded">0</span>
                         </div>
                         <div id="rr-list-compliance" class="space-y-2"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE: SYNC SUPABASE (Phase SS-2.1) — admin+mgmt monitor + trigger sync -->
+            <div id="page-supabase-sync" class="page-content hidden space-y-6">
+                <div class="umar-module-hero">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="refresh-cw" class="w-6 h-6" style="color: var(--umar-gold);"></i>
+                        <div>
+                            <div class="umar-module-hero-title">Sync Supabase</div>
+                            <div class="umar-module-hero-subtitle">Replikasi one-way Supabase <code>closings</code> &rarr; UMAR <code>jamaah</code>. Setiap payment delta trigger journal PSAK Dr <code>1101 Kas</code> / Cr <code>2101 Pendapatan Diterima Dimuka</code>. Row hilang di Supabase &rarr; tag soft-deleted (UMAR append-only).</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm border p-5" id="ss-status-card">
+                    <div class="text-center text-gray-400 text-sm py-4">Loading status...</div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm border p-5">
+                    <div class="flex items-center justify-between gap-3 flex-wrap mb-3">
+                        <h3 class="font-bold text-sm flex items-center gap-2" style="color:#1D1D1B;">
+                            <i data-lucide="play-circle" class="w-4 h-4 text-emerald-600"></i>Trigger Sync
+                        </h3>
+                        <div class="flex gap-2">
+                            <button type="button" id="ss-btn-run" onclick="ssRunSync()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold shadow-sm flex items-center gap-2">
+                                <i data-lucide="refresh-cw" class="w-4 h-4"></i>Run Sync Now
+                            </button>
+                            <button type="button" id="ss-btn-backfill" onclick="ssRunFullBackfill()" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-bold shadow-sm flex items-center gap-2">
+                                <i data-lucide="download" class="w-4 h-4"></i>Full Backfill
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500">Incremental sync query rows dgn <code>updated_at &gt; last_sync_ts</code>. Full backfill query semua (untuk recovery).</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+                        <div class="px-4 py-3 border-b bg-gray-50 flex items-center gap-2">
+                            <i data-lucide="list" class="w-4 h-4 text-gray-600"></i>
+                            <h3 class="font-bold text-sm" style="color:#1D1D1B;">Sync Log (50 terakhir)</h3>
+                        </div>
+                        <div class="overflow-x-auto max-h-96">
+                            <table class="w-full text-sm">
+                                <thead class="bg-gray-50 sticky top-0">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left text-xs font-bold text-gray-600 uppercase">Waktu</th>
+                                        <th class="px-3 py-2 text-left text-xs font-bold text-gray-600 uppercase">Action</th>
+                                        <th class="px-3 py-2 text-left text-xs font-bold text-gray-600 uppercase">Ext ID</th>
+                                        <th class="px-3 py-2 text-left text-xs font-bold text-gray-600 uppercase">Error</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ss-log-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+                        <div class="px-4 py-3 border-b bg-red-50 flex items-center gap-2">
+                            <i data-lucide="alert-circle" class="w-4 h-4 text-red-600"></i>
+                            <h3 class="font-bold text-sm" style="color:#1D1D1B;">Soft-Deleted (Row Missing di Supabase)</h3>
+                        </div>
+                        <div class="overflow-x-auto max-h-96">
+                            <table class="w-full text-sm">
+                                <thead class="bg-red-50 sticky top-0">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left text-xs font-bold text-gray-600 uppercase">Ext ID</th>
+                                        <th class="px-3 py-2 text-left text-xs font-bold text-gray-600 uppercase">Nama</th>
+                                        <th class="px-3 py-2 text-left text-xs font-bold text-gray-600 uppercase">Paket</th>
+                                        <th class="px-3 py-2 text-left text-xs font-bold text-gray-600 uppercase">Hilang Sejak</th>
+                                        <th class="px-3 py-2 text-left text-xs font-bold text-gray-600 uppercase">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ss-softdel-body"></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -7160,6 +7240,7 @@
                 document.getElementById('nav-incidents').classList.remove('hidden');
                 document.getElementById('nav-reconcile').classList.remove('hidden');
                 document.getElementById('nav-risk-register').classList.remove('hidden');
+                document.getElementById('nav-supabase-sync').classList.remove('hidden'); // Phase SS-2.1
                 document.getElementById('nav-mgmt-targets').classList.remove('hidden');
                 document.getElementById('nav-finance-analytics').classList.remove('hidden'); // Phase F3
                 document.getElementById('nav-daily-team').classList.remove('hidden'); // Phase DT-3b
@@ -7231,6 +7312,7 @@
                 document.getElementById('nav-ops-overview').classList.remove('hidden');
                 document.getElementById('nav-incidents').classList.remove('hidden');
                 document.getElementById('nav-risk-register').classList.remove('hidden');
+                document.getElementById('nav-supabase-sync').classList.remove('hidden'); // Phase SS-2.1
                 document.getElementById('nav-finance-analytics').classList.remove('hidden'); // Phase F3
                 document.getElementById('nav-daily-team').classList.remove('hidden'); // Phase DT-3b
                 document.getElementById('nav-laporan-keuangan').classList.remove('hidden'); // Sprint AK-UI
@@ -7281,7 +7363,7 @@
             return false;
         }
 
-        const pageTitles = { 'dashboard': 'Dashboard', 'pendaftaran': 'Pendaftaran Baru', 'jamaah': 'Master Data Jamaah', 'finance': 'Keuangan & P&L', 'operasional': 'Operasional & Logistik', 'whatsapp': 'Manajemen WA', 'users': 'Master Data Karyawan', 'packages': 'Master Paket Umroh', 'agents': 'Manajemen Keagenan', 'tactical': 'Kesiapan Operasional & Audit', 'procurement': 'Manajemen Vendor / Procurement', 'settings': 'Pengaturan Aplikasi', 'followup': 'Follow-up Lead (CRM Sales)', 'expense': 'Expense Report', 'inbox': 'Kotak Masuk Pendaftaran Publik', 'leave': 'Ajukan Izin', 'marketing': 'Marketing Analytics', 'sales-home': 'Home Sales', 'ops-home': 'Home Operasional', 'incidents': 'Insiden Lapangan', 'finance-home': 'Home Finance', 'mgmt-home': 'Home Management', 'mgmt-targets': 'Target Perusahaan & Sales', 'aged-receivable': 'Aged Receivable', 'reconcile': 'Rekonsiliasi Bank', 'risk-register': 'Risk Register', 'boq': 'Simulasi Paket (BOQ)', 'finance-analytics': 'Analisis Keuangan', 'finance-categories': 'Kelola Kategori Kas', 'laporan-keuangan': 'Laporan Keuangan', 'daily-mine': 'Laporan Harian', 'daily-team': 'Laporan Tim' };
+        const pageTitles = { 'dashboard': 'Dashboard', 'pendaftaran': 'Pendaftaran Baru', 'jamaah': 'Master Data Jamaah', 'finance': 'Keuangan & P&L', 'operasional': 'Operasional & Logistik', 'whatsapp': 'Manajemen WA', 'users': 'Master Data Karyawan', 'packages': 'Master Paket Umroh', 'agents': 'Manajemen Keagenan', 'tactical': 'Kesiapan Operasional & Audit', 'procurement': 'Manajemen Vendor / Procurement', 'settings': 'Pengaturan Aplikasi', 'followup': 'Follow-up Lead (CRM Sales)', 'expense': 'Expense Report', 'inbox': 'Kotak Masuk Pendaftaran Publik', 'leave': 'Ajukan Izin', 'marketing': 'Marketing Analytics', 'sales-home': 'Home Sales', 'ops-home': 'Home Operasional', 'incidents': 'Insiden Lapangan', 'finance-home': 'Home Finance', 'mgmt-home': 'Home Management', 'mgmt-targets': 'Target Perusahaan & Sales', 'aged-receivable': 'Aged Receivable', 'reconcile': 'Rekonsiliasi Bank', 'risk-register': 'Risk Register', 'supabase-sync': 'Sync Supabase', 'boq': 'Simulasi Paket (BOQ)', 'finance-analytics': 'Analisis Keuangan', 'finance-categories': 'Kelola Kategori Kas', 'laporan-keuangan': 'Laporan Keuangan', 'daily-mine': 'Laporan Harian', 'daily-team': 'Laporan Tim' };
 
         // --- SIDEBAR: kategori yang bisa dilipat (accordion), status tersimpan per browser ---
         const NAV_GROUPS = ['crm', 'finance', 'ops', 'tools'];
@@ -7407,6 +7489,7 @@
             if(id === 'aged-receivable' && typeof initAgedReceivable === 'function') initAgedReceivable();
             if(id === 'reconcile' && typeof initReconcile === 'function') initReconcile();
             if(id === 'risk-register' && typeof initRiskRegister === 'function') initRiskRegister();
+            if(id === 'supabase-sync' && typeof renderSupabaseSyncPage === 'function') renderSupabaseSyncPage();
             if(id === 'boq' && typeof initBoqPage === 'function') initBoqPage();
 
             clearInterval(waPollInterval);
@@ -11977,6 +12060,7 @@
     <script src="js/finance-analytics.js?v=20260918-rpshort"></script>
     <script src="js/finance-categories.js?v=20260916-ex4"></script>
     <script src="js/daily-reports.js?v=20260917-reopen"></script>
+    <script src="js/supabase-sync.js?v=20260921-ss"></script>
     <script src="js/mgmt-home.js?v=20260918-rpshort"></script>
     <script src="js/boq.js?v=20260907-6j"></script>
 </body>
