@@ -99,7 +99,7 @@ def _map_closing_to_jamaah(row: dict) -> dict:
         "father_name": row.get("NAMA AYAH"),
         "citizenship": row.get("KEWARGANEGARAAN"),
         "identity_type": row.get("JENIS IDENTITAS"),
-        "nik": row.get("NOMOR IDENTITAS"),
+        "nik": _sanitize_nik(row.get("NOMOR IDENTITAS")),
         "education": row.get("PENDIDIKAN"),
         "job": row.get("PEKERJAAN"),
         "marital_status": row.get("STATUS PERNIKAHAN"),
@@ -119,12 +119,12 @@ def _map_closing_to_jamaah(row: dict) -> dict:
 
 
 def _resolve_agent_id(name_raw: str | None, ext_id: str | None) -> int | None:
-    """Match agent_name/ext_id ke UMAR agents.id. Return None kalau tidak ada."""
-    if ext_id:
-        r = db.query_one("SELECT id FROM agents WHERE id = ? OR external_id = ?",
-                         (ext_id, ext_id))
-        if r:
-            return r["id"]
+    """Match agent_name/ext_id ke UMAR agents.id. Return None kalau tidak ada.
+
+    Note: UMAR `agents` table TIDAK punya kolom external_id, jadi ext_id
+    diabaikan untuk sekarang -- resolve hanya via name UPPER match.
+    Kalau future add agents.external_id, extend lookup di sini.
+    """
     if name_raw:
         r = db.query_one(
             "SELECT id FROM agents WHERE UPPER(name) = UPPER(?) LIMIT 1",
@@ -132,6 +132,35 @@ def _resolve_agent_id(name_raw: str | None, ext_id: str | None) -> int | None:
         )
         if r:
             return r["id"]
+    return None
+
+
+def _sanitize_nik(raw: str | None) -> str | None:
+    """Handle NIK garbage dari Excel export admin marketing.
+
+    Common issues di Supabase closings:
+    - Empty string "" (53 rows) -> NULL
+    - Scientific notation "3,27512E+15" -> NULL (data lost precision di Excel)
+    - Whitespace-only -> NULL
+    - Bukan 16 digit angka valid -> NULL (best-effort)
+
+    Return valid 16-digit NIK string atau None.
+    """
+    if not raw or not isinstance(raw, str):
+        return None
+    s = raw.strip()
+    if not s:
+        return None
+    if "E+" in s or "e+" in s or "," in s or "." in s:
+        # Scientific notation atau desimal -> data rusak
+        return None
+    # Best-effort: 16 digit numeric.
+    if s.isdigit() and len(s) == 16:
+        return s
+    # Longer/shorter: keep as-is (mungkin passport atau ID asing), tapi hanya
+    # kalau ISO-alphanumeric (bukan format aneh).
+    if s.replace("-", "").replace("/", "").isalnum() and 5 <= len(s) <= 30:
+        return s
     return None
 
 

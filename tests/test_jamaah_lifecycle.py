@@ -65,16 +65,25 @@ def test_jamaah_create_wrong_price_rejected(client, admin_token):
     assert "Harga tidak cocok" in r.json()["error"]
 
 
-def test_jamaah_nik_unique(client, admin_token):
-    """Duplicate NIK -> 400."""
+def test_jamaah_nik_allow_duplicate(client, admin_token):
+    """Duplicate NIK harus DIBOLEHKAN (Migration 022, 2026-09-21).
+
+    Reason: 1 person boleh booking 2+ paket = 2+ closings dengan NIK
+    yg sama. Juga Supabase closings punya banyak NIK empty/garbage
+    ("3,27512E+15" Excel scientific notation) yg kalau UNIQUE bikin
+    sync fail 120x. Design decision: NIK non-unique.
+    """
+    import db
     hdr = bearer(admin_token)
+    db.execute("DELETE FROM jamaah WHERE nik = '9999999999999903'")
+
     packages = client.get("/api/packages", headers=hdr).json()
     pkg = packages[0]
     server_price = pkg.get("price_quad") or pkg.get("price") or 0
 
     payload = {
         "nik": "9999999999999903",
-        "name": "TEST NIK Unique 1",
+        "name": "TEST NIK Dup 1",
         "phone": "081199990003",
         "package_type": pkg["name"],
         "total_price": server_price,
@@ -84,11 +93,13 @@ def test_jamaah_nik_unique(client, admin_token):
     r1 = client.post("/api/jamaah", json=payload, headers=hdr)
     assert r1.status_code == 200
 
-    # Coba lagi dgn NIK sama
-    payload["name"] = "TEST NIK Unique 2"
+    payload["name"] = "TEST NIK Dup 2"
     r2 = client.post("/api/jamaah", json=payload, headers=hdr)
-    assert r2.status_code == 400
-    assert "NIK Jamaah ini sudah pernah terdaftar" in r2.json()["error"]
+    assert r2.status_code == 200
+
+    rows = db.query_all("SELECT id FROM jamaah WHERE nik = '9999999999999903'")
+    assert len(rows) == 2
+    db.execute("DELETE FROM jamaah WHERE nik = '9999999999999903'")
 
 
 def test_payment_triggers_commission_claim(client, admin_token, finance_token):
