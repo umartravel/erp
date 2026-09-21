@@ -67,7 +67,60 @@ async def lifespan(_app: FastAPI):
         _log.info("JWT_SECRET: file .jwt_secret (auto-generate/persistent, "
                   "OK utk lokal/staging; utk prod set env var JWT_SECRET).")
     _log.info("Server Backend CRM Umar berjalan di port %d (Python/FastAPI)", PORT)
+
+    # Phase SS-2.2: Background scheduler untuk auto-sync Supabase every 10 min.
+    # Skip kalau config tidak ada (dev/staging tanpa Supabase). Task di-cancel
+    # saat shutdown supaya loop tidak leak ke test suite.
+    import supabase_client as _sc
+    sync_task = None
+    if _sc.check_config_available():
+        sync_task = asyncio.create_task(_supabase_sync_loop())
+        _log.info("Supabase sync scheduler: aktif, interval 10 menit.")
+    else:
+        _log.info("Supabase sync scheduler: tidak aktif (config tidak ada -- "
+                  "set env SUPABASE_URL+KEY atau buat .supabase_config.json).")
+
     yield
+
+    # Shutdown: cancel sync task supaya bersih.
+    if sync_task and not sync_task.done():
+        sync_task.cancel()
+        try:
+            await sync_task
+        except asyncio.CancelledError:
+            pass
+
+
+# Phase SS-2.2: interval sync loop. Dijalankan sebagai background asyncio.task
+# di lifespan startup. Setiap 10 menit call sync_closings(full=False) yg query
+# Supabase closings WHERE updated_at > last_sync_ts -> upsert ke UMAR jamaah.
+_SUPABASE_SYNC_INTERVAL_SEC = 600
+
+
+async def _supabase_sync_loop() -> None:
+    """Loop tak berakhir yg jalan sync incremental every 10 min.
+
+    Exception di dalam sync tidak crash loop -- di-log + counter naik, tapi
+    loop tetap jalan next iteration. Cancel via task.cancel() (dari lifespan
+    shutdown) menghentikan loop bersih.
+    """
+    import supabase_sync
+    # Delay pertama supaya server siap fully sebelum sync jalan.
+    await asyncio.sleep(30)
+    while True:
+        try:
+            result = await supabase_sync.sync_closings(full=False)
+            if result["rows_processed"] > 0 or result["errors"] > 0:
+                _log.info(
+                    "Supabase auto-sync: %d rows (i=%d u=%d sd=%d e=%d)",
+                    result["rows_processed"], result["inserted"],
+                    result["updated"], result["soft_deleted"], result["errors"],
+                )
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:  # noqa: BLE001
+            _log.error("Supabase auto-sync gagal: %s", e)
+        await asyncio.sleep(_SUPABASE_SYNC_INTERVAL_SEC)
 
 
 app = FastAPI(title="Umar CRM API", lifespan=lifespan)
