@@ -27,4 +27,8 @@ public/branding/
 # JWT signing key: auto-generated per-install (auth.py:_load_or_create_secret).
 # Bocornya file ini = attacker bisa forge token siapapun. WAJIB gitignored.
 .jwt_secret
+# Supabase URL + key untuk sync layer (supabase_client.py). Format:
+# {"url": "https://xxx.supabase.co", "key": "eyJhbGc..."}
+# Bocornya file ini = attacker bisa read/write Supabase closings (PII 339 jamaah).
+.supabase_config.json
 migrations/__pycache__/
