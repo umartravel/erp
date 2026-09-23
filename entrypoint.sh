@@ -20,14 +20,28 @@ DB_DIR="$(dirname "$DB_PATH")"
 mkdir -p "$DB_DIR"
 
 # ---- Install Litestream jika belum ada ----
-if ! command -v litestream >/dev/null 2>&1; then
-  echo "[entrypoint] Litestream tidak ada, install v0.5.17..."
-  curl -sSfL \
-    "https://github.com/benbjohnson/litestream/releases/download/v0.5.17/litestream-0.5.17-linux-x86_64.tar.gz" \
-    -o /tmp/litestream.tgz
-  tar -xzf /tmp/litestream.tgz -C /usr/local/bin/
-  rm /tmp/litestream.tgz
-  echo "[entrypoint] Litestream installed: $(litestream version)"
+# Railway container tidak include curl/wget, pakai Python urllib (built-in).
+# Extract ke /tmp/bin (writable) karena /usr/local/bin sering read-only.
+LITESTREAM_BIN=/tmp/bin/litestream
+if [ ! -x "$LITESTREAM_BIN" ]; then
+  echo "[entrypoint] Litestream tidak ada, install v0.5.17 via Python..."
+  mkdir -p /tmp/bin
+  python3 <<'PYEOF'
+import urllib.request, tarfile, os, stat
+url = "https://github.com/benbjohnson/litestream/releases/download/v0.5.17/litestream-0.5.17-linux-x86_64.tar.gz"
+tgz = "/tmp/litestream.tgz"
+print(f"[entrypoint] Downloading {url}")
+urllib.request.urlretrieve(url, tgz)
+with tarfile.open(tgz) as t:
+    t.extractall("/tmp/bin/")
+os.remove(tgz)
+os.chmod("/tmp/bin/litestream", 0o755)
+print("[entrypoint] Extract OK")
+PYEOF
+  export PATH="/tmp/bin:$PATH"
+  echo "[entrypoint] Litestream installed: $($LITESTREAM_BIN version)"
+else
+  export PATH="/tmp/bin:$PATH"
 fi
 
 # ---- Generate litestream config sementara dari env vars ----
@@ -52,7 +66,7 @@ EOF
 # ---- Restore DB dari R2 kalau belum ada ----
 if [ ! -f "$DB_PATH" ]; then
   echo "[entrypoint] $DB_PATH tidak ada, restore dari R2..."
-  litestream restore -config "$LITESTREAM_YML" "$DB_PATH" || {
+  "$LITESTREAM_BIN" restore -config "$LITESTREAM_YML" "$DB_PATH" || {
     echo "[entrypoint] Restore gagal. Kemungkinan snapshot R2 tidak ada."
     echo "[entrypoint] App akan boot dengan DB kosong (schema baru via migrations)."
   }
