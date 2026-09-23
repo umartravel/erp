@@ -77,6 +77,28 @@ else
   echo "[entrypoint] $DB_PATH sudah ada, skip restore. Litestream continues sync."
 fi
 
+# ---- Emergency admin password reset ----
+# Kalau env RESET_ADMIN_PASSWORD di-set, reset password admin ke nilai tsb.
+# Hapus env var setelah login sukses supaya tidak re-reset di next redeploy.
+if [ -n "${RESET_ADMIN_PASSWORD:-}" ]; then
+  echo "[entrypoint] RESET_ADMIN_PASSWORD detected, resetting admin password..."
+  python3 <<PYEOF
+import bcrypt, sqlite3, os
+new_pass = os.environ.get("RESET_ADMIN_PASSWORD")
+db_path = os.environ.get("UMAR_DB_FILE", "/data/umar_crm.db")
+h = bcrypt.hashpw(new_pass.encode(), bcrypt.gensalt()).decode()
+c = sqlite3.connect(db_path)
+cur = c.execute(
+    "UPDATE users SET password_hash=?, must_change_password=0 WHERE username=?",
+    (h, "admin"),
+)
+c.commit()
+c.close()
+print(f"[entrypoint] Admin password reset: {cur.rowcount} row updated")
+print("[entrypoint] REMINDER: hapus env RESET_ADMIN_PASSWORD setelah login sukses.")
+PYEOF
+fi
+
 # ---- Start uvicorn ----
 echo "[entrypoint] Start uvicorn app:app --port ${PORT:-8000}"
 exec uvicorn app:app --host 0.0.0.0 --port "${PORT:-8000}"
