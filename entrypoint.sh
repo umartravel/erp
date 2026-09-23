@@ -9,7 +9,9 @@
 #   R2_BUCKET             - nama bucket Cloudflare R2
 #   R2_ENDPOINT           - S3 API endpoint (https://xxx.r2.cloudflarestorage.com)
 #   R2_ACCESS_KEY         - Access Key ID
-#   R2_SECRET_KEY         - Secret Access Key
+#   R2_SIGNING            - Secret Access Key (renamed dari R2_SECRET_KEY;
+#                           Railway Railpack treat *_SECRET_* sbg BuildKit secret
+#                           yang butuh mount khusus, cause build fail).
 #   PORT                  - port yang di-inject Railway
 set -euo pipefail
 
@@ -40,7 +42,7 @@ dbs:
         endpoint: ${R2_ENDPOINT:?R2_ENDPOINT tidak set}
         region: auto
         access-key-id: ${R2_ACCESS_KEY:?R2_ACCESS_KEY tidak set}
-        secret-access-key: ${R2_SECRET_KEY:?R2_SECRET_KEY tidak set}
+        secret-access-key: ${R2_SIGNING:?R2_SIGNING tidak set}
         sync-interval: 1s
         snapshot-interval: 1h
         retention: 24h
