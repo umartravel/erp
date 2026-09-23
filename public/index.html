@@ -681,32 +681,18 @@
                 <a href="#" id="nav-marketing" onclick="showPage('marketing')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
                     <i data-lucide="map" class="w-4 h-4"></i> Marketing Analytics
                 </a>
-                <!-- Phase 6k: Overview Sales -- oversight nav utk admin/mgmt.
-                     Menuju ke page yg sama dgn Home Sales tapi label beda supaya jelas
-                     ini bukan personal home mereka, tapi ringkasan divisi Sales. -->
-                <a href="#" id="nav-sales-overview" onclick="showPage('sales-home')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
-                    <i data-lucide="eye" class="w-4 h-4"></i> Overview Sales
-                </a>
+                <!-- 2026-09-23: nav-sales-overview di-absorb ke nav-mgmt-overview
+                     (page consolidated) di grup Tools & Admin. -->
             </div>
 
             <button type="button" id="navgrouphdr-finance" onclick="toggleNavGroup('finance')" class="w-full flex items-center gap-1.5 px-2 mt-6 mb-2 text-xs font-bold text-emerald-400 uppercase tracking-widest hover:text-emerald-200 transition-colors">
                 <i data-lucide="chevron-right" class="w-3.5 h-3.5 nav-group-chevron transition-transform duration-150 shrink-0" id="chevron-finance"></i> Finance
             </button>
             <div id="navgroup-finance" class="space-y-1">
-                <!-- Phase 6k: Overview Finance -- oversight utk admin/mgmt, sama page dgn
-                     Home Finance tapi label beda krn ini bukan personal home mereka. -->
-                <a href="#" id="nav-finance-overview" onclick="showPage('finance-home')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
-                    <i data-lucide="eye" class="w-4 h-4"></i> Overview Finance
-                </a>
-                <a href="#" id="nav-mgmt-targets" onclick="showPage('mgmt-targets')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
-                    <i data-lucide="target" class="w-4 h-4"></i> Target Perusahaan & Sales
-                </a>
-                <a href="#" id="nav-risk-register" onclick="showPage('risk-register')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
-                    <i data-lucide="alert-triangle" class="w-4 h-4"></i> Risk Register
-                </a>
-                <a href="#" id="nav-supabase-sync" onclick="showPage('supabase-sync')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
-                    <i data-lucide="refresh-cw" class="w-4 h-4"></i> Sync Supabase
-                </a>
+                <!-- 2026-09-23: nav-finance-overview di-absorb ke nav-mgmt-overview (grup
+                     Tools & Admin). nav-mgmt-targets, nav-risk-register, nav-supabase-sync
+                     dipindah ke grup Tools & Admin karena bukan financial ops harian tapi
+                     strategic governance / infra admin. -->
                 <a href="#" id="nav-finance" onclick="showPage('finance')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150">
                     <i data-lucide="wallet" class="w-4 h-4"></i> Keuangan & Ledger
                 </a>
@@ -731,11 +717,8 @@
                 <i data-lucide="chevron-right" class="w-3.5 h-3.5 nav-group-chevron transition-transform duration-150 shrink-0" id="chevron-ops"></i> Operasional
             </button>
             <div id="navgroup-ops" class="space-y-1">
-                <!-- Phase 6k: Overview Operasional -- oversight utk admin/mgmt, sama page
-                     dgn Home Operasional tapi label beda krn ini bukan personal home mereka. -->
-                <a href="#" id="nav-ops-overview" onclick="showPage('ops-home')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
-                    <i data-lucide="eye" class="w-4 h-4"></i> Overview Operasional
-                </a>
+                <!-- 2026-09-23: nav-ops-overview di-absorb ke nav-mgmt-overview
+                     (page consolidated) di grup Tools & Admin. -->
                 <a href="#" id="nav-operasional" onclick="showPage('operasional')" class="nav-btn flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150">
                     <span class="flex items-center gap-3"><i data-lucide="box" class="w-4 h-4"></i> Logistik & Operasional</span>
                     <span class="flex items-center gap-1">
@@ -755,6 +738,21 @@
                 <i data-lucide="chevron-right" class="w-3.5 h-3.5 nav-group-chevron transition-transform duration-150 shrink-0" id="chevron-tools"></i> Tools & Admin
             </button>
             <div id="navgroup-tools" class="space-y-1">
+                <!-- 2026-09-23: Overview consolidated (page-mgmt-overview) menampilkan
+                     3 card KPI Sales/Finance/Ops sebagai executive snapshot. Klik card
+                     drill-down ke Home divisi masing-masing. -->
+                <a href="#" id="nav-mgmt-overview" onclick="showPage('mgmt-overview')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
+                    <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Overview Perusahaan
+                </a>
+                <a href="#" id="nav-mgmt-targets" onclick="showPage('mgmt-targets')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
+                    <i data-lucide="target" class="w-4 h-4"></i> Target Perusahaan & Sales
+                </a>
+                <a href="#" id="nav-risk-register" onclick="showPage('risk-register')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
+                    <i data-lucide="alert-triangle" class="w-4 h-4"></i> Risk Register
+                </a>
+                <a href="#" id="nav-supabase-sync" onclick="showPage('supabase-sync')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150 hidden">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i> Sync Supabase
+                </a>
                 <a href="#" id="nav-leave" onclick="showPage('leave')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-emerald-100 hover:bg-emerald-800 hover:text-white transition-colors duration-150">
                     <i data-lucide="calendar-off" class="w-4 h-4"></i> Ajukan Izin
                 </a>
@@ -2882,6 +2880,21 @@
                             <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold shadow-sm">Simpan</button>
                         </div>
                     </form>
+                </div>
+            </div>
+
+            <!-- PAGE: OVERVIEW PERUSAHAAN (2026-09-23) — 3 card KPI cross-divisi
+                 Sales/Finance/Operasional untuk admin/mgmt oversight. Data dari
+                 Promise.all(mgmt-home + finance-home + ops-home) di renderMgmtOverviewPage(). -->
+            <div id="page-mgmt-overview" class="page-content hidden space-y-4">
+                <div class="umar-module-hero">
+                    <div class="umar-module-hero-title">Overview Perusahaan</div>
+                    <div class="umar-module-hero-subtitle">Snapshot 3 divisi utama untuk oversight strategis. Klik card untuk buka detail Home divisi.</div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div id="mo-card-sales" class="rounded-xl border shadow-sm bg-white p-5 space-y-3"></div>
+                    <div id="mo-card-finance" class="rounded-xl border shadow-sm bg-white p-5 space-y-3"></div>
+                    <div id="mo-card-ops" class="rounded-xl border shadow-sm bg-white p-5 space-y-3"></div>
                 </div>
             </div>
 
@@ -7230,12 +7243,10 @@
                 document.getElementById('nav-followup').classList.remove('hidden');
                 document.getElementById('finance-write-panel').classList.remove('hidden');
                 document.getElementById('btn-save-ops').classList.remove('hidden');
-                // Phase 6k: Admin punya Dashboard sbg personal home + Overview di setiap grup
-                // divisi utk oversight (Sales/Finance/Mgmt/Operasional). Dashboard tetap di
-                // BERANDA section; Overview X ada di grup masing2 dgn label distinct dari Home.
-                document.getElementById('nav-sales-overview').classList.remove('hidden');
-                document.getElementById('nav-finance-overview').classList.remove('hidden');
-                document.getElementById('nav-ops-overview').classList.remove('hidden');
+                // 2026-09-23: 3 nav Overview per grup (sales/finance/ops) di-absorb ke
+                // nav-mgmt-overview (page consolidated di grup Tools & Admin) yg render
+                // 3 card KPI executive snapshot.
+                document.getElementById('nav-mgmt-overview').classList.remove('hidden');
                 document.getElementById('nav-mgmt-home').classList.remove('hidden'); // di BERANDA
                 document.getElementById('nav-incidents').classList.remove('hidden');
                 document.getElementById('nav-reconcile').classList.remove('hidden');
@@ -7307,13 +7318,13 @@
                 // di backend memang dibatasi khusus admin+sales, jadi Management akan selalu 403
                 // bila mencoba mereview -- konsisten untuk tidak menampilkan nav yang pasti gagal.
                 document.getElementById('nav-inbox').classList.add('hidden');
-                // Phase 6k: Management personal home = Home Management di BERANDA.
-                // Overview Finance/Sales/Operasional di grup masing2 utk oversight cross-divisi.
+                // Management personal home = Home Management di BERANDA.
+                // 2026-09-23: 3 nav Overview per grup di-absorb ke nav-mgmt-overview
+                // (page consolidated di grup Tools & Admin) yg render 3 card KPI Sales/
+                // Finance/Ops sebagai executive snapshot.
                 document.getElementById('nav-mgmt-home').classList.remove('hidden'); // BERANDA
+                document.getElementById('nav-mgmt-overview').classList.remove('hidden'); // consolidated
                 document.getElementById('nav-mgmt-targets').classList.remove('hidden');
-                document.getElementById('nav-finance-overview').classList.remove('hidden');
-                document.getElementById('nav-sales-overview').classList.remove('hidden');
-                document.getElementById('nav-ops-overview').classList.remove('hidden');
                 document.getElementById('nav-incidents').classList.remove('hidden');
                 document.getElementById('nav-risk-register').classList.remove('hidden');
                 document.getElementById('nav-supabase-sync').classList.remove('hidden'); // Phase SS-2.1
@@ -7494,6 +7505,7 @@
             if(id === 'reconcile' && typeof initReconcile === 'function') initReconcile();
             if(id === 'risk-register' && typeof initRiskRegister === 'function') initRiskRegister();
             if(id === 'supabase-sync' && typeof renderSupabaseSyncPage === 'function') renderSupabaseSyncPage();
+            if(id === 'mgmt-overview' && typeof renderMgmtOverviewPage === 'function') renderMgmtOverviewPage();
             if(id === 'boq' && typeof initBoqPage === 'function') initBoqPage();
 
             clearInterval(waPollInterval);
@@ -12065,6 +12077,7 @@
     <script src="js/finance-categories.js?v=20260916-ex4"></script>
     <script src="js/daily-reports.js?v=20260917-reopen"></script>
     <script src="js/supabase-sync.js?v=20260921-ss"></script>
+    <script src="js/mgmt-overview.js?v=20260923-mo"></script>
     <script src="js/mgmt-home.js?v=20260918-rpshort"></script>
     <script src="js/boq.js?v=20260907-6j"></script>
 </body>
