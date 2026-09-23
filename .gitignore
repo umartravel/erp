@@ -31,4 +31,14 @@ public/branding/
 # {"url": "https://xxx.supabase.co", "key": "eyJhbGc..."}
 # Bocornya file ini = attacker bisa read/write Supabase closings (PII 339 jamaah).
 .supabase_config.json
+# Litestream config berisi Cloudflare R2 Access Key + Secret untuk backup DB.
+# Bocornya file ini = attacker bisa read/write/delete backup snapshot di R2.
+litestream.yml
+tools/litestream.zip
+tools/litestream.exe
+tools/LICENSE
+tools/README.md
+tools/etc/
+logs/
+.umar_crm.db-litestream/
 migrations/__pycache__/
